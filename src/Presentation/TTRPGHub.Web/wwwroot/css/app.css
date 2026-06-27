@@ -1,0 +1,210 @@
+/* ═══════════════════════════════════════════════════════════
+   Таверна Аферистов — тема "Тёмная магия"
+   Переопределяем Bootstrap CSS-переменные, минимум кастомного CSS.
+   ═══════════════════════════════════════════════════════════ */
+
+:root,
+[data-bs-theme="dark"] {
+    /* Акцент — фиолетовый */
+    --ta-accent:         #7c3aed;
+    --ta-accent-hover:   #6d28d9;
+    --ta-accent-light:   #a78bfa;
+    --ta-accent-glow:    rgba(124, 58, 237, 0.35);
+
+    /* Золото */
+    --ta-gold:           #f59e0b;
+    --ta-gold-light:     #fcd34d;
+
+    /* Фоны */
+    --ta-bg:             #0d0d1a;
+    --ta-surface:        #13132a;
+    --ta-surface-2:      #1e1e3a;
+    --ta-surface-3:      #252545;
+    --ta-border:         rgba(124, 58, 237, 0.2);
+
+    /* Текст */
+    --ta-text:           #e2e8f0;
+    --ta-text-muted:     #94a3b8;
+    --ta-text-dim:       #64748b;
+
+    /* Bootstrap переопределения */
+    --bs-body-bg:              var(--ta-bg);
+    --bs-body-color:           var(--ta-text);
+    --bs-primary:              var(--ta-accent);
+    --bs-primary-rgb:          124, 58, 237;
+    --bs-link-color:           var(--ta-accent-light);
+    --bs-link-hover-color:     var(--ta-accent);
+    --bs-border-color:         var(--ta-border);
+    --bs-secondary-bg:         var(--ta-surface-2);
+    --bs-tertiary-bg:          var(--ta-surface-3);
+    --bs-card-bg:              var(--ta-surface);
+
+    /* Типографика */
+    --bs-font-sans-serif:  'Exo 2', system-ui, sans-serif;
+    --bs-body-font-size:   0.95rem;
+}
+
+body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
+
+.ta-brand, h1, h2, h3 { font-family: 'Cinzel', serif; letter-spacing: 0.03em; }
+
+/* ── Splash ──────────────────────────────────────────────── */
+.ta-splash { background: var(--ta-bg); }
+
+.ta-brand {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    background: linear-gradient(135deg, var(--ta-accent-light), var(--ta-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.ta-loading-bar {
+    width: 200px; height: 3px;
+    background: var(--ta-surface-3);
+    border-radius: 2px; overflow: hidden;
+}
+
+.ta-loading-fill {
+    height: 100%; width: 40%;
+    background: linear-gradient(90deg, var(--ta-accent), var(--ta-accent-light));
+    border-radius: 2px;
+    animation: ta-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes ta-slide {
+    0%   { transform: translateX(-250%); }
+    100% { transform: translateX(650%); }
+}
+
+/* ── Navbar ──────────────────────────────────────────────── */
+.ta-navbar {
+    background: var(--ta-surface) !important;
+    border-bottom: 1px solid var(--ta-border);
+    backdrop-filter: blur(8px);
+}
+
+.ta-navbar-brand {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    background: linear-gradient(135deg, var(--ta-accent-light), var(--ta-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.ta-sidebar {
+    background: var(--ta-surface);
+    border-right: 1px solid var(--ta-border);
+    min-height: calc(100vh - 56px);
+    width: 240px; flex-shrink: 0;
+}
+
+.ta-nav-link {
+    color: var(--ta-text-muted);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    margin: 2px 0;
+    transition: all 0.15s ease;
+    display: flex; align-items: center; gap: 0.6rem;
+    text-decoration: none;
+}
+
+.ta-nav-link:hover { color: var(--ta-text); background: var(--ta-surface-2); }
+
+.ta-nav-link.active {
+    color: var(--ta-accent-light);
+    background: rgba(124, 58, 237, 0.15);
+    border-left: 3px solid var(--ta-accent);
+    padding-left: calc(1rem - 3px);
+}
+
+.ta-nav-link i { font-size: 1.1rem; width: 1.3rem; text-align: center; }
+
+.ta-sidebar-section {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ta-text-dim);
+    padding: 1rem 1rem 0.25rem;
+    font-weight: 600;
+}
+
+/* ── Карточки ────────────────────────────────────────────── */
+.ta-card {
+    background: var(--ta-surface);
+    border: 1px solid var(--ta-border);
+    border-radius: 12px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.ta-card:hover {
+    border-color: var(--ta-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--ta-accent-glow);
+}
+
+/* ── Кнопки ──────────────────────────────────────────────── */
+.btn-ta-primary {
+    background: var(--ta-accent);
+    border-color: var(--ta-accent);
+    color: #fff; font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-ta-primary:hover {
+    background: var(--ta-accent-hover);
+    border-color: var(--ta-accent-hover);
+    box-shadow: 0 4px 16px var(--ta-accent-glow);
+    color: #fff;
+}
+
+/* ── Формы ───────────────────────────────────────────────── */
+.form-control, .form-select {
+    background-color: var(--ta-surface-2);
+    border-color: var(--ta-border);
+    color: var(--ta-text);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--ta-surface-2);
+    border-color: var(--ta-accent);
+    color: var(--ta-text);
+    box-shadow: 0 0 0 0.25rem var(--ta-accent-glow);
+}
+
+.form-control::placeholder { color: var(--ta-text-dim); }
+
+/* ── Auth страницы ───────────────────────────────────────── */
+.ta-auth-wrap {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 60% 20%, rgba(124,58,237,0.12) 0%, transparent 60%),
+                var(--ta-bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+}
+
+.ta-auth-card {
+    background: var(--ta-surface);
+    border: 1px solid var(--ta-border);
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    max-width: 420px; width: 100%;
+    padding: 2.5rem;
+}
+
+/* ── Утилиты ─────────────────────────────────────────────── */
+.ta-level-badge {
+    background: rgba(124, 58, 237, 0.2);
+    color: var(--ta-accent-light);
+    border: 1px solid var(--ta-accent);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 0.75rem; font-weight: 600;
+}
+
+.ta-divider { border-color: var(--ta-border); margin: 1.5rem 0; }
+
+#blazor-error-ui { display: none; }

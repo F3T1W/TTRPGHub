@@ -1,0 +1,27 @@
+<Solution>
+  <Folder Name="/aspire/">
+    <Project Path="aspire/TTRPGHub.ServiceDefaults/TTRPGHub.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Core/">
+    <Project Path="src/Core/TTRPGHub.Application/TTRPGHub.Application.csproj" />
+    <Project Path="src/Core/TTRPGHub.Domain/TTRPGHub.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/TTRPGHub.Infrastructure/TTRPGHub.Infrastructure.csproj" />
+    <Project Path="src/Infrastructure/TTRPGHub.Persistence/TTRPGHub.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/TTRPGHub.API/TTRPGHub.API.csproj" />
+    <Project Path="src/Presentation/TTRPGHub.Web/TTRPGHub.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/TTRPGHub.Contracts/TTRPGHub.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TTRPGHub.API.Tests/TTRPGHub.API.Tests.csproj" />
+    <Project Path="tests/TTRPGHub.Application.Tests/TTRPGHub.Application.Tests.csproj" />
+    <Project Path="tests/TTRPGHub.Domain.Tests/TTRPGHub.Domain.Tests.csproj" />
+    <Project Path="tests/TTRPGHub.Infrastructure.Tests/TTRPGHub.Infrastructure.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,38 @@
+# Бинарники и артефакты сборки
+**/bin/
+**/obj/
+**/publish/
+
+# Bootstrap и сторонние библиотеки (не наш код)
+src/Presentation/TTRPGHub.Web/wwwroot/lib/
+
+# EF Core — Designer-файлы (дублируют логику)
+**/*.Designer.cs
+
+# Логи и временные файлы
+*.log
+logs/
+tmp/
+TestResults/
+coverage/
+
+# Docker данные
+postgres_data/
+redis_data/
+
+# OS файлы
+.DS_Store
+Thumbs.db
+
+# Секреты
+.env
+*.env.local
+appsettings.Production.json
+appsettings.Local.json
+**/secrets.json
+
+# Sample data (шаблонные файлы, не наши)
+src/Presentation/TTRPGHub.Web/wwwroot/sample-data/
+src/Presentation/TTRPGHub.Web/Pages/Counter.razor
+src/Presentation/TTRPGHub.Web/Pages/Weather.razor
+src/Presentation/TTRPGHub.Web/Pages/NotFound.razor
