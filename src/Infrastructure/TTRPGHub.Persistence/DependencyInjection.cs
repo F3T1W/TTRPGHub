@@ -3,6 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Dnd5e;
+using TTRPGHub.Repositories.Forum;
+using TTRPGHub.Persistence.Repositories.Forum;
+using TTRPGHub.Persistence.Repositories;
 using TTRPGHub.Seeding;
 
 namespace TTRPGHub;
@@ -32,6 +35,12 @@ public static class DependencyInjection
         services.AddScoped<IDnd5eMonsterRepository, Dnd5eMonsterRepository>();
         services.AddScoped<IEmailConfirmationTokenRepository, EmailConfirmationTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+        services.AddScoped<IForumCategoryRepository, ForumCategoryRepository>();
+        services.AddScoped<IForumTopicRepository, ForumTopicRepository>();
+        services.AddScoped<IForumPostRepository, ForumPostRepository>();
+        services.AddScoped<IHomebrewRepository, HomebrewRepository>();
+        services.AddScoped<IRatingRepository, RatingRepository>();
+        services.AddScoped<IGameEventRepository, GameEventRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHttpClient<Open5eImporter>();

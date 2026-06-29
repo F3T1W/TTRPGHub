@@ -13,6 +13,10 @@ using TTRPGHub.Endpoints.Encounters;
 using TTRPGHub.Endpoints.Initiative;
 using TTRPGHub.Endpoints.Dnd5e;
 using TTRPGHub.Endpoints.Users;
+using TTRPGHub.API.Endpoints.Forum;
+using TTRPGHub.API.Endpoints.Homebrew;
+using TTRPGHub.API.Endpoints.Ratings;
+using TTRPGHub.API.Endpoints.Events;
 using TTRPGHub.Hubs;
 using TTRPGHub.Services;
 using TTRPGHub.Seeding;
@@ -74,6 +78,7 @@ try
         using var scope = app.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<Open5eImporter>().ImportIfEmptyAsync();
+        await ForumSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
     }
 
     if (app.Environment.IsDevelopment())
@@ -106,6 +111,10 @@ try
     app.MapInitiative();
     app.MapDnd5e();
     app.MapUsers();
+    app.MapForum();
+    app.MapHomebrew();
+    app.MapRatings();
+    app.MapEvents();
     app.MapHub<InitiativeHub>("/hubs/initiative");
 
     app.Run();

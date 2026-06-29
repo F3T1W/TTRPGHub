@@ -13,6 +13,12 @@ public sealed record Error(string Code, string Description)
     public static Error Unauthorized() =>
         new("Auth.Unauthorized", "Нет доступа.");
 
+    public static Error Forbidden() =>
+        new("Auth.Forbidden", "Недостаточно прав.");
+
     public static Error Validation(string field, string message) =>
         new($"Validation.{field}", message);
+
+    public static Error Validation(string message) =>
+        new("Validation.General", message);
 }

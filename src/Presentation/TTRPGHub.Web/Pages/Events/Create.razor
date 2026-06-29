@@ -1,0 +1,85 @@
+@page "/events/create"
+@attribute [Authorize]
+<PageTitle>Создать событие — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:600px">
+    <h2 class="text-white mb-4"><i class="bi bi-calendar-plus me-2" style="color:var(--ta-accent-light)"></i>Новое событие</h2>
+
+    <div class="ta-card p-4">
+        <div class="mb-3">
+            <label class="form-label text-white small">Название *</label>
+            <input class="form-control" placeholder="Например: Открытая игра по D&D 5e"
+                   style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                   @bind="_title" maxlength="200" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label text-white small">Система *</label>
+            <input class="form-control" placeholder="D&D 5e, Pathfinder, CoC..."
+                   style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                   @bind="_system" maxlength="100" />
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label text-white small">Формат *</label>
+                <select class="form-select" style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                        @bind="_format">
+                    <option value="Online">Онлайн</option>
+                    <option value="Offline">Оффлайн</option>
+                    <option value="Hybrid">Гибрид</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label text-white small">Макс. участников *</label>
+                <input type="number" class="form-control" min="1" max="500"
+                       style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                       @bind="_maxParticipants" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label text-white small">Дата и время начала *</label>
+            <input type="datetime-local" class="form-control"
+                   style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                   @bind="_startsAt" />
+        </div>
+
+        @if (_format != "Online")
+        {
+            <div class="mb-3">
+                <label class="form-label text-white small">Место проведения</label>
+                <input class="form-control" placeholder="Адрес или название места"
+                       style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                       @bind="_location" maxlength="300" />
+            </div>
+        }
+
+        @if (_format != "Offline")
+        {
+            <div class="mb-3">
+                <label class="form-label text-white small">Ссылка на онлайн</label>
+                <input class="form-control" placeholder="https://discord.gg/..."
+                       style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                       @bind="_onlineLink" maxlength="500" />
+            </div>
+        }
+
+        <div class="mb-4">
+            <label class="form-label text-white small">Описание</label>
+            <textarea class="form-control" rows="4"
+                      style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border)"
+                      @bind="_description" maxlength="3000"></textarea>
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger py-2 small mb-3">@_error</div>
+        }
+
+        <button class="btn btn-ta-primary w-100" @onclick="SubmitAsync" disabled="@_submitting">
+            @if (_submitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
+            Создать событие
+        </button>
+    </div>
+</div>

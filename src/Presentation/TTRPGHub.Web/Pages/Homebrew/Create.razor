@@ -1,0 +1,61 @@
+@page "/homebrew/create"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+<PageTitle>Создать материал — Таверна Аферистов</PageTitle>
+<div class="container py-4" style="max-width:720px">
+    <h1 class="h4 mb-4"><i class="bi bi-magic me-2" style="color:var(--ta-accent)"></i>Новый материал</h1>
+
+    <div class="ta-card p-4">
+        <div class="mb-3">
+            <label class="form-label">Название *</label>
+            <input class="form-control" @bind="_title" placeholder="Огненный шар v2.0" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Краткое описание *</label>
+            <input class="form-control" @bind="_description" placeholder="Одна-две строки о материале" />
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Система *</label>
+                <select class="form-select" @bind="_system">
+                    <option value="">— выбери —</option>
+                    <option>D&D 5e</option>
+                    <option>Pathfinder 2e</option>
+                    <option>GURPS</option>
+                    <option>Call of Cthulhu</option>
+                    <option>Другая</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Тип *</label>
+                <select class="form-select" @bind="_type">
+                    @foreach (HomebrewType t in Enum.GetValues<HomebrewType>())
+                    {
+                        <option value="@t">@TypeLabel(t)</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Теги (через запятую)</label>
+            <input class="form-control" @bind="_tags" placeholder="боевой, огонь, аое" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Содержание *</label>
+            <textarea class="form-control" rows="10" @bind="_content"
+                      placeholder="Механика, характеристики, описание..."></textarea>
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-ta-primary" @onclick="SubmitAsync" disabled="@_saving">
+                @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Опубликовать
+            </button>
+            <a href="/homebrew" class="btn btn-outline-secondary">Отмена</a>
+        </div>
+    </div>
+</div>

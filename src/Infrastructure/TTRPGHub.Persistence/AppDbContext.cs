@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using TTRPGHub.Common;
 using TTRPGHub.Entities;
 using TTRPGHub.Entities.Dnd5e;
+using TTRPGHub.Entities.Forum;
+using TTRPGHub.Entities.Homebrew;
+using TTRPGHub.Entities.Events;
+using TTRPGHub.Entities.Ratings;
 
 namespace TTRPGHub;
 
@@ -19,6 +23,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<Dnd5eMonster> Dnd5eMonsters => Set<Dnd5eMonster>();
     public DbSet<EmailConfirmationToken> EmailConfirmationTokens => Set<EmailConfirmationToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<ForumCategory> ForumCategories => Set<ForumCategory>();
+    public DbSet<ForumTopic> ForumTopics => Set<ForumTopic>();
+    public DbSet<ForumPost> ForumPosts => Set<ForumPost>();
+    public DbSet<ForumPostLike> ForumPostLikes => Set<ForumPostLike>();
+    public DbSet<HomebrewItem> HomebrewItems => Set<HomebrewItem>();
+    public DbSet<HomebrewLike> HomebrewLikes => Set<HomebrewLike>();
+    public DbSet<UserRating> UserRatings => Set<UserRating>();
+    public DbSet<GameEvent> GameEvents => Set<GameEvent>();
+    public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

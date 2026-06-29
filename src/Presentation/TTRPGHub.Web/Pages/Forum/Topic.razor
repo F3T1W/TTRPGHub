@@ -1,0 +1,110 @@
+@page "/forum/topic/{TopicId:guid}"
+<PageTitle>Форум — Таверна Аферистов</PageTitle>
+<div class="container-fluid py-4">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent)"></div></div>
+    }
+    else if (_data is not null)
+    {
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/forum">Форум</a></li>
+                <li class="breadcrumb-item"><a href="/forum/@_data.CategorySlug">@_data.CategoryName</a></li>
+                <li class="breadcrumb-item active">@_data.Title</li>
+            </ol>
+        </nav>
+        <h1 class="h4 mb-4">
+            @if (_data.IsPinned) { <i class="bi bi-pin-fill me-1" style="color:var(--ta-gold)"></i> }
+            @if (_data.IsLocked) { <i class="bi bi-lock-fill me-1 text-secondary"></i> }
+            @_data.Title
+        </h1>
+
+        @foreach (var post in _data.Posts.Items)
+        {
+            <div class="ta-card p-3 mb-3">
+                <div class="d-flex gap-3">
+                    <div class="flex-shrink-0 text-center" style="width:64px">
+                        @if (post.AuthorAvatarUrl is not null)
+                        {
+                            <img src="@post.AuthorAvatarUrl" class="rounded-circle mb-1" style="width:48px;height:48px;object-fit:cover" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-1"
+                                 style="width:48px;height:48px;background:var(--ta-surface);font-size:1.4rem">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                        }
+                        <div class="small text-secondary" style="word-break:break-all">
+                            <a href="/users/@post.AuthorId" class="text-decoration-none" style="color:var(--ta-accent-light)">@post.AuthorUsername</a>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="text-secondary small mb-2">
+                            @post.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                            @if (post.UpdatedAt.HasValue)
+                            {
+                                <span class="ms-2">(ред. @post.UpdatedAt.Value.ToLocalTime().ToString("dd.MM HH:mm"))</span>
+                            }
+                        </div>
+                        <div style="white-space:pre-wrap">@post.Content</div>
+                        <div class="mt-2">
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="btn btn-sm @(post.LikedByMe ? "btn-ta-primary" : "btn-outline-secondary")"
+                                            @onclick="() => ToggleLikeAsync(post)">
+                                        <i class="bi bi-heart@(post.LikedByMe ? "-fill" : "") me-1"></i>@post.LikeCount
+                                    </button>
+                                </Authorized>
+                                <NotAuthorized>
+                                    <span class="text-secondary small"><i class="bi bi-heart me-1"></i>@post.LikeCount</span>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (_data.Posts.TotalPages > 1)
+        {
+            <div class="d-flex gap-2 mb-4">
+                @for (int p = 1; p <= _data.Posts.TotalPages; p++)
+                {
+                    var pg = p;
+                    <button class="btn @(_page == pg ? "btn-ta-primary" : "btn-outline-secondary") btn-sm"
+                            @onclick="() => LoadPageAsync(pg)">@pg</button>
+                }
+            </div>
+        }
+
+        <AuthorizeView>
+            <Authorized>
+                @if (!_data.IsLocked)
+                {
+                    <div class="ta-card p-3 mt-4">
+                        <h6>Ответить</h6>
+                        <textarea class="form-control mb-2" rows="4" placeholder="Текст сообщения..." @bind="_replyContent"></textarea>
+                        <button class="btn btn-ta-primary" @onclick="ReplyAsync">Отправить</button>
+                        @if (_replyError is not null)
+                        {
+                            <div class="alert alert-danger mt-2 mb-0">@_replyError</div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-secondary mt-3">
+                        <i class="bi bi-lock-fill me-1"></i> Тема закрыта для ответов
+                    </div>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <div class="alert alert-secondary mt-3">
+                    <a href="/login">Войди</a>, чтобы ответить в теме
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    }
+</div>

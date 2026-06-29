@@ -1,0 +1,70 @@
+@page "/homebrew/{Id:guid}"
+<PageTitle>Homebrew — Таверна Аферистов</PageTitle>
+<div class="container py-4" style="max-width:800px">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent)"></div></div>
+    }
+    else if (_item is not null)
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/homebrew">Homebrew Hub</a></li>
+                <li class="breadcrumb-item active">@_item.Title</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <span class="badge me-2" style="background:var(--ta-accent)">@TypeLabel(_item.Type)</span>
+                    <span class="text-secondary small">@_item.System</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <AuthorizeView>
+                        <Authorized>
+                            <button class="btn btn-sm @(_item.LikedByMe ? "btn-ta-primary" : "btn-outline-secondary")"
+                                    @onclick="ToggleLikeAsync">
+                                <i class="bi bi-heart@(_item.LikedByMe ? "-fill" : "") me-1"></i>@_likeCount
+                            </button>
+                        </Authorized>
+                        <NotAuthorized>
+                            <span class="text-secondary"><i class="bi bi-heart me-1"></i>@_likeCount</span>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                    @if (_isOwner)
+                    {
+                        <button class="btn btn-sm btn-outline-danger" @onclick="DeleteAsync">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <h1 class="h4 mb-2">@_item.Title</h1>
+            <p class="text-secondary mb-3">@_item.Description</p>
+
+            @if (!string.IsNullOrWhiteSpace(_item.Tags))
+            {
+                <div class="mb-3">
+                    @foreach (var tag in _item.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        <span class="badge bg-secondary me-1">#@tag</span>
+                    }
+                </div>
+            }
+
+            <hr style="border-color:var(--ta-surface)" />
+            <div style="white-space:pre-wrap">@_item.Content</div>
+
+            <div class="mt-4 text-secondary small d-flex gap-3">
+                <span><a href="/users/@_item.AuthorId" style="color:var(--ta-accent-light)">@_item.AuthorUsername</a></span>
+                <span>@_item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</span>
+                @if (_item.UpdatedAt.HasValue)
+                {
+                    <span>(ред. @_item.UpdatedAt.Value.ToLocalTime().ToString("dd.MM.yyyy"))</span>
+                }
+            </div>
+        </div>
+    }
+</div>

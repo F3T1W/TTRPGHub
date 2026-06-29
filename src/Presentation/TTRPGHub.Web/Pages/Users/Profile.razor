@@ -40,6 +40,20 @@
                         }
                         <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>С @_profile.MemberSince.ToString("MMMM yyyy")</span>
                     </div>
+                    @if (_ratings is not null && _ratings.TotalCount > 0)
+                    {
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <span style="color:var(--ta-gold)">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    int star = i;
+                                    <i class="bi @StarClass(star, (int)Math.Round(_ratings.AverageScore)) me-1"></i>
+                                }
+                            </span>
+                            <span class="text-white fw-semibold">@_ratings.AverageScore.ToString("F1")</span>
+                            <span class="text-muted small">(@_ratings.TotalCount отзывов)</span>
+                        </div>
+                    }
                 </div>
             </div>
             @if (!string.IsNullOrEmpty(_profile.Bio))
@@ -71,7 +85,7 @@
         <!-- Кампании -->
         @if (_profile.Campaigns.Count > 0)
         {
-            <div class="ta-card p-4">
+            <div class="ta-card p-4 mb-3">
                 <h5 class="text-white mb-3"><i class="bi bi-journal-bookmark me-2" style="color:var(--ta-accent-light);"></i>Кампании</h5>
                 <div class="row g-2">
                     @foreach (var c in _profile.Campaigns)
@@ -87,7 +101,112 @@
             </div>
         }
 
-        @if (_profile.Characters.Count == 0 && _profile.Campaigns.Count == 0)
+        <!-- Рейтинги -->
+        <div class="ta-card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0"><i class="bi bi-star-half me-2" style="color:var(--ta-gold);"></i>Отзывы</h5>
+                @if (!_isOwn)
+                {
+                    <AuthorizeView>
+                        <Authorized>
+                            <button class="btn btn-sm btn-ta-primary" @onclick="() => _showRatingForm = !_showRatingForm">
+                                <i class="bi bi-pencil me-1"></i>Оставить отзыв
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
+                }
+            </div>
+
+            @if (_showRatingForm)
+            {
+                <div class="ta-card p-3 mb-3" style="border:1px solid var(--ta-accent)">
+                    <div class="mb-3">
+                        <label class="form-label text-white small">Роль</label>
+                        <select class="form-select form-select-sm" style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border);"
+                                @bind="_formRole">
+                            <option value="Player">Игрок</option>
+                            <option value="DungeonMaster">Мастер подземелий</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white small">Оценка</label>
+                        <div class="d-flex gap-2">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                int score = i;
+                                <button class="btn btn-sm p-1" style="color:@(score <= _formScore ? "var(--ta-gold)" : "var(--ta-border)")"
+                                        @onclick="() => _formScore = score">
+                                    <i class="bi bi-star-fill fs-5"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-white small">Комментарий (необязательно)</label>
+                        <textarea class="form-control form-control-sm" rows="3"
+                                  style="background:var(--ta-surface);color:#fff;border-color:var(--ta-border);"
+                                  @bind="_formComment" maxlength="1000"></textarea>
+                    </div>
+                    @if (_formError is not null)
+                    {
+                        <div class="alert alert-danger py-2 small">@_formError</div>
+                    }
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-ta-primary" @onclick="SubmitRatingAsync" disabled="@_submitting">
+                            @if (_submitting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            Отправить
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showRatingForm = false">Отмена</button>
+                    </div>
+                </div>
+            }
+
+            @if (_ratings is null || _ratings.TotalCount == 0)
+            {
+                <p class="text-muted small mb-0">Отзывов пока нет.</p>
+            }
+            else
+            {
+                @foreach (var r in _ratings.Ratings)
+                {
+                    <div class="mb-3 pb-3" style="border-bottom:1px solid var(--ta-border)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <a href="/users/@r.RaterId" style="color:var(--ta-accent-light)" class="fw-semibold text-decoration-none">@r.RaterUsername</a>
+                                <span class="badge bg-secondary ms-2 small">@RoleLabel(r.Role)</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span style="color:var(--ta-gold)">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        int star = i;
+                                        <i class="bi @StarClass(star, r.Score)"></i>
+                                    }
+                                </span>
+                                <AuthorizeView>
+                                    <Authorized>
+                                        @if (r.RaterId == (Tokens.GetUserIdAsync().Result ?? Guid.Empty))
+                                        {
+                                            <button class="btn btn-sm btn-link p-0" style="color:var(--ta-border)"
+                                                    @onclick="() => DeleteRatingAsync(r.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(r.Comment))
+                        {
+                            <p class="text-white small mt-1 mb-0">@r.Comment</p>
+                        }
+                        <div class="text-muted" style="font-size:.75rem;margin-top:.25rem">@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    </div>
+                }
+            }
+        </div>
+
+        @if (_profile.Characters.Count == 0 && _profile.Campaigns.Count == 0 && (_ratings is null || _ratings.TotalCount == 0))
         {
             <div class="ta-card p-4 text-center text-muted">
                 <i class="bi bi-moon-stars mb-2" style="font-size:2rem;"></i>

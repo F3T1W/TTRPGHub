@@ -1,0 +1,60 @@
+@page "/events"
+<PageTitle>События — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white mb-0"><i class="bi bi-calendar-event me-2" style="color:var(--ta-accent-light)"></i>События</h2>
+        <AuthorizeView>
+            <Authorized>
+                <a href="/events/create" class="btn btn-ta-primary"><i class="bi bi-plus-lg me-1"></i>Создать</a>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent)"></div></div>
+    }
+    else if (_result is null || _result.Items.Count == 0)
+    {
+        <div class="ta-card p-5 text-center text-muted">
+            <i class="bi bi-calendar-x mb-2" style="font-size:2.5rem"></i>
+            <p class="mb-0">Предстоящих событий нет.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var ev in _result.Items)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <a href="/events/@ev.Id" class="ta-card ta-card-link p-3 d-block text-decoration-none h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge" style="background:@FormatColor(ev.Format)">@FormatLabel(ev.Format)</span>
+                            <span class="text-muted small">@ev.StartsAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        </div>
+                        <h6 class="text-white mb-1">@ev.Title</h6>
+                        <div class="text-muted small mb-2">@ev.System</div>
+                        @if (!string.IsNullOrEmpty(ev.Location))
+                        {
+                            <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>@ev.Location</div>
+                        }
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="text-muted small"><i class="bi bi-people me-1"></i>@ev.ParticipantCount / @ev.MaxParticipants</span>
+                            <span class="text-muted small" style="font-size:.7rem">@ev.OrganizerUsername</span>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+
+        @if (_result.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-center gap-2 mt-4">
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page == 1)" @onclick="PrevPage">‹</button>
+                <span class="text-muted small align-self-center">@_page / @_result.TotalPages</span>
+                <button class="btn btn-sm btn-outline-secondary" disabled="@(_page == _result.TotalPages)" @onclick="NextPage">›</button>
+            </div>
+        }
+    }
+</div>

@@ -270,6 +270,77 @@ public interface IApiClient
 
     [Get("/api/v1/users/{id}")]
     Task<UserProfileDto> GetUserProfileAsync(Guid id, CancellationToken ct = default);
+
+    // Events
+    [Get("/api/v1/events")]
+    Task<EventsPagedResult> GetEventsAsync([AliasAs("page")] int page, [AliasAs("pageSize")] int pageSize, CancellationToken ct = default);
+
+    [Get("/api/v1/events/{id}")]
+    Task<GameEventDetailDto> GetEventDetailAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/v1/events")]
+    Task<Guid> CreateEventAsync([Body] CreateEventRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/events/{id}/register")]
+    Task RegisterForEventAsync(Guid id, CancellationToken ct = default);
+
+    [Delete("/api/v1/events/{id}/register")]
+    Task UnregisterFromEventAsync(Guid id, CancellationToken ct = default);
+
+    [Patch("/api/v1/events/{id}/cancel")]
+    Task CancelEventAsync(Guid id, CancellationToken ct = default);
+
+    // Ratings
+    [Get("/api/v1/ratings/{userId}")]
+    Task<UserRatingsResult> GetUserRatingsAsync(Guid userId, CancellationToken ct = default);
+
+    [Post("/api/v1/ratings/{userId}")]
+    Task<Guid> RateUserAsync(Guid userId, [Body] RateUserRequest request, CancellationToken ct = default);
+
+    [Delete("/api/v1/ratings/{ratingId}")]
+    Task DeleteRatingAsync(Guid ratingId, CancellationToken ct = default);
+
+    // Forum
+    [Get("/api/v1/forum/categories")]
+    Task<List<ForumCategoryDto>> GetForumCategoriesAsync(CancellationToken ct = default);
+
+    [Get("/api/v1/forum/categories/{slug}/topics")]
+    Task<ForumTopicsPagedResult> GetForumTopicsAsync(string slug, [AliasAs("page")] int page, [AliasAs("pageSize")] int pageSize, CancellationToken ct = default);
+
+    [Get("/api/v1/forum/topics/{topicId}/posts")]
+    Task<ForumTopicDetailResult> GetForumPostsAsync(Guid topicId, [AliasAs("page")] int page, [AliasAs("pageSize")] int pageSize, CancellationToken ct = default);
+
+    [Post("/api/v1/forum/topics")]
+    Task<Guid> CreateForumTopicAsync([Body] CreateForumTopicRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/forum/topics/{topicId}/posts")]
+    Task<Guid> CreateForumPostAsync(Guid topicId, [Body] CreateForumPostRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/forum/posts/{postId}/like")]
+    Task<ToggleLikeResult> ToggleForumPostLikeAsync(Guid postId, CancellationToken ct = default);
+
+    // Homebrew
+    [Get("/api/v1/homebrew")]
+    Task<HomebrewPagedResult> SearchHomebrewAsync(
+        [AliasAs("query")] string? query,
+        [AliasAs("system")] string? system,
+        [AliasAs("type")] HomebrewType? type,
+        [AliasAs("tag")] string? tag,
+        [AliasAs("page")] int page,
+        [AliasAs("pageSize")] int pageSize,
+        CancellationToken ct = default);
+
+    [Get("/api/v1/homebrew/{id}")]
+    Task<HomebrewDetailDto> GetHomebrewDetailAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/v1/homebrew")]
+    Task<Guid> CreateHomebrewAsync([Body] CreateHomebrewRequest request, CancellationToken ct = default);
+
+    [Delete("/api/v1/homebrew/{id}")]
+    Task DeleteHomebrewAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/v1/homebrew/{id}/like")]
+    Task<ToggleLikeResult> ToggleHomebrewLikeAsync(Guid id, CancellationToken ct = default);
 }
 
 public sealed record AvatarUploadResponse(string Url);
@@ -450,3 +521,90 @@ public sealed record UserProfileDto(
 
 public sealed record PublicCharacterDto(Guid Id, string Name, string Race, string Class, int Level);
 public sealed record PublicCampaignDto(Guid Id, string Title, string System, string Status);
+
+// ── Forum ─────────────────────────────────────────────────────────────────────
+
+public sealed record ForumCategoryDto(Guid Id, string Name, string Description, string Slug, int DisplayOrder, int TopicCount);
+
+public sealed record ForumTopicsPagedResult(List<ForumTopicDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => (int)Math.Ceiling((double)Total / PageSize);
+}
+
+public sealed record ForumTopicDto(
+    Guid Id, string Title, Guid AuthorId, string AuthorUsername,
+    bool IsPinned, bool IsLocked, DateTime CreatedAt, DateTime? LastPostAt, int PostCount);
+
+public sealed record ForumTopicDetailResult(
+    Guid Id, string Title, bool IsPinned, bool IsLocked,
+    string CategorySlug, string CategoryName, ForumPostsPagedResult Posts);
+
+public sealed record ForumPostsPagedResult(List<ForumPostDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => (int)Math.Ceiling((double)Total / PageSize);
+}
+
+public sealed record ForumPostDto(
+    Guid Id, Guid AuthorId, string AuthorUsername, string? AuthorAvatarUrl,
+    string Content, DateTime CreatedAt, DateTime? UpdatedAt, int LikeCount, bool LikedByMe);
+
+public sealed record CreateForumTopicRequest(Guid CategoryId, string Title, string FirstPostContent);
+public sealed record CreateForumPostRequest(string Content);
+public sealed record ToggleLikeResult(bool Liked, int LikeCount);
+
+// ── Homebrew ──────────────────────────────────────────────────────────────────
+
+public enum HomebrewType { Spell, Monster, Class, Subclass, Race, Subrace, Item, Background, Feat, Other }
+
+public sealed record HomebrewPagedResult(List<HomebrewItemDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => (int)Math.Ceiling((double)Total / PageSize);
+}
+
+public sealed record HomebrewItemDto(
+    Guid Id, string Title, string Description, string System, string Type,
+    string Tags, Guid AuthorId, string AuthorUsername, int LikeCount, bool LikedByMe, DateTime CreatedAt);
+
+public sealed record HomebrewDetailDto(
+    Guid Id, string Title, string Description, string System, string Type,
+    string Content, string Tags, Guid AuthorId, string AuthorUsername,
+    int LikeCount, bool LikedByMe, DateTime CreatedAt, DateTime? UpdatedAt);
+
+public sealed record CreateHomebrewRequest(
+    string Title, string Description, string System, HomebrewType Type, string Content, string Tags);
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+public sealed record GameEventSummaryDto(
+    Guid Id, string Title, string System, string Format,
+    string? Location, string? OnlineLink, DateTime StartsAt,
+    int MaxParticipants, int ParticipantCount,
+    Guid OrganizerId, string OrganizerUsername, bool IsCancelled);
+
+public sealed record EventsPagedResult(List<GameEventSummaryDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => (int)Math.Ceiling((double)Total / PageSize);
+}
+
+public sealed record EventParticipantDto(Guid UserId, string Username, string? AvatarUrl, DateTime RegisteredAt);
+
+public sealed record GameEventDetailDto(
+    Guid Id, string Title, string? Description, string System,
+    string Format, string? Location, string? OnlineLink,
+    DateTime StartsAt, int MaxParticipants, bool IsCancelled,
+    Guid OrganizerId, string OrganizerUsername, string? OrganizerAvatarUrl,
+    DateTime CreatedAt, List<EventParticipantDto> Participants);
+
+public sealed record CreateEventRequest(
+    string Title, string? Description, string System, string Format,
+    string? Location, string? OnlineLink, DateTime StartsAt, int MaxParticipants);
+
+// ── Ratings ───────────────────────────────────────────────────────────────────
+
+public sealed record UserRatingDto(
+    Guid Id, Guid RaterId, string RaterUsername, string? RaterAvatarUrl,
+    int Score, string? Comment, string Role, DateTime CreatedAt);
+
+public sealed record UserRatingsResult(List<UserRatingDto> Ratings, double AverageScore, int TotalCount);
+
+public sealed record RateUserRequest(int Score, string? Comment, string Role);

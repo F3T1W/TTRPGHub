@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Users;
@@ -7,14 +8,67 @@ public partial class Profile
 {
     [Parameter] public Guid Id { get; set; }
     [Inject] private IApiClient Api { get; set; } = default!;
+    [Inject] private TokenStorage Tokens { get; set; } = default!;
 
     private UserProfileDto? _profile;
+    private UserRatingsResult? _ratings;
     private bool _loading = true;
 
-    protected override async Task OnInitializedAsync()
+    private bool _isOwn;
+    private bool _showRatingForm;
+    private int _formScore = 5;
+    private string _formComment = string.Empty;
+    private string _formRole = "Player";
+    private string? _formError;
+    private bool _submitting;
+
+    protected override async Task OnParametersSetAsync()
     {
-        try { _profile = await Api.GetUserProfileAsync(Id); }
+        _loading = true;
+        try
+        {
+            _profile = await Api.GetUserProfileAsync(Id);
+            _ratings = await Api.GetUserRatingsAsync(Id);
+
+            var myId = await Tokens.GetUserIdAsync();
+            _isOwn = myId.HasValue && myId.Value == Id;
+        }
         catch { _profile = null; }
         finally { _loading = false; }
     }
+
+    private async Task SubmitRatingAsync()
+    {
+        _submitting = true;
+        _formError = null;
+        try
+        {
+            await Api.RateUserAsync(Id, new RateUserRequest(_formScore, _formComment, _formRole));
+            _ratings = await Api.GetUserRatingsAsync(Id);
+            _showRatingForm = false;
+            _formComment = string.Empty;
+            _formScore = 5;
+        }
+        catch (Exception ex)
+        {
+            _formError = ex.Message;
+        }
+        finally { _submitting = false; }
+    }
+
+    private async Task DeleteRatingAsync(Guid ratingId)
+    {
+        try
+        {
+            await Api.DeleteRatingAsync(ratingId);
+            _ratings = await Api.GetUserRatingsAsync(Id);
+        }
+        catch { }
+    }
+
+    private static string StarClass(int star, int score) =>
+        star <= score ? "bi-star-fill" : "bi-star";
+
+    private static string RoleLabel(string role) =>
+        role == "DungeonMaster" ? "Мастер подземелий" : "Игрок";
 }
