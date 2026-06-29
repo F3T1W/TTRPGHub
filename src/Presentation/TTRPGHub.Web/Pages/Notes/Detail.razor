@@ -1,0 +1,79 @@
+@page "/notes/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_note?.Title ?? "Заметка") — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:800px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-light" role="status"></div></div>
+    }
+    else if (_note is null)
+    {
+        <div class="ta-card text-center py-5">
+            <p class="text-muted">Заметка не найдена.</p>
+        </div>
+    }
+    else if (_editing)
+    {
+        <h2 class="text-white mb-4">Редактировать заметку</h2>
+        <div class="ta-card p-4">
+            <EditForm Model="_editModel" OnValidSubmit="SaveEdit">
+                <DataAnnotationsValidator />
+                <div class="mb-3">
+                    <label class="form-label text-white">Заголовок</label>
+                    <InputText class="form-control" @bind-Value="_editModel.Title" />
+                    <ValidationMessage For="@(() => _editModel.Title)" class="text-danger small" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-white">Дата сессии</label>
+                    <InputDate class="form-control" @bind-Value="_editModel.SessionDate" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-white">Заметки</label>
+                    <InputTextArea class="form-control" rows="12" @bind-Value="_editModel.Content" />
+                    <ValidationMessage For="@(() => _editModel.Content)" class="text-danger small" />
+                </div>
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="alert alert-danger">@_error</div>
+                }
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-ta-primary" disabled="@_saving">Сохранить</button>
+                    <button type="button" class="btn btn-outline-light" @onclick="CancelEdit">Отмена</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="text-white mb-1">@_note.Title</h2>
+                <span class="text-muted small">
+                    <i class="bi bi-calendar3 me-1"></i>@_note.SessionDate.ToString("dd MMMM yyyy")
+                    &nbsp;·&nbsp;
+                    <i class="bi bi-person me-1"></i>@_note.AuthorName
+                </span>
+            </div>
+            @if (_note.IsAuthor)
+            {
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-light btn-sm" @onclick="StartEdit">
+                        <i class="bi bi-pencil me-1"></i>Редактировать
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="DeleteNote">
+                        <i class="bi bi-trash me-1"></i>Удалить
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div class="ta-card p-4">
+            <p class="text-white" style="white-space:pre-line; line-height:1.7">@_note.Content</p>
+        </div>
+
+        <div class="mt-4">
+            <a href="/campaigns/@_note.CampaignId" class="btn btn-outline-light btn-sm">← К кампании</a>
+        </div>
+    }
+</div>

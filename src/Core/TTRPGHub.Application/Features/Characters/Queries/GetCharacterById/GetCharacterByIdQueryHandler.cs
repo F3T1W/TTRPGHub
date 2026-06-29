@@ -1,10 +1,10 @@
 using MediatR;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Entities;
-using TTRPGHub.Domain.Repositories;
+using TTRPGHub.Common;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
+using TTRPGHub.Repositories;
 
-namespace TTRPGHub.Application.Features.Characters.Queries.GetCharacterById;
+namespace TTRPGHub.Features.Characters.Queries.GetCharacterById;
 
 internal sealed class GetCharacterByIdQueryHandler(
     ICharacterRepository characterRepository,
@@ -18,7 +18,7 @@ internal sealed class GetCharacterByIdQueryHandler(
         if (character is null)
             return Error.NotFound(nameof(Character));
 
-        if (character.OwnerId != currentUser.Id && !character.IsPublic)
+        if (!character.IsPublic && character.OwnerId != currentUser.Id)
             return Error.Unauthorized();
 
         return ToDto(character);
@@ -26,5 +26,5 @@ internal sealed class GetCharacterByIdQueryHandler(
 
     private static CharacterDto ToDto(Character c) => new(
         c.Id.Value, c.OwnerId.Value, c.Name, c.Race, c.Class,
-        c.Level, c.Notes, c.IsPublic, c.CreatedAt, c.UpdatedAt);
+        c.Level, c.IsPublic, c.CreatedAt, c.UpdatedAt);
 }

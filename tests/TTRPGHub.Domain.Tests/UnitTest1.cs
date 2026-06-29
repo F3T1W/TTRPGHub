@@ -1,4 +1,4 @@
-﻿namespace TTRPGHub.Domain.Tests;
+﻿namespace TTRPGHub;
 
 public class UnitTest1
 {

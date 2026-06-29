@@ -1,10 +1,10 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
-using TTRPGHub.Application.Common.Interfaces;
+using TTRPGHub.Common.Interfaces;
 
-namespace TTRPGHub.Application.Common.Behaviors;
+namespace TTRPGHub.Common.Behaviors;
 
-public sealed class CachingBehaviour<TRequest, TResponse>(
+public sealed partial class CachingBehaviour<TRequest, TResponse>(
     ICacheService cache,
     ILogger<CachingBehaviour<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
@@ -21,7 +21,7 @@ public sealed class CachingBehaviour<TRequest, TResponse>(
         var cached = await cache.GetAsync<TResponse>(cacheableQuery.CacheKey, ct);
         if (cached is not null)
         {
-            logger.LogDebug("Cache hit: {Key}", cacheableQuery.CacheKey);
+            LogCacheHit(logger, cacheableQuery.CacheKey);
             return cached;
         }
 
@@ -30,4 +30,7 @@ public sealed class CachingBehaviour<TRequest, TResponse>(
         await cache.SetAsync(cacheableQuery.CacheKey, response, cacheableQuery.Expiration, ct);
         return response;
     }
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Cache hit: {Key}")]
+    private static partial void LogCacheHit(ILogger logger, string key);
 }

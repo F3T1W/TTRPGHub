@@ -1,6 +1,6 @@
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.Domain.ValueObjects;
+namespace TTRPGHub.ValueObjects;
 
 public sealed class Email : IEquatable<Email>
 {

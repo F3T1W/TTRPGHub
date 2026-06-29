@@ -1,9 +1,9 @@
 using MediatR;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Repositories;
+using TTRPGHub.Common;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Repositories;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Login;
+namespace TTRPGHub.Features.Auth.Commands.Login;
 
 internal sealed class LoginCommandHandler(
     IUserRepository userRepository,
@@ -14,15 +14,12 @@ internal sealed class LoginCommandHandler(
     public async Task<Result<LoginResponse>> Handle(LoginCommand command, CancellationToken ct)
     {
         var user = await userRepository.GetByEmailAsync(command.Email.Trim().ToLowerInvariant(), ct);
-        if (user is null)
-            return Error.Validation("Credentials", "Неверный email или пароль.");
-
-        if (!passwordHasher.Verify(command.Password, user.PasswordHash))
+        if (user is null || !passwordHasher.Verify(command.Password, user.PasswordHash))
             return Error.Validation("Credentials", "Неверный email или пароль.");
 
         var accessToken = jwtService.GenerateAccessToken(user);
         var refreshToken = jwtService.GenerateRefreshToken();
 
-        return new LoginResponse(accessToken, refreshToken, user.Username);
+        return new LoginResponse(accessToken, refreshToken, user.Username, user.Id.Value);
     }
 }

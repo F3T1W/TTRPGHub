@@ -1,0 +1,67 @@
+@page "/reference"
+@attribute [Authorize]
+<PageTitle>Справочник — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h2 class="text-white mb-1">Справочник систем</h2>
+        <p class="text-muted small">Заклинания, бестиарий и правила для популярных НРИ</p>
+    </div>
+
+    <div class="row g-4">
+        @foreach (var system in _systems)
+        {
+            <div class="col-12 col-md-6 col-xl-4">
+                @if (system.Available)
+                {
+                    <a href="@system.Url" class="ta-card ta-card-link d-block text-decoration-none">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="system-icon">@system.Icon</div>
+                            <div>
+                                <h5 class="text-white mb-0">@system.Name</h5>
+                                <span class="badge bg-success small">Доступно</span>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">@system.Description</p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var tag in system.Tags)
+                            {
+                                <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@tag</span>
+                            }
+                        </div>
+                    </a>
+                }
+                else
+                {
+                    <div class="ta-card" style="opacity:.55;cursor:default;">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="system-icon">@system.Icon</div>
+                            <div>
+                                <h5 class="text-white mb-0">@system.Name</h5>
+                                <span class="badge bg-secondary small">Скоро</span>
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-3">@system.Description</p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var tag in system.Tags)
+                            {
+                                <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-text-dim);">@tag</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .system-icon {
+        width: 48px; height: 48px;
+        background: rgba(124,58,237,.15);
+        border: 1px solid rgba(124,58,237,.3);
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+    }
+</style>

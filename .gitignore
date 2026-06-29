@@ -16,7 +16,8 @@ publish/
 # (файлы Migrations/*.cs коммитятся)
 
 # ── Rider / JetBrains ─────────────────────────────────────
-.idea/
+.idea/**
+!.idea/.idea.TTRPGHub/.idea/runConfigurations/
 *.sln.iml
 *.iml
 

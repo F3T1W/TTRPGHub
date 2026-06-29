@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using TTRPGHub.Domain.Entities;
-using TTRPGHub.Domain.Repositories;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Persistence.Repositories;
+namespace TTRPGHub.Repositories;
 
 internal sealed class UserRepository(AppDbContext db) : IUserRepository
 {

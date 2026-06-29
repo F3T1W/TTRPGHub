@@ -1,0 +1,375 @@
+@page "/characters/{Id:guid}"
+@using TTRPGHub.Services
+@attribute [Authorize]
+@inject IApiClient Api
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<PageTitle>@(_char?.Name ?? "Персонаж") — Таверна Аферистов</PageTitle>
+
+@if (_loading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border" style="color:var(--ta-accent);" role="status"></div>
+        <p class="text-muted mt-3">Загружаем лист персонажа...</p>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>@_error
+    </div>
+}
+else if (_char is not null)
+{
+    <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+        <!-- Аватар -->
+        <div class="position-relative" style="flex-shrink:0;">
+            <div class="avatar-wrapper" @onclick="TriggerFileInput" title="Нажмите для загрузки">
+                @if (!string.IsNullOrEmpty(_char.AvatarUrl))
+                {
+                    <img src="@_char.AvatarUrl" alt="@_char.Name" class="avatar-img" />
+                }
+                else
+                {
+                    <div class="avatar-placeholder">
+                        <i class="bi bi-person" style="font-size:2.5rem; color:var(--ta-accent-light); opacity:.5;"></i>
+                    </div>
+                }
+                <div class="avatar-overlay">
+                    @if (_uploading)
+                    {
+                        <div class="spinner-border spinner-border-sm text-white"></div>
+                    }
+                    else
+                    {
+                        <i class="bi bi-camera-fill text-white"></i>
+                    }
+                </div>
+            </div>
+            <InputFile @ref="_fileInput" OnChange="UploadAvatarAsync" accept="image/jpeg,image/png,image/webp"
+                       style="display:none;" />
+        </div>
+
+        <div class="flex-grow-1">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb small">
+                    <li class="breadcrumb-item">
+                        <a href="/characters" class="text-decoration-none" style="color:var(--ta-accent-light);">Персонажи</a>
+                    </li>
+                    <li class="breadcrumb-item active text-muted">@_char.Name</li>
+                </ol>
+            </nav>
+            <h2 class="mb-0" style="font-family:'Cinzel',serif;">@_char.Name</h2>
+            <p class="text-muted mb-0">@_char.Race · @_char.Class · @_char.Level ур.</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (!_editing)
+            {
+                <button class="btn btn-ta-primary" @onclick="StartEdit">
+                    <i class="bi bi-pencil me-1"></i>Редактировать
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-success" @onclick="SaveAsync" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    <i class="bi bi-check-lg me-1"></i>Сохранить
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="CancelEdit">Отмена</button>
+            }
+        </div>
+    </div>
+
+    @if (_saveError is not null)
+    {
+        <div class="alert alert-danger py-2 mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>@_saveError
+        </div>
+    }
+    @if (_avatarError is not null)
+    {
+        <div class="alert alert-warning py-2 mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>@_avatarError
+        </div>
+    }
+
+    <div class="row g-4">
+
+        <!-- ── Колонка 1: Характеристики + Боевые + Спасброски ─────────── -->
+        <div class="col-lg-4">
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Характеристики</h6>
+                <div class="row g-2">
+                    @foreach (var (label, score, mod, prop) in AbilityRows())
+                    {
+                        <div class="col-4">
+                            <div class="ability-box text-center p-2 rounded">
+                                <div class="ability-label">@label</div>
+                                @if (_editing)
+                                {
+                                    <input type="number" min="1" max="30" class="ability-input"
+                                           value="@score"
+                                           @onchange="e => SetAbility(prop, int.TryParse(e.Value?.ToString(), out var v) ? v : score)" />
+                                }
+                                else
+                                {
+                                    <div class="ability-score">@score</div>
+                                }
+                                <div class="ability-mod">@(mod >= 0 ? $"+{mod}" : $"{mod}")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="mt-3 text-center">
+                    <span class="prof-badge">Бонус мастерства: +@_char.ProficiencyBonus</span>
+                </div>
+            </div>
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Боевые характеристики</h6>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Хиты</span>
+                        <span style="color:var(--ta-accent-light);">
+                            @_form.CurrentHitPoints / @_form.MaxHitPoints
+                            @if (_form.TemporaryHitPoints > 0) { <text> (+@_form.TemporaryHitPoints врем.)</text> }
+                        </span>
+                    </div>
+                    <div class="progress" style="height:8px; background:rgba(255,255,255,.1);">
+                        <div class="progress-bar" style="width:@HpPercent()%; background:@HpColor(); transition:width .3s;"></div>
+                    </div>
+                    @if (_editing)
+                    {
+                        <div class="row g-1 mt-2">
+                            <div class="col-4">
+                                <label class="form-label small text-muted mb-0">Макс.</label>
+                                <input type="number" min="1" class="form-control form-control-sm" @bind="_form.MaxHitPoints" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted mb-0">Текущие</label>
+                                <input type="number" min="0" class="form-control form-control-sm" @bind="_form.CurrentHitPoints" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small text-muted mb-0">Врем.</label>
+                                <input type="number" min="0" class="form-control form-control-sm" @bind="_form.TemporaryHitPoints" />
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="row g-2 text-center">
+                    <div class="col-3">
+                        <div class="stat-chip">
+                            <div class="stat-chip-label">КД</div>
+                            @if (_editing)
+                            {
+                                <input type="number" min="0" class="stat-chip-input" value="@_form.ArmorClass"
+                                       @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v)) _form = _form with { ArmorClass = v }; }" />
+                            }
+                            else { <div class="fw-bold">@_form.ArmorClass</div> }
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stat-chip">
+                            <div class="stat-chip-label">Скорость</div>
+                            @if (_editing)
+                            {
+                                <input type="number" min="0" step="5" class="stat-chip-input" value="@_form.Speed"
+                                       @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v)) _form = _form with { Speed = v }; }" />
+                            }
+                            else { <div class="fw-bold">@_form.Speed</div> }
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stat-chip">
+                            <div class="stat-chip-label">Иниц.</div>
+                            <div class="fw-bold">@(CalcMod(_form.Dexterity) >= 0 ? $"+{CalcMod(_form.Dexterity)}" : $"{CalcMod(_form.Dexterity)}")</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stat-chip">
+                            <div class="stat-chip-label">Кость</div>
+                            @if (_editing)
+                            {
+                                <input type="text" maxlength="5" class="stat-chip-input" @bind="_form.HitDice" />
+                            }
+                            else { <div class="fw-bold">@_form.HitDice</div> }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Спасброски</h6>
+                @foreach (var (label, key, mod) in SavingThrows())
+                {
+                    var hasProf = _form.SavingThrowProficiencies.Contains(key);
+                    var bonus = mod + (hasProf ? _char.ProficiencyBonus : 0);
+                    <div class="d-flex align-items-center mb-2">
+                        @if (_editing)
+                        {
+                            <input type="checkbox" class="form-check-input me-2" checked="@hasProf"
+                                   @onchange="() => ToggleSavingThrow(key)" style="accent-color:var(--ta-accent);" />
+                        }
+                        else
+                        {
+                            <i class="bi @(hasProf ? "bi-circle-fill" : "bi-circle") me-2 small" style="color:var(--ta-accent); font-size:.55rem;"></i>
+                        }
+                        <span class="small flex-grow-1">@label</span>
+                        <span class="small fw-semibold" style="color:var(--ta-accent-light);">@(bonus >= 0 ? $"+{bonus}" : $"{bonus}")</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ── Колонка 2: Навыки + Черты + Снаряжение ───────────────────── -->
+        <div class="col-lg-4">
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Навыки</h6>
+                @foreach (var (label, key, mod) in Skills())
+                {
+                    var hasProf = _form.SkillProficiencies.Contains(key);
+                    var bonus = mod + (hasProf ? _char.ProficiencyBonus : 0);
+                    <div class="d-flex align-items-center mb-1">
+                        @if (_editing)
+                        {
+                            <input type="checkbox" class="form-check-input me-2" checked="@hasProf"
+                                   @onchange="() => ToggleSkill(key)" style="accent-color:var(--ta-accent);" />
+                        }
+                        else
+                        {
+                            <i class="bi @(hasProf ? "bi-circle-fill" : "bi-circle") me-2" style="color:var(--ta-accent); font-size:.5rem;"></i>
+                        }
+                        <span class="small flex-grow-1">@label</span>
+                        <span class="small fw-semibold" style="color:var(--ta-accent-light);">@(bonus >= 0 ? $"+{bonus}" : $"{bonus}")</span>
+                    </div>
+                }
+            </div>
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Черты и умения</h6>
+                @if (_editing)
+                {
+                    <textarea class="form-control" rows="6" placeholder="Опишите черты, умения и способности..."
+                              @bind="_form.FeaturesAndTraits"></textarea>
+                }
+                else if (!string.IsNullOrWhiteSpace(_char.FeaturesAndTraits))
+                {
+                    <p class="small text-muted mb-0" style="white-space:pre-wrap;">@_char.FeaturesAndTraits</p>
+                }
+                else
+                {
+                    <p class="small text-muted mb-0 fst-italic">Не заполнено</p>
+                }
+            </div>
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Снаряжение</h6>
+                @if (_editing)
+                {
+                    <textarea class="form-control" rows="6" placeholder="Перечислите снаряжение персонажа..."
+                              @bind="_form.Equipment"></textarea>
+                }
+                else if (!string.IsNullOrWhiteSpace(_char.Equipment))
+                {
+                    <p class="small text-muted mb-0" style="white-space:pre-wrap;">@_char.Equipment</p>
+                }
+                else
+                {
+                    <p class="small text-muted mb-0 fst-italic">Не заполнено</p>
+                }
+            </div>
+        </div>
+
+        <!-- ── Колонка 3: Информация + Личность ─────────────────────────── -->
+        <div class="col-lg-4">
+
+            @if (_editing)
+            {
+                <div class="ta-card p-4 mb-4">
+                    <h6 class="sheet-section-title">Основное</h6>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small text-muted mb-1">Имя</label>
+                            <input class="form-control" @bind="_form.Name" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Раса</label>
+                            <select class="form-select" @bind="_form.Race">
+                                @foreach (var r in Races) { <option value="@r">@r</option> }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Класс</label>
+                            <select class="form-select" @bind="_form.Class">
+                                @foreach (var c in Classes) { <option value="@c">@c</option> }
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small text-muted mb-1">Уровень</label>
+                            <input type="number" min="1" max="20" class="form-control" @bind="_form.Level" />
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label small text-muted mb-1">Предыстория</label>
+                            <input class="form-control" @bind="_form.Background" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Мировоззрение</label>
+                            <select class="form-select" @bind="_form.Alignment">
+                                <option value="">— не выбрано —</option>
+                                @foreach (var a in Alignments) { <option value="@a">@a</option> }
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Опыт (XP)</label>
+                            <input type="number" min="0" class="form-control" @bind="_form.ExperiencePoints" />
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-1">
+                                <input class="form-check-input" type="checkbox" @bind="_form.IsPublic" />
+                                <label class="form-check-label small text-muted">Публичный персонаж</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="ta-card p-4 mb-4">
+                    <h6 class="sheet-section-title">Информация</h6>
+                    <div class="row g-2 small">
+                        <InfoRow Label="Предыстория" Value="@_char.Background" />
+                        <InfoRow Label="Мировоззрение" Value="@_char.Alignment" />
+                        <InfoRow Label="Опыт" Value="@_char.ExperiencePoints.ToString()" />
+                        <InfoRow Label="Кость хитов" Value="@_char.HitDice" />
+                        <InfoRow Label="Инициатива" Value="@(_char.Initiative >= 0 ? $"+{_char.Initiative}" : $"{_char.Initiative}")" />
+                        <InfoRow Label="Видимость" Value="@(_char.IsPublic ? "Публичный" : "Приватный")" />
+                    </div>
+                </div>
+            }
+
+            <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Личность</h6>
+                <PersonalityField Label="Черты характера" Value="@_char.PersonalityTraits" EditValue="@_form.PersonalityTraits"
+                                  IsEditing="_editing" OnChange="v => _form = _form with { PersonalityTraits = v }" />
+                <PersonalityField Label="Идеалы" Value="@_char.Ideals" EditValue="@_form.Ideals"
+                                  IsEditing="_editing" OnChange="v => _form = _form with { Ideals = v }" />
+                <PersonalityField Label="Привязанности" Value="@_char.Bonds" EditValue="@_form.Bonds"
+                                  IsEditing="_editing" OnChange="v => _form = _form with { Bonds = v }" />
+                <PersonalityField Label="Слабости" Value="@_char.Flaws" EditValue="@_form.Flaws"
+                                  IsEditing="_editing" OnChange="v => _form = _form with { Flaws = v }" />
+
+                @if (!_editing && string.IsNullOrWhiteSpace(_char.PersonalityTraits)
+                              && string.IsNullOrWhiteSpace(_char.Ideals)
+                              && string.IsNullOrWhiteSpace(_char.Bonds)
+                              && string.IsNullOrWhiteSpace(_char.Flaws))
+                {
+                    <p class="small text-muted mb-0 fst-italic">Не заполнено</p>
+                }
+            </div>
+        </div>
+    </div>
+}
+

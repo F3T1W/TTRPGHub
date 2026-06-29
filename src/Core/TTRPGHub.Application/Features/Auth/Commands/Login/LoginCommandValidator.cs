@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Login;
+namespace TTRPGHub.Features.Auth.Commands.Login;
 
 internal sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
 {

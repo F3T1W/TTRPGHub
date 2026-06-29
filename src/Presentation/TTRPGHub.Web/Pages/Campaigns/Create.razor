@@ -1,0 +1,44 @@
+@page "/campaigns/create"
+@attribute [Authorize]
+<PageTitle>Новая кампания — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:640px;">
+    <h2 class="text-white mb-4">Создать кампанию</h2>
+
+    <div class="ta-card p-4">
+        <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label text-white">Название</label>
+                <InputText class="form-control" @bind-Value="_model.Title" placeholder="Название кампании" />
+                <ValidationMessage For="@(() => _model.Title)" class="text-danger small" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-white">Система</label>
+                <InputText class="form-control" @bind-Value="_model.System" placeholder="D&D 5e, Pathfinder, CoC..." />
+                <ValidationMessage For="@(() => _model.System)" class="text-danger small" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-white">Описание</label>
+                <InputTextArea class="form-control" @bind-Value="_model.Description"
+                               rows="4" placeholder="О чём кампания?" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger">@_error</div>
+            }
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-ta-primary" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Создать
+                </button>
+                <a href="/campaigns" class="btn btn-outline-light">Отмена</a>
+            </div>
+        </EditForm>
+    </div>
+</div>

@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Persistence.Configurations;
+namespace TTRPGHub.Configurations;
 
 internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {

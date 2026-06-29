@@ -1,4 +1,4 @@
-namespace TTRPGHub.Domain.Repositories;
+namespace TTRPGHub.Repositories;
 
 public interface IUnitOfWork
 {

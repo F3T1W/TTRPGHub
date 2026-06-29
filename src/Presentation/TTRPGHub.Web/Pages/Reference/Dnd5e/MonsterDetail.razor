@@ -1,0 +1,117 @@
+@page "/reference/dnd5e/monsters/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_monster?.Name ?? "Монстр") — D&D 5e Бестиарий</PageTitle>
+
+<div class="container py-4" style="max-width:900px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_monster is null)
+    {
+        <div class="ta-card text-center py-5"><p class="text-muted">Монстр не найден.</p></div>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="/reference" style="color:var(--ta-accent-light);" class="text-decoration-none">Справочник</a></li>
+                <li class="breadcrumb-item"><a href="/reference/dnd5e/monsters" style="color:var(--ta-accent-light);" class="text-decoration-none">D&D 5e — Бестиарий</a></li>
+                <li class="breadcrumb-item active text-muted">@_monster.Name</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4">
+            <!-- Шапка -->
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+                <h2 class="text-white mb-0">@_monster.Name</h2>
+                <span class="badge @CrBadge(_monster.ChallengeRating)" style="font-size:.9rem;padding:.4em .8em;">КО @_monster.ChallengeRating</span>
+            </div>
+            <p class="text-muted small mb-3">
+                @_monster.Size @_monster.Type@(_monster.Subtype != null ? $" ({_monster.Subtype})" : ""),
+                @_monster.Alignment
+            </p>
+
+            <hr style="border-color:var(--ta-border);">
+
+            <!-- Базовые характеристики -->
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Класс доспеха</div>
+                    <div class="text-white fw-bold">@_monster.ArmorClass @(_monster.ArmorDesc != null ? $"({_monster.ArmorDesc})" : "")</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Хиты</div>
+                    <div class="text-white fw-bold">@_monster.HitPoints <span class="text-muted small">(@_monster.HitDice)</span></div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="small text-muted mb-1">Скорость</div>
+                    <div class="text-white">@_monster.Speed</div>
+                </div>
+            </div>
+
+            <!-- Характеристики -->
+            <div class="row g-2 mb-3 text-center">
+                @foreach (var (name, val) in new[] {
+                    ("СИЛ", _monster.Strength), ("ЛОВ", _monster.Dexterity),
+                    ("ТЕЛ", _monster.Constitution), ("ИНТ", _monster.Intelligence),
+                    ("МДР", _monster.Wisdom), ("ХАР", _monster.Charisma) })
+                {
+                    <div class="col-2">
+                        <div class="p-2 rounded" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);">
+                            <div class="text-muted" style="font-size:.65rem;letter-spacing:.05em;">@name</div>
+                            <div class="text-white fw-bold">@val</div>
+                            <div class="small" style="color:var(--ta-accent-light);">@Modifier(val)</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(_monster.Senses))
+            {
+                <div class="mb-2 small"><span class="text-muted me-2">Чувства:</span><span class="text-white">@_monster.Senses</span></div>
+            }
+            @if (!string.IsNullOrEmpty(_monster.Languages))
+            {
+                <div class="mb-3 small"><span class="text-muted me-2">Языки:</span><span class="text-white">@_monster.Languages</span></div>
+            }
+
+            <div class="text-muted small mb-3">XP: <strong class="text-white">@_monster.Xp.ToString("N0")</strong></div>
+
+            @if (!string.IsNullOrEmpty(_monster.SpecialAbilities))
+            {
+                <hr style="border-color:var(--ta-border);">
+                <h6 class="text-muted mb-3" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Особые способности</h6>
+                <div class="text-white small" style="white-space:pre-wrap;">@FormatJson(_monster.SpecialAbilities)</div>
+            }
+
+            @if (!string.IsNullOrEmpty(_monster.Actions))
+            {
+                <hr style="border-color:var(--ta-border);">
+                <h6 class="text-muted mb-3" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Действия</h6>
+                <div class="text-white small" style="white-space:pre-wrap;">@FormatJson(_monster.Actions)</div>
+            }
+
+            @if (!string.IsNullOrEmpty(_monster.Reactions))
+            {
+                <hr style="border-color:var(--ta-border);">
+                <h6 class="text-muted mb-3" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Реакции</h6>
+                <div class="text-white small" style="white-space:pre-wrap;">@FormatJson(_monster.Reactions)</div>
+            }
+
+            @if (!string.IsNullOrEmpty(_monster.LegendaryActions))
+            {
+                <hr style="border-color:var(--ta-border);">
+                <h6 class="mb-3" style="color:var(--ta-gold);text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">⭐ Легендарные действия</h6>
+                <div class="text-white small" style="white-space:pre-wrap;">@FormatJson(_monster.LegendaryActions)</div>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+            <span class="text-muted small">Источник: @_monster.Source</span>
+        </div>
+
+        <div class="mt-3">
+            <a href="/reference/dnd5e/monsters" class="btn btn-outline-light btn-sm">← К бестиарию</a>
+        </div>
+    }
+</div>

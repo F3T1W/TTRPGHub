@@ -4,10 +4,10 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Infrastructure.Auth;
+namespace TTRPGHub.Auth;
 
 internal sealed class JwtService(IConfiguration configuration) : IJwtService
 {

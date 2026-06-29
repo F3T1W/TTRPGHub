@@ -1,10 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Infrastructure.Auth;
+namespace TTRPGHub.Auth;
 
 internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : ICurrentUser
 {
@@ -21,12 +21,4 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
                 : UserId.Empty;
         }
     }
-
-    public string Username =>
-        User?.FindFirstValue(JwtRegisteredClaimNames.UniqueName)
-        ?? User?.FindFirstValue(ClaimTypes.Name)
-        ?? string.Empty;
-
-    public bool IsAuthenticated =>
-        User?.Identity?.IsAuthenticated is true;
 }

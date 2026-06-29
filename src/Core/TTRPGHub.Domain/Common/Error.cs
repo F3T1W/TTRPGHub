@@ -1,4 +1,4 @@
-namespace TTRPGHub.Domain.Common;
+namespace TTRPGHub.Common;
 
 public sealed record Error(string Code, string Description)
 {

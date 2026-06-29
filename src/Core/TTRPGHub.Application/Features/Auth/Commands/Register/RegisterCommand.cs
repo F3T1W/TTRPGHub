@@ -1,7 +1,7 @@
 using MediatR;
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Register;
+namespace TTRPGHub.Features.Auth.Commands.Register;
 
 public sealed record RegisterCommand(
     string Username,

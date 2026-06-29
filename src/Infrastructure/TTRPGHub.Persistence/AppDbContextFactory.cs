@@ -2,9 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace TTRPGHub.Persistence;
+namespace TTRPGHub;
 
-// Используется только dotnet-ef CLI (migrations add, database update)
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
@@ -24,7 +23,6 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
                 npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
             .Options;
 
-        // IPublisher не нужен для миграций — передаём заглушку
         return new AppDbContext(options, new NoopPublisher());
     }
 }

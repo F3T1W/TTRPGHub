@@ -1,14 +1,24 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Common;
+using TTRPGHub.Entities;
+using TTRPGHub.Entities.Dnd5e;
 
-namespace TTRPGHub.Persistence;
+namespace TTRPGHub;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublisher publisher) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Character> Characters => Set<Character>();
+    public DbSet<GameSession> GameSessions => Set<GameSession>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<SessionNote> SessionNotes => Set<SessionNote>();
+    public DbSet<Encounter> Encounters => Set<Encounter>();
+    public DbSet<InitiativeTracker> InitiativeTrackers => Set<InitiativeTracker>();
+    public DbSet<Dnd5eSpell> Dnd5eSpells => Set<Dnd5eSpell>();
+    public DbSet<Dnd5eMonster> Dnd5eMonsters => Set<Dnd5eMonster>();
+    public DbSet<EmailConfirmationToken> EmailConfirmationTokens => Set<EmailConfirmationToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

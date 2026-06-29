@@ -36,9 +36,33 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "5341:5341"
       - "8080:80"
+    volumes:
+      - seq_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: taverna_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: taverna
+      MINIO_ROOT_PASSWORD: taverna_dev_pass
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
+  seq_data:
+  minio_data:

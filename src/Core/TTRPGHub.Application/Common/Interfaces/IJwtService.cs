@@ -1,6 +1,6 @@
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Application.Common.Interfaces;
+namespace TTRPGHub.Common.Interfaces;
 
 public interface IJwtService
 {

@@ -1,6 +1,6 @@
-using TTRPGHub.Application.Common.Interfaces;
+using TTRPGHub.Common.Interfaces;
 
-namespace TTRPGHub.Infrastructure.Auth;
+namespace TTRPGHub.Auth;
 
 internal sealed class PasswordHasher : IPasswordHasher
 {

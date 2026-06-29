@@ -1,8 +1,8 @@
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Events;
-using TTRPGHub.Domain.ValueObjects;
+using TTRPGHub.Common;
+using TTRPGHub.Events;
+using TTRPGHub.ValueObjects;
 
-namespace TTRPGHub.Domain.Entities;
+namespace TTRPGHub.Entities;
 
 public sealed class User : Entity<UserId>
 {
@@ -32,6 +32,8 @@ public sealed class User : Entity<UserId>
 
     public void UpdateProfile(string? displayName, string? bio, string? city) =>
         Profile = Profile.Update(displayName, bio, city);
+
+    public void SetPassword(string passwordHash) => PasswordHash = passwordHash;
 }
 
 public sealed record UserProfile(

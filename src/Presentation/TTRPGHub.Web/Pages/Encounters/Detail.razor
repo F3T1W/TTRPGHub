@@ -1,0 +1,86 @@
+@page "/encounters/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_encounter?.Title ?? "Столкновение") — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:800px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-light" role="status"></div></div>
+    }
+    else if (_encounter is null)
+    {
+        <div class="ta-card text-center py-5"><p class="text-muted">Столкновение не найдено.</p></div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="text-white mb-1">@_encounter.Title</h2>
+                <span class="badge @DifficultyBadge(_encounter.Difficulty) me-2">@DifficultyLabel(_encounter.Difficulty)</span>
+            </div>
+            @if (_encounter.IsCreator)
+            {
+                <div class="d-flex gap-2">
+                    <a href="/encounters/@Id/edit" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Редактировать
+                    </a>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="Delete">
+                        <i class="bi bi-trash me-1"></i>Удалить
+                    </button>
+                </div>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_encounter.Description))
+        {
+            <div class="ta-card p-4 mb-4">
+                <p class="text-white mb-0">@_encounter.Description</p>
+            </div>
+        }
+
+        <div class="ta-card p-4 mb-4">
+            <h5 class="text-white mb-3">Участники (@_encounter.Entries.Count)</h5>
+            @if (_encounter.Entries.Count == 0)
+            {
+                <p class="text-muted small">Участники не добавлены.</p>
+            }
+            else
+            {
+                <table class="table table-dark table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Имя / Тип</th>
+                            <th style="width:80px;" class="text-center">Кол-во</th>
+                            <th>Заметки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in _encounter.Entries)
+                        {
+                            <tr>
+                                <td class="text-white">@e.Name</td>
+                                <td class="text-center text-white">×@e.Count</td>
+                                <td class="text-muted small">@(e.Notes ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_encounter.Notes))
+        {
+            <div class="ta-card p-4 mb-4">
+                <h5 class="text-white mb-2">Заметки мастера</h5>
+                <p class="text-white mb-0" style="white-space:pre-line">@_encounter.Notes</p>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <a href="/campaigns/@_encounter.CampaignId" class="btn btn-outline-light btn-sm">← К кампании</a>
+    }
+</div>

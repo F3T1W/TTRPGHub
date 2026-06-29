@@ -200,3 +200,4 @@ dotnet build TTRPGHub.slnx
 8. **Сохраняй** snake_case для имён таблиц и колонок в EF конфигурациях
 9. При добавлении страниц — определяй `<PageTitle>` и `@page` директивы
 10. **Blazor компоненты** в `Components/`, **страницы** в `Pages/`
+11. **Никогда** не пиши `@code` в `.razor` файлах — весь C# код только в `.razor.cs` (code-behind). Namespace: `TTRPGHub.{FolderPath}` (например `TTRPGHub.Pages.Characters`), класс: `public partial class ИмяФайла`

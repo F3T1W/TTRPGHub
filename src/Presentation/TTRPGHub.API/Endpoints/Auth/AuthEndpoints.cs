@@ -1,9 +1,12 @@
 using MediatR;
-using TTRPGHub.API.Extensions;
-using TTRPGHub.Application.Features.Auth.Commands.Login;
-using TTRPGHub.Application.Features.Auth.Commands.Register;
+using TTRPGHub.Extensions;
+using TTRPGHub.Features.Auth.Commands.ConfirmEmail;
+using TTRPGHub.Features.Auth.Commands.ForgotPassword;
+using TTRPGHub.Features.Auth.Commands.Login;
+using TTRPGHub.Features.Auth.Commands.Register;
+using TTRPGHub.Features.Auth.Commands.ResetPassword;
 
-namespace TTRPGHub.API.Endpoints.Auth;
+namespace TTRPGHub.Endpoints.Auth;
 
 internal static class AuthEndpoints
 {
@@ -18,9 +21,7 @@ internal static class AuthEndpoints
             return result.ToResponse();
         })
         .WithSummary("Регистрация нового пользователя")
-        .Produces<RegisterResponse>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status409Conflict)
-        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        .AllowAnonymous();
 
         group.MapPost("/login", async (LoginCommand command, ISender sender, CancellationToken ct) =>
         {
@@ -28,7 +29,30 @@ internal static class AuthEndpoints
             return result.ToResponse();
         })
         .WithSummary("Вход в систему")
-        .Produces<LoginResponse>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+        .AllowAnonymous();
+
+        group.MapPost("/confirm-email", async (ConfirmEmailCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Подтверждение email")
+        .AllowAnonymous();
+
+        group.MapPost("/forgot-password", async (ForgotPasswordCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Запрос сброса пароля")
+        .AllowAnonymous();
+
+        group.MapPost("/reset-password", async (ResetPasswordCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Сброс пароля")
+        .AllowAnonymous();
     }
 }

@@ -1,6 +1,6 @@
-using TTRPGHub.Domain.Repositories;
+using TTRPGHub.Repositories;
 
-namespace TTRPGHub.Persistence;
+namespace TTRPGHub;
 
 internal sealed class UnitOfWork(AppDbContext db) : IUnitOfWork
 {

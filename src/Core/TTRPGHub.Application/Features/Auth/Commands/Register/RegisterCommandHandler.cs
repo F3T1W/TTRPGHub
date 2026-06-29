@@ -1,17 +1,19 @@
 using MediatR;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Entities;
-using TTRPGHub.Domain.Repositories;
-using TTRPGHub.Domain.ValueObjects;
+using TTRPGHub.Common;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
+using TTRPGHub.Interfaces;
+using TTRPGHub.Repositories;
+using TTRPGHub.ValueObjects;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Register;
+namespace TTRPGHub.Features.Auth.Commands.Register;
 
 internal sealed class RegisterCommandHandler(
     IUserRepository userRepository,
     IPasswordHasher passwordHasher,
-    IUnitOfWork unitOfWork
-) : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
+    IEmailConfirmationTokenRepository tokenRepo,
+    IEmailService emailService,
+    IUnitOfWork unitOfWork) : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
 {
     public async Task<Result<RegisterResponse>> Handle(RegisterCommand command, CancellationToken ct)
     {
@@ -27,7 +29,14 @@ internal sealed class RegisterCommandHandler(
         var user = User.Create(command.Username, emailResult.Value!, passwordHash);
 
         await userRepository.AddAsync(user, ct);
+
+        var token = EmailConfirmationToken.Create(user.Id);
+        await tokenRepo.AddAsync(token, ct);
+
         await unitOfWork.SaveChangesAsync(ct);
+
+        var confirmUrl = $"/confirm-email?token={token.Token}";
+        await emailService.SendEmailConfirmationAsync(user.Email.Value, user.Username, confirmUrl, ct);
 
         return new RegisterResponse(user.Id.Value, user.Username, user.Email.Value);
     }

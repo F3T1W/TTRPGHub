@@ -1,7 +1,7 @@
 using MediatR;
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.Application.Features.Characters.Commands.CreateCharacter;
+namespace TTRPGHub.Features.Characters.Commands.CreateCharacter;
 
 public sealed record CreateCharacterCommand(
     string Name,

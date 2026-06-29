@@ -1,4 +1,4 @@
-namespace TTRPGHub.Domain.Entities;
+namespace TTRPGHub.Entities;
 
 public readonly record struct CharacterId(Guid Value)
 {

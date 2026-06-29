@@ -1,15 +1,32 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
-using TTRPGHub.Application.Common.Interfaces;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.Options;
+using StackExchange.Redis;
+using TTRPGHub.Common.Interfaces;
 
-namespace TTRPGHub.Infrastructure.Caching;
+namespace TTRPGHub.Caching;
 
-internal sealed class CacheService(IDistributedCache cache) : ICacheService
+internal sealed class CacheService(
+    IDistributedCache cache,
+    IOptions<RedisCacheOptions> redisOptions) : ICacheService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+
+    private IConnectionMultiplexer? _redis;
+
+    private IConnectionMultiplexer GetRedis()
+    {
+        if (_redis is not null) return _redis;
+        var config = redisOptions.Value.Configuration
+            ?? redisOptions.Value.ConfigurationOptions?.ToString()
+            ?? "localhost:6379";
+        _redis = ConnectionMultiplexer.Connect(config);
+        return _redis;
+    }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
@@ -29,10 +46,4 @@ internal sealed class CacheService(IDistributedCache cache) : ICacheService
 
     public Task RemoveAsync(string key, CancellationToken ct = default) =>
         cache.RemoveAsync(key, ct);
-
-    public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
-    {
-        // IDistributedCache не поддерживает паттерн — реализуем через StackExchange.Redis напрямую в Phase 1
-        await Task.CompletedTask;
-    }
 }

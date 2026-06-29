@@ -1,4 +1,4 @@
-namespace TTRPGHub.Domain.Common;
+namespace TTRPGHub.Common;
 
 public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
 {
@@ -15,8 +15,7 @@ public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
     public override bool Equals(object? obj)
     {
         if (obj is not Entity<TId> other) return false;
-        if (ReferenceEquals(this, other)) return true;
-        return Id.Equals(other.Id);
+        return ReferenceEquals(this, other) || Id.Equals(other.Id);
     }
 
     public override int GetHashCode() => Id.GetHashCode();

@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace TTRPGHub.Persistence;
+namespace TTRPGHub;
 
 internal sealed class NoopPublisher : IPublisher
 {

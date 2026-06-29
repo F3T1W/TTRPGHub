@@ -1,7 +1,7 @@
 using MediatR;
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Login;
+namespace TTRPGHub.Features.Auth.Commands.Login;
 
 public sealed record LoginCommand(
     string Email,
@@ -11,5 +11,6 @@ public sealed record LoginCommand(
 public sealed record LoginResponse(
     string AccessToken,
     string RefreshToken,
-    string Username
+    string Username,
+    Guid UserId
 );

@@ -1,15 +1,16 @@
 using MediatR;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Common;
-using TTRPGHub.Domain.Entities;
-using TTRPGHub.Domain.Repositories;
+using TTRPGHub.Common;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
+using TTRPGHub.Repositories;
 
-namespace TTRPGHub.Application.Features.Characters.Commands.CreateCharacter;
+namespace TTRPGHub.Features.Characters.Commands.CreateCharacter;
 
 internal sealed class CreateCharacterCommandHandler(
     ICharacterRepository characterRepository,
     ICurrentUser currentUser,
-    IUnitOfWork unitOfWork
+    IUnitOfWork unitOfWork,
+    ICacheService cache
 ) : IRequestHandler<CreateCharacterCommand, Result<CreateCharacterResponse>>
 {
     public async Task<Result<CreateCharacterResponse>> Handle(CreateCharacterCommand command, CancellationToken ct)
@@ -26,6 +27,8 @@ internal sealed class CreateCharacterCommandHandler(
 
         await characterRepository.AddAsync(characterResult.Value!, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        await cache.RemoveAsync($"characters:owner:{currentUser.Id}", ct);
 
         var c = characterResult.Value!;
         return new CreateCharacterResponse(c.Id.Value, c.Name, c.Race, c.Class, c.Level);

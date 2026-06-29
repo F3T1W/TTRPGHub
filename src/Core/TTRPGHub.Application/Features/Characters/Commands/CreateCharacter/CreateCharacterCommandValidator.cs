@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace TTRPGHub.Application.Features.Characters.Commands.CreateCharacter;
+namespace TTRPGHub.Features.Characters.Commands.CreateCharacter;
 
 internal sealed class CreateCharacterCommandValidator : AbstractValidator<CreateCharacterCommand>
 {

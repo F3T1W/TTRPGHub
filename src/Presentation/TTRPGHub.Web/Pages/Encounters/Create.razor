@@ -1,0 +1,78 @@
+@page "/campaigns/{CampaignId:guid}/encounters/create"
+@attribute [Authorize]
+<PageTitle>Новая сцена — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:760px;">
+    <h2 class="text-white mb-4">Конструктор столкновения</h2>
+
+    <div class="ta-card p-4">
+        <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label text-white">Название</label>
+                <InputText class="form-control" @bind-Value="_model.Title" placeholder="Засада в лесу..." />
+                <ValidationMessage For="@(() => _model.Title)" class="text-danger small" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-white">Описание</label>
+                <InputTextArea class="form-control" rows="3" @bind-Value="_model.Description"
+                               placeholder="Краткое описание обстановки..." />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-white">Сложность</label>
+                <InputSelect class="form-select" @bind-Value="_model.Difficulty">
+                    @foreach (var d in Enum.GetValues<EncounterDifficulty>())
+                    {
+                        <option value="@d">@DifficultyLabel(d)</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-white">Заметки мастера</label>
+                <InputTextArea class="form-control" rows="3" @bind-Value="_model.Notes"
+                               placeholder="Тактика, секреты, награды..." />
+            </div>
+
+            <hr class="border-secondary my-4" />
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0">Участники сцены</h5>
+                <button type="button" class="btn btn-outline-light btn-sm" @onclick="AddEntry">
+                    <i class="bi bi-plus-lg me-1"></i>Добавить
+                </button>
+            </div>
+
+            @for (var i = 0; i < _entries.Count; i++)
+            {
+                var idx = i;
+                <div class="d-flex gap-2 mb-2 align-items-center">
+                    <input class="form-control" placeholder="Имя/тип" @bind="_entries[idx].Name" />
+                    <input class="form-control" style="max-width:80px;" type="number" min="1"
+                           placeholder="×" @bind="_entries[idx].Count" />
+                    <input class="form-control" placeholder="Заметки" @bind="_entries[idx].Notes" />
+                    <button type="button" class="btn btn-outline-danger btn-sm"
+                            @onclick="@(() => RemoveEntry(idx))">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert alert-danger mt-3">@_error</div>
+            }
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-ta-primary" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Сохранить
+                </button>
+                <a href="/campaigns/@CampaignId" class="btn btn-outline-light">Отмена</a>
+            </div>
+        </EditForm>
+    </div>
+</div>

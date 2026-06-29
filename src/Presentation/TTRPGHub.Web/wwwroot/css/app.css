@@ -98,8 +98,8 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
 .ta-sidebar {
     background: var(--ta-surface);
     border-right: 1px solid var(--ta-border);
-    min-height: calc(100vh - 56px);
     width: 240px; flex-shrink: 0;
+    overflow-y: auto;
 }
 
 .ta-nav-link {
@@ -137,13 +137,15 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
     background: var(--ta-surface);
     border: 1px solid var(--ta-border);
     border-radius: 12px;
+    padding: 1rem;
     transition: border-color 0.2s, transform 0.2s;
 }
 
-.ta-card:hover {
+.ta-card-link:hover {
     border-color: var(--ta-accent);
     transform: translateY(-2px);
     box-shadow: 0 8px 24px var(--ta-accent-glow);
+    cursor: pointer;
 }
 
 /* ── Кнопки ──────────────────────────────────────────────── */
@@ -208,3 +210,175 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
 .ta-divider { border-color: var(--ta-border); margin: 1.5rem 0; }
 
 #blazor-error-ui { display: none; }
+
+/* ── Character Sheet ──────────────────────────────────────────────────────── */
+
+.sheet-section-title {
+    color: var(--ta-accent-light);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-size: .7rem;
+    font-weight: 700;
+    margin-bottom: .75rem;
+}
+
+.ability-box {
+    background: rgba(124,58,237,.12);
+    border: 1px solid rgba(124,58,237,.25);
+}
+
+.ability-label {
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+}
+
+.ability-score {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: .15rem 0;
+}
+
+.ability-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(124,58,237,.5);
+    color: var(--bs-body-color);
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    padding: 0;
+    margin: .15rem 0;
+}
+
+.ability-mod {
+    font-size: .8rem;
+    color: var(--ta-accent-light);
+    font-weight: 500;
+}
+
+.prof-badge {
+    display: inline-block;
+    padding: .35rem .75rem;
+    background: rgba(124,58,237,.3);
+    color: var(--ta-accent-light);
+    border-radius: .5rem;
+    font-size: .8rem;
+    font-weight: 500;
+}
+
+.stat-chip {
+    padding: .4rem .25rem;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: .375rem;
+}
+
+.stat-chip-label {
+    font-size: .55rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--bs-secondary-color);
+    margin-bottom: .15rem;
+}
+
+.stat-chip-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.2);
+    color: var(--bs-body-color);
+    font-weight: 700;
+    text-align: center;
+    font-size: .85rem;
+    outline: none;
+    padding: 0;
+}
+
+/* ── Avatar ───────────────────────────────────────────────────────────────── */
+
+.avatar-wrapper {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    border: 2px solid rgba(124,58,237,.4);
+    background: var(--ta-surface);
+    flex-shrink: 0;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .2s;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+    opacity: 1;
+}
+
+/* ── Character card avatar ────────────────────────────────────────────────── */
+
+.char-card-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid rgba(124,58,237,.3);
+    background: var(--ta-bg);
+    flex-shrink: 0;
+}
+
+.char-card-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.char-card-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ta-surface);
+}
+
+/* ── LFG ──────────────────────────────────────────────────────────────────── */
+
+.lfg-card {
+    transition: border-color .2s, transform .15s;
+}
+
+.lfg-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

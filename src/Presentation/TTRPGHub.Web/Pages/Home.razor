@@ -7,14 +7,14 @@
         Добро пожаловать в Таверну
     </h1>
     <p class="text-muted">Твоё место для TTRPG приключений на русском языке.</p>
-</div>
+</div>  
 
 <AuthorizeView>
     <Authorized>
         <!-- Быстрые действия для авторизованного -->
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
-                <a href="/characters" class="ta-card d-block p-4 text-decoration-none">
+                <a href="/characters" class="ta-card ta-card-link d-block p-4 text-decoration-none">
                     <i class="bi bi-person-badge" style="font-size:2rem; color:var(--ta-accent-light);"></i>
                     <h6 class="mt-3 mb-1">Персонажи</h6>
                     <p class="text-muted small mb-0">Управляй своими героями</p>
@@ -68,7 +68,7 @@
 
         <!-- Фичи -->
         <div class="row g-3">
-            @foreach (var f in _features)
+            @foreach (var f in Features)
             {
                 <div class="col-sm-6 col-lg-3">
                     <div class="ta-card p-4 h-100">
@@ -82,12 +82,3 @@
     </NotAuthorized>
 </AuthorizeView>
 
-@code {
-    private static readonly (string Icon, string Title, string Description)[] _features =
-    [
-        ("bi bi-person-badge",      "Персонажи",  "Создавай и храни своих героев с полными листами персонажа"),
-        ("bi bi-dice-5",            "Сессии",     "Ищи игры или организуй собственные кампании"),
-        ("bi bi-journal-bookmark",  "Правила",    "Полный справочник по D&D 5e и другим системам"),
-        ("bi bi-people",            "Сообщество", "Форум, LFG и обмен опытом с другими игроками"),
-    ];
-}

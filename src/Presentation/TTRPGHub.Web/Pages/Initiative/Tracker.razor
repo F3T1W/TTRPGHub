@@ -1,0 +1,162 @@
+@page "/trackers/{Id:guid}"
+@attribute [Authorize]
+@implements IAsyncDisposable
+<PageTitle>@(_state?.Name ?? "Трекер инициативы") — Таверна Аферистов</PageTitle>
+
+<div class="container-fluid py-4">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-light" role="status"></div></div>
+    }
+    else if (_state is null)
+    {
+        <div class="ta-card text-center py-5"><p class="text-muted">Трекер не найден.</p></div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="text-white mb-0">@_state.Name</h2>
+                <span class="text-muted small">Раунд @_state.Round</span>
+                @if (_connectionStatus == "connected")
+                {
+                    <span class="badge bg-success ms-2 small">● Live</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2 small">○ Offline</span>
+                }
+            </div>
+
+            @if (_state.IsOwner)
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    @if (!_state.IsActive)
+                    {
+                        <button class="btn btn-ta-primary" @onclick="StartTracker">
+                            <i class="bi bi-play-fill me-1"></i>Начать
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-light" @onclick="PreviousTurn">
+                            <i class="bi bi-skip-backward-fill"></i>
+                        </button>
+                        <button class="btn btn-ta-primary" @onclick="NextTurn">
+                            Следующий ход <i class="bi bi-skip-forward-fill ms-1"></i>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (!_state.IsActive && _state.IsOwner)
+        {
+            <div class="ta-card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-white mb-0">Участники</h5>
+                    <button class="btn btn-outline-light btn-sm" @onclick="AddEntryRow">
+                        <i class="bi bi-plus-lg me-1"></i>Добавить
+                    </button>
+                </div>
+                @for (var i = 0; i < _editEntries.Count; i++)
+                {
+                    var idx = i;
+                    var e = _editEntries[idx];
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-3">
+                            <input class="form-control form-control-sm" placeholder="Имя" @bind="e.Name" />
+                        </div>
+                        <div class="col-1">
+                            <input class="form-control form-control-sm" type="number" placeholder="Инит." @bind="e.Initiative" />
+                        </div>
+                        <div class="col-1">
+                            <input class="form-control form-control-sm" type="number" placeholder="КД" @bind="e.ArmorClass" />
+                        </div>
+                        <div class="col-1">
+                            <input class="form-control form-control-sm" type="number" placeholder="МакHP" @bind="e.MaxHp" />
+                        </div>
+                        <div class="col-1">
+                            <input class="form-control form-control-sm" type="number" placeholder="HP" @bind="e.CurrentHp" />
+                        </div>
+                        <div class="col-2 d-flex align-items-center gap-2">
+                            <input type="checkbox" class="form-check-input" @bind="e.IsPlayerCharacter" />
+                            <label class="text-white small">Игрок</label>
+                        </div>
+                        <div class="col-2">
+                            <input class="form-control form-control-sm" placeholder="Заметки" @bind="e.Notes" />
+                        </div>
+                        <div class="col-1">
+                            <button class="btn btn-outline-danger btn-sm" @onclick="@(() => _editEntries.RemoveAt(idx))">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+                <button class="btn btn-ta-primary mt-3" @onclick="SaveEntries" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Сохранить состав
+                </button>
+            </div>
+        }
+
+        <div class="row g-3">
+            @{
+                var entries = _state.Entries.OrderBy(e => e.SortOrder).ToList();
+                for (var i = 0; i < entries.Count; i++)
+                {
+                    var entry = entries[i];
+                    var isActive = _state.IsActive && i == _state.ActiveEntryIndex;
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="ta-card p-3 @(isActive ? "border border-warning" : "")">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    @if (isActive)
+                                    {
+                                        <i class="bi bi-chevron-double-right text-warning me-1"></i>
+                                    }
+                                    <span class="text-white fw-bold">@entry.Name</span>
+                                    @if (entry.IsPlayerCharacter)
+                                    {
+                                        <span class="badge bg-info text-dark ms-1 small">ИП</span>
+                                    }
+                                </div>
+                                <span class="badge bg-secondary">Инит. @entry.Initiative</span>
+                            </div>
+                            <div class="d-flex gap-3 text-muted small mb-2">
+                                <span>КД: @entry.ArmorClass</span>
+                                <span class="@HpColor(entry)">HP: @entry.CurrentHp / @entry.MaxHp</span>
+                                <span class="badge @StatusBadge(entry.Status)">@StatusLabel(entry.Status)</span>
+                            </div>
+                            @if (_state.IsOwner && _state.IsActive)
+                            {
+                                <div class="d-flex gap-2 align-items-center mt-2">
+                                    <input type="number" class="form-control form-control-sm" style="max-width:70px;"
+                                           value="@entry.CurrentHp"
+                                           @onchange="@(e => UpdateEntryHp(entry, int.Parse(e.Value!.ToString()!)))" />
+                                    <select class="form-select form-select-sm" style="max-width:130px;"
+                                            value="@entry.Status"
+                                            @onchange="@(e => UpdateEntryStatus(entry, Enum.Parse<EntryStatus>(e.Value!.ToString()!)))">
+                                        @foreach (var s in Enum.GetValues<EntryStatus>())
+                                        {
+                                            <option value="@s">@StatusLabel(s)</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger mt-3">@_error</div>
+        }
+
+        <div class="mt-4">
+            <a href="/campaigns/@_state.CampaignId" class="btn btn-outline-light btn-sm">← К кампании</a>
+        </div>
+    }
+</div>

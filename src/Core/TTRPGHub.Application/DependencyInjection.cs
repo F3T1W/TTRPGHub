@@ -1,9 +1,8 @@
-using System.Reflection;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using TTRPGHub.Application.Common.Behaviors;
+using TTRPGHub.Common.Behaviors;
 
-namespace TTRPGHub.Application;
+namespace TTRPGHub;
 
 public static class DependencyInjection
 {

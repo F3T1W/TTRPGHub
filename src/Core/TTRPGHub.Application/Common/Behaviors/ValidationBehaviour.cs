@@ -1,8 +1,7 @@
 using FluentValidation;
 using MediatR;
-using TTRPGHub.Domain.Common;
 
-namespace TTRPGHub.Application.Common.Behaviors;
+namespace TTRPGHub.Common.Behaviors;
 
 public sealed class ValidationBehaviour<TRequest, TResponse>(
     IEnumerable<IValidator<TRequest>> validators)
@@ -44,7 +43,7 @@ public sealed class ValidationBehaviour<TRequest, TResponse>(
         var resultType = typeof(T).GetGenericArguments().First();
         var failureMethod = typeof(Result<>)
             .MakeGenericType(resultType)
-            .GetMethod(nameof(Result<object>.Failure))!;
+            .GetMethod(nameof(Result<>.Failure))!;
 
         return (TResponse)failureMethod.Invoke(null, [firstError])!;
     }

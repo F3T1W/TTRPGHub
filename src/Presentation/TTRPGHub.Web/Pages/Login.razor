@@ -1,4 +1,5 @@
 @page "/login"
+@using TTRPGHub.Services
 @layout EmptyLayout
 @inject IApiClient Api
 @inject AppAuthStateProvider AuthProvider
@@ -37,6 +38,10 @@
                 <ValidationMessage For="@(() => _model.Password)" class="text-danger small" />
             </div>
 
+            <div class="text-end mb-3">
+                <a href="/forgot-password" class="small text-decoration-none" style="color:var(--ta-accent-light);">Забыли пароль?</a>
+            </div>
+
             <button type="submit" class="btn btn-ta-primary w-100" disabled="@_loading">
                 @if (_loading)
                 {
@@ -55,45 +60,3 @@
     </div>
 </div>
 
-@code {
-    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
-
-    private readonly LoginModel _model = new();
-    private string? _error;
-    private bool _loading;
-
-    private async Task SubmitAsync()
-    {
-        _loading = true;
-        _error   = null;
-
-        try
-        {
-            var resp = await Api.LoginAsync(new(_model.Email, _model.Password));
-            await AuthProvider.NotifyLoginAsync(resp.AccessToken, resp.RefreshToken);
-            Nav.NavigateTo(ReturnUrl ?? "/");
-        }
-        catch (Refit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
-        {
-            _error = "Неверный email или пароль.";
-        }
-        catch
-        {
-            _error = "Ошибка соединения с сервером.";
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private sealed class LoginModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Введите email.")]
-        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Некорректный email.")]
-        public string Email { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Введите пароль.")]
-        public string Password { get; set; } = string.Empty;
-    }
-}

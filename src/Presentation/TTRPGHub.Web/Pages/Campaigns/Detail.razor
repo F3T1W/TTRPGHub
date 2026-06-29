@@ -1,0 +1,186 @@
+@page "/campaigns/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_campaign?.Title ?? "Кампания") — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-light" role="status"></div></div>
+    }
+    else if (_campaign is null)
+    {
+        <div class="ta-card text-center py-5">
+            <p class="text-muted">Кампания не найдена.</p>
+            <a href="/campaigns" class="btn btn-outline-light mt-2">К кампаниям</a>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+            <div>
+                <h2 class="text-white mb-1">@_campaign.Title</h2>
+                <span class="text-muted small">
+                    <i class="bi bi-dice-5 me-1"></i>@_campaign.System
+                    &nbsp;·&nbsp;
+                    <i class="bi bi-person me-1"></i>@_campaign.OrganizerName
+                </span>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge @StatusBadge(_campaign.Status)">@StatusLabel(_campaign.Status)</span>
+                @if (_campaign.IsCurrentUserOrganizer)
+                {
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            Статус
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            @foreach (var s in Enum.GetValues<CampaignStatus>())
+                            {
+                                <li>
+                                    <button class="dropdown-item" @onclick="@(() => ChangeStatus(s))">
+                                        @StatusLabel(s)
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_campaign.Description))
+        {
+            <div class="ta-card p-4 mb-4">
+                <p class="text-white mb-0" style="white-space:pre-line">@_campaign.Description</p>
+            </div>
+        }
+
+        <div class="ta-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0">Трекеры инициативы (@_trackers.Count)</h5>
+                @if (_campaign.IsCurrentUserOrganizer)
+                {
+                    <button class="btn btn-ta-primary btn-sm" @onclick="CreateTracker" disabled="@_creatingTracker">
+                        <i class="bi bi-plus-lg me-1"></i>Создать
+                    </button>
+                }
+            </div>
+            @if (_trackers.Count == 0)
+            {
+                <p class="text-muted small">Трекеров пока нет.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var t in _trackers)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                            <div>
+                                <a href="/trackers/@t.Id" class="text-white text-decoration-none">@t.Name</a>
+                                @if (t.IsActive)
+                                {
+                                    <span class="badge bg-success ms-2">Активен</span>
+                                }
+                                <span class="text-muted small ms-2">Раунд @t.Round · @t.EntryCount уч.</span>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="ta-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0">Столкновения (@_encounters.Count)</h5>
+                <a href="/campaigns/@Id/encounters/create" class="btn btn-ta-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Создать
+                </a>
+            </div>
+            @if (_encounters.Count == 0)
+            {
+                <p class="text-muted small">Столкновений пока нет.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var e in _encounters)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                            <div>
+                                <a href="/encounters/@e.Id" class="text-white text-decoration-none">@e.Title</a>
+                                <span class="badge @DifficultyBadge(e.Difficulty) ms-2">@DifficultyLabel(e.Difficulty)</span>
+                            </div>
+                            <span class="text-muted small">@e.EntryCount уч.</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="ta-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-white mb-0">Заметки сессий (@_notes.Count)</h5>
+                <a href="/campaigns/@Id/notes/create" class="btn btn-ta-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Добавить
+                </a>
+            </div>
+            @if (_notes.Count == 0)
+            {
+                <p class="text-muted small">Заметок пока нет.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var n in _notes)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                            <div>
+                                <a href="/notes/@n.Id" class="text-white text-decoration-none">@n.Title</a>
+                                <span class="text-muted small ms-2">@n.SessionDate.ToString("dd.MM.yyyy")</span>
+                                <span class="text-muted small ms-1">— @n.AuthorName</span>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="ta-card p-4">
+            <h5 class="text-white mb-3">Участники (@_campaign.Participants.Count)</h5>
+            @if (_campaign.Participants.Count == 0)
+            {
+                <p class="text-muted small">Участников пока нет.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var p in _campaign.Participants)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                            <div>
+                                <span class="text-white">@p.Username</span>
+                                <span class="badge bg-secondary ms-2">@RoleLabel(p.Role)</span>
+                            </div>
+                            @if (_campaign.IsCurrentUserOrganizer && p.UserId != _campaign.OrganizerId)
+                            {
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @onclick="@(() => RemoveParticipant(p.UserId))">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="alert alert-danger mt-3">@_error</div>
+        }
+
+        <div class="mt-4">
+            <a href="/campaigns" class="btn btn-outline-light btn-sm">← К кампаниям</a>
+        </div>
+    }
+</div>

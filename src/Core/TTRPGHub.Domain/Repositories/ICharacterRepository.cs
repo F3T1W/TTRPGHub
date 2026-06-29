@@ -1,6 +1,6 @@
-using TTRPGHub.Domain.Entities;
+using TTRPGHub.Entities;
 
-namespace TTRPGHub.Domain.Repositories;
+namespace TTRPGHub.Repositories;
 
 public interface ICharacterRepository
 {

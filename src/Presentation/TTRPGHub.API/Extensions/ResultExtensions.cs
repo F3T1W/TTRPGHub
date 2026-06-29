@@ -1,6 +1,6 @@
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.API.Extensions;
+namespace TTRPGHub.Extensions;
 
 internal static class ResultExtensions
 {

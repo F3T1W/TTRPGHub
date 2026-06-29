@@ -1,5 +1,5 @@
 using MediatR;
 
-namespace TTRPGHub.Domain.Common;
+namespace TTRPGHub.Common;
 
 public interface IDomainEvent : INotification;

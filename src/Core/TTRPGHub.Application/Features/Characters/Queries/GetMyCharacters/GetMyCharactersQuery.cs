@@ -1,15 +1,9 @@
 using MediatR;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Domain.Common;
+using TTRPGHub.Common;
 
-namespace TTRPGHub.Application.Features.Characters.Queries.GetMyCharacters;
+namespace TTRPGHub.Features.Characters.Queries.GetMyCharacters;
 
-public sealed record GetMyCharactersQuery : IRequest<Result<IReadOnlyList<CharacterSummaryDto>>>, ICacheableQuery
-{
-    public string CacheKey => $"characters:owner:{OwnerId}";
-    public TimeSpan? Expiration => TimeSpan.FromMinutes(5);
-    public Guid OwnerId { get; init; }
-}
+public sealed record GetMyCharactersQuery : IRequest<Result<IReadOnlyList<CharacterSummaryDto>>>;
 
 public sealed record CharacterSummaryDto(
     Guid Id,
@@ -17,5 +11,6 @@ public sealed record CharacterSummaryDto(
     string Race,
     string Class,
     int Level,
+    string? AvatarUrl,
     DateTime UpdatedAt
 );

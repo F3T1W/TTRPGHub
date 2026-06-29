@@ -1,4 +1,5 @@
 @page "/register"
+@using TTRPGHub.Services
 @layout EmptyLayout
 @inject IApiClient Api
 @inject NavigationManager Nav
@@ -70,48 +71,3 @@
     </div>
 </div>
 
-@code {
-    private readonly RegisterModel _model = new();
-    private string? _error;
-    private bool _loading;
-    private bool _success;
-
-    private async Task SubmitAsync()
-    {
-        _loading = true;
-        _error   = null;
-
-        try
-        {
-            await Api.RegisterAsync(new(_model.Username, _model.Email, _model.Password));
-            _success = true;
-        }
-        catch (Refit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
-        {
-            _error = "Пользователь с таким email уже существует.";
-        }
-        catch
-        {
-            _error = "Ошибка соединения с сервером.";
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private sealed class RegisterModel
-    {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Введите имя пользователя.")]
-        [System.ComponentModel.DataAnnotations.StringLength(32, MinimumLength = 3, ErrorMessage = "От 3 до 32 символов.")]
-        public string Username { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Введите email.")]
-        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Некорректный email.")]
-        public string Email { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Введите пароль.")]
-        [System.ComponentModel.DataAnnotations.MinLength(8, ErrorMessage = "Минимум 8 символов.")]
-        public string Password { get; set; } = string.Empty;
-    }
-}

@@ -1,14 +1,16 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using TTRPGHub.Application.Common.Interfaces;
-using TTRPGHub.Infrastructure.Auth;
-using TTRPGHub.Infrastructure.Caching;
+using TTRPGHub.Auth;
+using TTRPGHub.Caching;
+using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Email;
+using TTRPGHub.Interfaces;
+using TTRPGHub.Storage;
 
-namespace TTRPGHub.Infrastructure;
+namespace TTRPGHub;
 
 public static class DependencyInjection
 {
@@ -27,6 +29,10 @@ public static class DependencyInjection
                 ?? configuration["REDIS_CONNECTION"];
         });
         services.AddSingleton<ICacheService, CacheService>();
+        services.AddSingleton<IStorageService, MinioStorageService>();
+
+        services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));
+        services.AddScoped<IEmailService, SmtpEmailService>();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

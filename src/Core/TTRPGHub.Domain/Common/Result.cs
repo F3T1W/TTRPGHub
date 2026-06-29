@@ -1,4 +1,6 @@
-namespace TTRPGHub.Domain.Common;
+using System.Text.Json.Serialization;
+
+namespace TTRPGHub.Common;
 
 public sealed class Result<T>
 {
@@ -7,7 +9,8 @@ public sealed class Result<T>
     public bool IsSuccess => Error is null;
     public bool IsFailure => !IsSuccess;
 
-    private Result(T? value, Error? error)
+    [JsonConstructor]
+    internal Result(T? value, Error? error)
     {
         Value = value;
         Error = error;

@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace TTRPGHub.Web.Services;
+namespace TTRPGHub.Services;
 
 public sealed class AppAuthStateProvider(TokenStorage tokens) : AuthenticationStateProvider
 {
@@ -32,9 +32,9 @@ public sealed class AppAuthStateProvider(TokenStorage tokens) : AuthenticationSt
         return new AuthenticationState(new ClaimsPrincipal(identity));
     }
 
-    public async Task NotifyLoginAsync(string accessToken, string refreshToken)
+    public async Task NotifyLoginAsync(string accessToken, string refreshToken, Guid userId)
     {
-        await tokens.SaveAsync(accessToken, refreshToken);
+        await tokens.SaveAsync(accessToken, refreshToken, userId);
         var claims   = ParseClaims(accessToken);
         var identity = new ClaimsIdentity(claims, "jwt");
         var user     = new ClaimsPrincipal(identity);

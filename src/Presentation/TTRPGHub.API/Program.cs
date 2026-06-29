@@ -3,11 +3,20 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Serilog;
-using TTRPGHub.API.Endpoints.Auth;
-using TTRPGHub.API.Endpoints.Characters;
-using TTRPGHub.Application;
-using TTRPGHub.Infrastructure;
-using TTRPGHub.Persistence;
+using TTRPGHub;
+using TTRPGHub.Endpoints.Auth;
+using TTRPGHub.Endpoints.Characters;
+using TTRPGHub.Endpoints.Sessions;
+using TTRPGHub.Endpoints.Campaigns;
+using TTRPGHub.Endpoints.SessionNotes;
+using TTRPGHub.Endpoints.Encounters;
+using TTRPGHub.Endpoints.Initiative;
+using TTRPGHub.Endpoints.Dnd5e;
+using TTRPGHub.Endpoints.Users;
+using TTRPGHub.Hubs;
+using TTRPGHub.Services;
+using TTRPGHub.Seeding;
+using TTRPGHub.Common.Interfaces;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -23,8 +32,11 @@ try
         .Enrich.FromLogContext());
 
     builder.Services.ConfigureHttpJsonOptions(options =>
+    {
         options.SerializerOptions.Encoder =
-            System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping);
+            System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+        options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
     builder.Services
         .AddApplication()
@@ -46,6 +58,9 @@ try
             name: "redis",
             tags: ["cache"]);
 
+    builder.Services.AddSignalR();
+    builder.Services.AddScoped<ITrackerNotifier, SignalRTrackerNotifier>();
+
     builder.Services.AddCors(options =>
         options.AddDefaultPolicy(policy =>
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -56,10 +71,9 @@ try
 
     if (app.Environment.IsDevelopment())
     {
-        await app.Services
-            .CreateScope().ServiceProvider
-            .GetRequiredService<AppDbContext>()
-            .Database.MigrateAsync();
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+        await scope.ServiceProvider.GetRequiredService<Open5eImporter>().ImportIfEmptyAsync();
     }
 
     if (app.Environment.IsDevelopment())
@@ -85,6 +99,14 @@ try
 
     app.MapAuthEndpoints();
     app.MapCharactersEndpoints();
+    app.MapSessionsEndpoints();
+    app.MapCampaigns();
+    app.MapSessionNotes();
+    app.MapEncounters();
+    app.MapInitiative();
+    app.MapDnd5e();
+    app.MapUsers();
+    app.MapHub<InitiativeHub>("/hubs/initiative");
 
     app.Run();
 }

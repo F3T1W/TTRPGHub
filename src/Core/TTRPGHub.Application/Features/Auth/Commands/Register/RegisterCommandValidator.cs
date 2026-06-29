@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace TTRPGHub.Application.Features.Auth.Commands.Register;
+namespace TTRPGHub.Features.Auth.Commands.Register;
 
 internal sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {

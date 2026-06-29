@@ -1,0 +1,16 @@
+@if (IsEditing)
+{
+    <div class="mb-3">
+        <label class="form-label small text-muted mb-1">@Label</label>
+        <textarea class="form-control" rows="3" value="@EditValue"
+                  @oninput="e => OnChange.InvokeAsync(e.Value?.ToString())"></textarea>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(Value))
+{
+    <div class="mb-3">
+        <div class="small text-muted fw-semibold mb-1">@Label</div>
+        <p class="small mb-0" style="white-space:pre-wrap; color:var(--bs-body-color);">@Value</p>
+    </div>
+}
+

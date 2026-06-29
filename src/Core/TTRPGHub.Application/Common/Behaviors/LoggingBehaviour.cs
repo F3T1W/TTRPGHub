@@ -1,9 +1,9 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace TTRPGHub.Application.Common.Behaviors;
+namespace TTRPGHub.Common.Behaviors;
 
-public sealed class LoggingBehaviour<TRequest, TResponse>(
+public sealed partial class LoggingBehaviour<TRequest, TResponse>(
     ILogger<LoggingBehaviour<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -14,11 +14,15 @@ public sealed class LoggingBehaviour<TRequest, TResponse>(
         CancellationToken ct)
     {
         var name = typeof(TRequest).Name;
-        logger.LogInformation("Handling {Request}", name);
-
+        LogHandling(logger, name);
         var response = await next();
-
-        logger.LogInformation("Handled {Request}", name);
+        LogHandled(logger, name);
         return response;
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Handling {Request}")]
+    private static partial void LogHandling(ILogger logger, string request);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Handled {Request}")]
+    private static partial void LogHandled(ILogger logger, string request);
 }
