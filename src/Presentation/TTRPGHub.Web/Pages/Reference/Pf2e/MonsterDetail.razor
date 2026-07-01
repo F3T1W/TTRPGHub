@@ -1,0 +1,128 @@
+@page "/reference/pf2e/monsters/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_monster?.Name ?? "Существо") — Pathfinder 2e</PageTitle>
+
+<div class="container py-4" style="max-width:860px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_monster is null)
+    {
+        <div class="ta-card text-center py-5"><p class="text-muted">Существо не найдено.</p></div>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="/reference" style="color:var(--ta-accent-light);" class="text-decoration-none">Справочник</a></li>
+                <li class="breadcrumb-item"><a href="/reference/pf2e/monsters" style="color:var(--ta-accent-light);" class="text-decoration-none">Pathfinder 2e — Бестиарий</a></li>
+                <li class="breadcrumb-item active text-muted">@_monster.Name</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="text-white mb-1">@_monster.Name</h2>
+                    <p class="text-muted mb-0">@_monster.Size</p>
+                </div>
+                <span class="badge @LevelBadge(_monster.Level)" style="font-size:.9rem;padding:.4em .8em;">Уровень @_monster.Level</span>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap mb-3">
+                @foreach (var trait in _monster.Traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@trait</span>
+                }
+            </div>
+
+            <hr style="border-color:var(--ta-border);">
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Восприятие</div>
+                    <div class="text-white">@Modifier(_monster.Perception)</div>
+                </div>
+                @if (!string.IsNullOrEmpty(_monster.Senses))
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Чувства</div>
+                        <div class="text-white">@_monster.Senses</div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_monster.Languages))
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Языки</div>
+                        <div class="text-white">@_monster.Languages</div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_monster.Skills))
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Навыки</div>
+                        <div class="text-white">@_monster.Skills</div>
+                    </div>
+                }
+            </div>
+
+            <div class="row g-2 mb-4 text-center">
+                <div class="col-2"><div class="small text-muted">СИЛ</div><div class="text-white fw-semibold">@Modifier(_monster.Strength)</div></div>
+                <div class="col-2"><div class="small text-muted">ЛОВ</div><div class="text-white fw-semibold">@Modifier(_monster.Dexterity)</div></div>
+                <div class="col-2"><div class="small text-muted">ТЕЛ</div><div class="text-white fw-semibold">@Modifier(_monster.Constitution)</div></div>
+                <div class="col-2"><div class="small text-muted">ИНТ</div><div class="text-white fw-semibold">@Modifier(_monster.Intelligence)</div></div>
+                <div class="col-2"><div class="small text-muted">МДР</div><div class="text-white fw-semibold">@Modifier(_monster.Wisdom)</div></div>
+                <div class="col-2"><div class="small text-muted">ХАР</div><div class="text-white fw-semibold">@Modifier(_monster.Charisma)</div></div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">КЗ</div>
+                    <div class="text-white fw-semibold">@_monster.ArmorClass</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Стойкость / Реакция / Воля</div>
+                    <div class="text-white">@Modifier(_monster.Fortitude) / @Modifier(_monster.Reflex) / @Modifier(_monster.Will)</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">ОЗ</div>
+                    <div class="text-white fw-semibold">@_monster.HitPoints</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Скорость</div>
+                    <div class="text-white">@_monster.Speed</div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_monster.Attacks))
+            {
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Атаки</h6>
+                    <div class="text-white" style="line-height:1.7;white-space:pre-wrap;">@_monster.Attacks</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(_monster.Abilities))
+            {
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Особые способности</h6>
+                    <div class="text-white" style="line-height:1.7;white-space:pre-wrap;">@_monster.Abilities</div>
+                </div>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+
+            <div class="d-flex justify-content-end">
+                <span class="text-muted small">Источник: @_monster.Source</span>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+            <a href="/reference/pf2e/monsters" class="btn btn-outline-light btn-sm">← К бестиарию</a>
+            <a href="/discussions/monster/@_monster.Slug" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-chat-dots me-1"></i>Обсуждение
+            </a>
+        </div>
+    }
+</div>

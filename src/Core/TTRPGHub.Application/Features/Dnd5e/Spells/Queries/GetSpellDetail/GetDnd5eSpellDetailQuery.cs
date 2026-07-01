@@ -7,6 +7,7 @@ public sealed record GetDnd5eSpellDetailQuery(Guid Id) : IRequest<Result<SpellDe
 
 public sealed record SpellDetailDto(
     Guid Id,
+    string Slug,
     string Name,
     int Level,
     string School,

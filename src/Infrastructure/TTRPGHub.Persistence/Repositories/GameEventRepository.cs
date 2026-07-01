@@ -7,18 +7,30 @@ namespace TTRPGHub.Persistence.Repositories;
 
 internal sealed class GameEventRepository(AppDbContext db) : IGameEventRepository
 {
-    public Task<List<GameEvent>> GetUpcomingAsync(int page, int pageSize, CancellationToken ct) =>
-        db.GameEvents
+    public Task<List<GameEvent>> GetUpcomingAsync(
+        int page, int pageSize, string? location = null, EventFormat? format = null, CancellationToken ct = default) =>
+        Filter(location, format)
             .Include(e => e.Organizer)
             .Include(e => e.Participants)
-            .Where(e => !e.IsCancelled && e.StartsAt >= DateTime.UtcNow)
             .OrderBy(e => e.StartsAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
-    public Task<int> CountUpcomingAsync(CancellationToken ct) =>
-        db.GameEvents.CountAsync(e => !e.IsCancelled && e.StartsAt >= DateTime.UtcNow, ct);
+    public Task<int> CountUpcomingAsync(string? location = null, EventFormat? format = null, CancellationToken ct = default) =>
+        Filter(location, format).CountAsync(ct);
+
+    private IQueryable<GameEvent> Filter(string? location, EventFormat? format)
+    {
+        var query = db.GameEvents.Where(e => !e.IsCancelled && e.StartsAt >= DateTime.UtcNow);
+
+        if (!string.IsNullOrWhiteSpace(location))
+            query = query.Where(e => e.Location != null && EF.Functions.ILike(e.Location, $"%{location}%"));
+        if (format.HasValue)
+            query = query.Where(e => e.Format == format.Value);
+
+        return query;
+    }
 
     public Task<GameEvent?> GetByIdWithParticipantsAsync(GameEventId id, CancellationToken ct) =>
         db.GameEvents

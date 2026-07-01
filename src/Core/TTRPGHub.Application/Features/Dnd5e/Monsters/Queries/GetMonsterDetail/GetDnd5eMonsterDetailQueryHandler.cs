@@ -15,7 +15,7 @@ internal sealed class GetDnd5eMonsterDetailQueryHandler(IDnd5eMonsterRepository 
         if (m is null) return Error.NotFound(nameof(Dnd5eMonster));
 
         return new MonsterDetailDto(
-            m.Id.Value, m.Name, m.Size, m.Type, m.Subtype, m.Alignment,
+            m.Id.Value, m.Slug, m.Name, m.Size, m.Type, m.Subtype, m.Alignment,
             m.ArmorClass, m.ArmorDesc, m.HitPoints, m.HitDice, m.Speed,
             m.Strength, m.Dexterity, m.Constitution,
             m.Intelligence, m.Wisdom, m.Charisma,

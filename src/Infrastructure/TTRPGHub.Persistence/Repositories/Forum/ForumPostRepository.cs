@@ -30,6 +30,7 @@ internal sealed class ForumPostRepository(AppDbContext db) : IForumPostRepositor
         db.ForumPostLikes.AnyAsync(l => l.PostId == postId && l.UserId == userId, ct);
 
     public void Add(ForumPost post) => db.ForumPosts.Add(post);
+    public void Remove(ForumPost post) => db.ForumPosts.Remove(post);
     public void AddLike(ForumPostLike like) => db.ForumPostLikes.Add(like);
     public void RemoveLike(ForumPostLike like) => db.ForumPostLikes.Remove(like);
 }

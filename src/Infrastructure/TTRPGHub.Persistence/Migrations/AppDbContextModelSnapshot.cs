@@ -260,6 +260,75 @@ namespace TTRPGHub.Migrations
                     b.ToTable("characters", (string)null);
                 });
 
+            modelBuilder.Entity("TTRPGHub.Entities.Discussions.DiscussionLike", b =>
+                {
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("PostId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("discussion_likes", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Discussions.DiscussionPost", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EntitySlug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_slug");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_type");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("like_count");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("EntityType", "EntitySlug");
+
+                    b.ToTable("discussion_posts", (string)null);
+                });
+
             modelBuilder.Entity("TTRPGHub.Entities.Dnd5e.Dnd5eMonster", b =>
                 {
                     b.Property<Guid>("Id")
@@ -812,14 +881,59 @@ namespace TTRPGHub.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<double>("AudioPositionSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("audio_position_seconds");
+
+                    b.Property<DateTime>("AudioUpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("audio_updated_at")
+                        .HasDefaultValueSql("now()");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("CurrentShowcaseImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("current_showcase_image_url");
+
+                    b.Property<string>("CurrentTrackTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("current_track_title");
+
+                    b.Property<string>("CurrentTrackUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("current_track_url");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Online")
+                        .HasColumnName("format");
+
+                    b.Property<bool>("IsAudioPlaying")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_audio_playing");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("location");
 
                     b.Property<int>("MaxPlayers")
                         .HasColumnType("integer")
@@ -858,6 +972,8 @@ namespace TTRPGHub.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Format");
+
                     b.HasIndex("OrganizerId");
 
                     b.HasIndex("ScheduledAt");
@@ -865,6 +981,44 @@ namespace TTRPGHub.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("game_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.GameSystem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsOfficial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_official");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("game_systems", (string)null);
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.Homebrew.HomebrewItem", b =>
@@ -1003,6 +1157,59 @@ namespace TTRPGHub.Migrations
                     b.ToTable("initiative_trackers", (string)null);
                 });
 
+            modelBuilder.Entity("TTRPGHub.Entities.Moderation.ContentReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("ReporterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reporter_id");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_user_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Open")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("content_reports", (string)null);
+                });
+
             modelBuilder.Entity("TTRPGHub.Entities.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1035,6 +1242,259 @@ namespace TTRPGHub.Migrations
                         .HasDatabaseName("ix_password_reset_tokens_token");
 
                     b.ToTable("password_reset_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Pf2e.Pf2eMonster", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Abilities")
+                        .HasColumnType("text")
+                        .HasColumnName("abilities");
+
+                    b.Property<int>("ArmorClass")
+                        .HasColumnType("integer")
+                        .HasColumnName("armor_class");
+
+                    b.Property<string>("Attacks")
+                        .HasColumnType("text")
+                        .HasColumnName("attacks");
+
+                    b.Property<int>("Charisma")
+                        .HasColumnType("integer")
+                        .HasColumnName("charisma");
+
+                    b.Property<int>("Constitution")
+                        .HasColumnType("integer")
+                        .HasColumnName("constitution");
+
+                    b.Property<int>("Dexterity")
+                        .HasColumnType("integer")
+                        .HasColumnName("dexterity");
+
+                    b.Property<int>("Fortitude")
+                        .HasColumnType("integer")
+                        .HasColumnName("fortitude");
+
+                    b.Property<int>("HitPoints")
+                        .HasColumnType("integer")
+                        .HasColumnName("hit_points");
+
+                    b.Property<int>("Intelligence")
+                        .HasColumnType("integer")
+                        .HasColumnName("intelligence");
+
+                    b.Property<string>("Languages")
+                        .HasColumnType("text")
+                        .HasColumnName("languages");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Perception")
+                        .HasColumnType("integer")
+                        .HasColumnName("perception");
+
+                    b.Property<int>("Reflex")
+                        .HasColumnType("integer")
+                        .HasColumnName("reflex");
+
+                    b.Property<string>("Senses")
+                        .HasColumnType("text")
+                        .HasColumnName("senses");
+
+                    b.Property<string>("Size")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("size");
+
+                    b.Property<string>("Skills")
+                        .HasColumnType("text")
+                        .HasColumnName("skills");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Speed")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("speed");
+
+                    b.Property<int>("Strength")
+                        .HasColumnType("integer")
+                        .HasColumnName("strength");
+
+                    b.Property<string>("Traits")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("traits");
+
+                    b.Property<int>("Will")
+                        .HasColumnType("integer")
+                        .HasColumnName("will");
+
+                    b.Property<int>("Wisdom")
+                        .HasColumnType("integer")
+                        .HasColumnName("wisdom");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Level")
+                        .HasDatabaseName("ix_pf2e_monsters_level");
+
+                    b.HasIndex("Size")
+                        .HasDatabaseName("ix_pf2e_monsters_size");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pf2e_monsters_slug");
+
+                    b.ToTable("pf2e_monsters", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Pf2e.Pf2eSpell", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Area")
+                        .HasColumnType("text")
+                        .HasColumnName("area");
+
+                    b.Property<string>("Cast")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cast");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Duration")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("duration");
+
+                    b.Property<string>("Heightened")
+                        .HasColumnType("text")
+                        .HasColumnName("heightened");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Range")
+                        .HasColumnType("text")
+                        .HasColumnName("range");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Targets")
+                        .HasColumnType("text")
+                        .HasColumnName("targets");
+
+                    b.Property<string>("Traditions")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("traditions");
+
+                    b.Property<string>("Traits")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("traits");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Level")
+                        .HasDatabaseName("ix_pf2e_spells_level");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pf2e_spells_slug");
+
+                    b.HasIndex("Traditions")
+                        .HasDatabaseName("ix_pf2e_spells_traditions");
+
+                    b.ToTable("pf2e_spells", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("auth");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("p256dh");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("push_subscriptions", (string)null);
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.Ratings.UserRating", b =>
@@ -1082,6 +1542,82 @@ namespace TTRPGHub.Migrations
                         .IsUnique();
 
                     b.ToTable("user_ratings", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.RuleEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
+
+                    b.Property<string>("ContentMarkdown")
+                        .HasColumnType("text")
+                        .HasColumnName("content_markdown");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsHomebrew")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_homebrew");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("slug");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source");
+
+                    b.Property<string>("StatsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("stats_json");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid>("SystemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("system_id");
+
+                    b.PrimitiveCollection<string[]>("Tags")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("tags");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SystemId", "Category");
+
+                    b.HasIndex("SystemId", "Category", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("rule_entries", (string)null);
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.SessionNote", b =>
@@ -1133,6 +1669,183 @@ namespace TTRPGHub.Migrations
                     b.ToTable("session_notes", (string)null);
                 });
 
+            modelBuilder.Entity("TTRPGHub.Entities.SessionReminderLog", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("SessionId", "UserId");
+
+                    b.ToTable("session_reminder_logs", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.SupportTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContactInfo")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("contact_info");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("ReporterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reporter_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Open")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReporterId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("support_tickets", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.TableMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid?>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<string>("RecipientUsername")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("recipient_username");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<string>("SenderUsername")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("sender_username");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId", "CreatedAt");
+
+                    b.ToTable("table_messages", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.TableToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("color");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("image_url");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<double>("X")
+                        .HasColumnType("double precision")
+                        .HasColumnName("x");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("double precision")
+                        .HasColumnName("y");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("table_tokens", (string)null);
+                });
+
             modelBuilder.Entity("TTRPGHub.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1149,6 +1862,13 @@ namespace TTRPGHub.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Player")
+                        .HasColumnName("role");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1161,6 +1881,38 @@ namespace TTRPGHub.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.UserCalendarPreference", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("CalendarToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calendar_token");
+
+                    b.Property<bool>("PushEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("push_enabled");
+
+                    b.Property<int>("ReminderMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("reminder_minutes");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("CalendarToken")
+                        .IsUnique();
+
+                    b.ToTable("user_calendar_preferences", (string)null);
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.Campaign", b =>
@@ -1195,6 +1947,41 @@ namespace TTRPGHub.Migrations
                         });
 
                     b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Discussions.DiscussionLike", b =>
+                {
+                    b.HasOne("TTRPGHub.Entities.Discussions.DiscussionPost", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TTRPGHub.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Discussions.DiscussionPost", b =>
+                {
+                    b.HasOne("TTRPGHub.Entities.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TTRPGHub.Entities.Discussions.DiscussionPost", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.Encounter", b =>
@@ -1470,6 +2257,49 @@ namespace TTRPGHub.Migrations
                     b.Navigation("Rater");
                 });
 
+            modelBuilder.Entity("TTRPGHub.Entities.SupportTicket", b =>
+                {
+                    b.OwnsMany("TTRPGHub.Entities.TicketAttachment", "Attachments", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("ContentType")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("content_type");
+
+                            b1.Property<string>("FileName")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("file_name");
+
+                            b1.Property<string>("Url")
+                                .IsRequired()
+                                .HasMaxLength(1000)
+                                .HasColumnType("character varying(1000)")
+                                .HasColumnName("url");
+
+                            b1.Property<Guid>("ticket_id")
+                                .HasColumnType("uuid");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ticket_id");
+
+                            b1.ToTable("ticket_attachments", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("ticket_id");
+                        });
+
+                    b.Navigation("Attachments");
+                });
+
             modelBuilder.Entity("TTRPGHub.Entities.User", b =>
                 {
                     b.OwnsOne("TTRPGHub.Entities.UserProfile", "Profile", b1 =>
@@ -1537,6 +2367,11 @@ namespace TTRPGHub.Migrations
 
                     b.Navigation("Profile")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TTRPGHub.Entities.Discussions.DiscussionPost", b =>
+                {
+                    b.Navigation("Likes");
                 });
 
             modelBuilder.Entity("TTRPGHub.Entities.Events.GameEvent", b =>

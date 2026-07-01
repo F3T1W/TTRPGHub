@@ -18,7 +18,9 @@ internal sealed class UpdateSessionCommandHandler(
         if (session is null) return Error.NotFound(nameof(GameSession));
         if (session.OrganizerId != currentUser.Id) return Error.Unauthorized();
 
-        session.Update(command.Title, command.Description, command.System, command.MaxPlayers, command.ScheduledAt.ToUniversalTime());
+        session.Update(
+            command.Title, command.Description, command.System, command.MaxPlayers,
+            command.ScheduledAt.ToUniversalTime(), command.Format, command.Location);
         repository.Update(session);
         await unitOfWork.SaveChangesAsync(ct);
         return Result.Success();

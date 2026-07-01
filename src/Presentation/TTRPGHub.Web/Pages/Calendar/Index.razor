@@ -1,0 +1,124 @@
+@page "/calendar"
+@attribute [Authorize]
+@inherits IndexBase
+
+<PageTitle>Календарь игр — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:680px;">
+    <div class="d-flex align-items-center mb-4 gap-2">
+        <i class="bi bi-calendar3 fs-4" style="color:var(--ta-accent-light)"></i>
+        <h4 class="mb-0" style="color:var(--ta-accent-light)">Напоминания об играх</h4>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" style="color:var(--ta-accent);"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Настройка напоминания -->
+        <div class="ta-card p-4 mb-4">
+            <h6 class="mb-3" style="color:var(--ta-gold)">
+                <i class="bi bi-bell me-2"></i>Напомнить за
+            </h6>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @foreach (var (label, minutes) in ReminderOptions)
+                {
+                    <button class="btn btn-sm @(_selectedMinutes == minutes ? "btn-ta-primary" : "btn-outline-secondary")"
+                            @onclick="() => _selectedMinutes = minutes">
+                        @label
+                    </button>
+                }
+            </div>
+            <button class="btn btn-ta-primary btn-sm" @onclick="SavePreferenceAsync" disabled="@_saving">
+                @if (_saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                <i class="bi bi-check-lg me-1"></i>Сохранить
+            </button>
+            @if (_saveSuccess)
+            {
+                <span class="text-success ms-3 small"><i class="bi bi-check-circle me-1"></i>Сохранено</span>
+            }
+        </div>
+
+        <!-- Push-уведомления сайта -->
+        <div class="ta-card p-4 mb-4">
+            <h6 class="mb-1" style="color:var(--ta-gold)">
+                <i class="bi bi-bell-fill me-2"></i>Push-уведомления в браузере
+            </h6>
+            <p class="text-muted small mb-3">
+                Сайт сам пришлёт системное уведомление за выбранное время до игры —
+                даже если вкладка закрыта. Работает независимо от Apple Calendar.
+            </p>
+            @if (!_pushSupported)
+            {
+                <div class="text-muted small"><i class="bi bi-exclamation-circle me-1"></i>Браузер не поддерживает push-уведомления.</div>
+            }
+            else
+            {
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="pushSwitch"
+                           checked="@_pushEnabled" disabled="@_pushBusy" @onchange="TogglePushAsync" />
+                    <label class="form-check-label" for="pushSwitch">
+                        @(_pushEnabled ? "Включены" : "Выключены")
+                        @if (_pushBusy)
+                        {
+                            <span class="spinner-border spinner-border-sm ms-2"></span>
+                        }
+                    </label>
+                </div>
+                @if (_pushError is not null)
+                {
+                    <div class="text-danger small mt-2"><i class="bi bi-exclamation-triangle me-1"></i>@_pushError</div>
+                }
+            }
+        </div>
+
+        <!-- Apple Calendar / webcal интеграция -->
+        <div class="ta-card p-4 mb-4">
+            <h6 class="mb-1" style="color:var(--ta-gold)">
+                <i class="bi bi-apple me-2"></i>Подписка в Apple Calendar
+            </h6>
+            <p class="text-muted small mb-3">
+                Нажми кнопку — Calendar.app откроется и предложит подписаться.
+                Все твои игры будут автоматически появляться в календаре с напоминанием.
+            </p>
+            @if (_token != Guid.Empty)
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-ta-primary btn-sm" href="@WebcalUrl" target="_blank">
+                        <i class="bi bi-calendar-plus me-1"></i>Открыть в Calendar
+                    </a>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="CopyWebcalUrl" title="Скопировать ссылку">
+                        <i class="bi bi-clipboard me-1"></i>Скопировать ссылку
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="RegenerateTokenAsync" title="Сбросить ссылку (старая перестанет работать)">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Сбросить
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <code class="small text-muted" style="word-break:break-all;">@WebcalUrl</code>
+                </div>
+                @if (_copied)
+                {
+                    <div class="text-success small mt-1"><i class="bi bi-check-circle me-1"></i>Скопировано</div>
+                }
+            }
+        </div>
+
+        <!-- Ручное скачивание .ics по сессии -->
+        <div class="ta-card p-4">
+            <h6 class="mb-1" style="color:var(--ta-gold)">
+                <i class="bi bi-download me-2"></i>Скачать событие вручную
+            </h6>
+            <p class="text-muted small mb-0">
+                На странице каждой сессии есть кнопка <strong>.ics</strong> — нажми её,
+                и файл откроется в Calendar.app для разового добавления.
+            </p>
+        </div>
+    }
+</div>

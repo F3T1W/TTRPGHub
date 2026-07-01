@@ -40,6 +40,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasColumnName("created_at");
 
+        builder.Property(u => u.Role)
+            .IsRequired()
+            .HasDefaultValue(UserRole.Player)
+            .HasConversion<string>()
+            .HasColumnName("role");
+
         builder.OwnsOne(u => u.Profile, profile =>
         {
             profile.Property(p => p.DisplayName).HasMaxLength(64).HasColumnName("display_name");

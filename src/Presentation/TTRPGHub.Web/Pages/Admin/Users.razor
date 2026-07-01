@@ -1,0 +1,83 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Admin")]
+<PageTitle>Пользователи — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4">Управление ролями</h2>
+
+    <div class="ta-card p-3 mb-4">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-8">
+                <label class="form-label small text-muted mb-1">Поиск по имени или email</label>
+                <input class="form-control" @bind="_search" @bind:event="oninput" @onkeydown="OnSearchKeyDown" />
+            </div>
+            <div class="col-12 col-md-4">
+                <button class="btn btn-ta-primary w-100" @onclick="LoadAsync"><i class="bi bi-search me-1"></i>Найти</button>
+            </div>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        <table class="table table-dark table-sm" style="--bs-table-bg:transparent;">
+            <thead>
+                <tr class="text-muted small">
+                    <th>Пользователь</th>
+                    <th>Email</th>
+                    <th>Роль</th>
+                    <th>Регистрация</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_result is not null)
+                {
+                    @foreach (var u in _result.Items)
+                    {
+                        <tr>
+                            <td>@u.Username</td>
+                            <td class="text-muted small">@u.Email</td>
+                            <td>
+                                <select class="form-select form-select-sm" style="width:auto;"
+                                        value="@u.Role" @onchange="e => ChangeRoleAsync(u.Id, e.Value?.ToString() ?? u.Role)">
+                                    <option value="Player">Player</option>
+                                    <option value="Moderator">Moderator</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                            </td>
+                            <td class="small text-muted">@u.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</td>
+                            <td>
+                                @if (_savingId == u.Id)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        @if (_result is not null && _result.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-center gap-2 mt-3">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="PrevPage" disabled="@(_page <= 1)">← Назад</button>
+                <span class="btn btn-outline-secondary btn-sm disabled">@_page / @_result.TotalPages</span>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="NextPage" disabled="@(_page >= _result.TotalPages)">Вперёд →</button>
+            </div>
+        }
+
+        @if (_saveError is not null)
+        {
+            <div class="text-danger small mt-2">@_saveError</div>
+        }
+    }
+</div>

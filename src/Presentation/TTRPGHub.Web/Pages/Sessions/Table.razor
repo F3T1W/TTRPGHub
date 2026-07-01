@@ -1,0 +1,293 @@
+@page "/sessions/{Id:guid}/table"
+@attribute [Authorize]
+@implements IAsyncDisposable
+
+<PageTitle>@(_state?.Title ?? "Игровой стол") — Таверна Аферистов</PageTitle>
+
+<div class="container-fluid py-3" style="max-width:1400px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" style="color:var(--ta-accent);"></div>
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@_error</div>
+        <a href="/sessions/@Id" class="btn btn-outline-secondary btn-sm">Вернуться к сессии</a>
+    }
+    else if (_state is not null)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-dice-5-fill fs-4" style="color:var(--ta-accent-light)"></i>
+                <h5 class="mb-0" style="color:var(--ta-accent-light)">@_state.Title</h5>
+                <span class="badge @(_connectionStatus == "connected" ? "bg-success" : "bg-secondary") small">
+                    @(_connectionStatus == "connected" ? "В сети" : _connectionStatus == "reconnecting" ? "Переподключение…" : "Не в сети")
+                </span>
+            </div>
+            <a href="/sessions/@Id" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-left me-1"></i>Выйти из-за стола
+            </a>
+        </div>
+
+        <div class="row g-3">
+            <!-- Левая колонка: showcase + кубики -->
+            <div class="col-lg-8">
+                <div class="ta-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-image me-2"></i>Сцена</h6>
+                        @if (_state.IsOrganizer)
+                        {
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => _showAddToken = !_showAddToken">
+                                    <i class="bi bi-person-bounding-box me-1"></i>Жетон
+                                </button>
+                                <InputFile OnChange="OnShowcaseFileSelected" class="d-none" id="showcaseFile" accept="image/*" />
+                                <label for="showcaseFile" class="btn btn-outline-secondary btn-sm mb-0" style="cursor:pointer;">
+                                    <i class="bi bi-upload me-1"></i>Загрузить
+                                </label>
+                                @if (_state.ShowcaseImageUrl is not null)
+                                {
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="ClearShowcaseAsync">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (_showAddToken)
+                    {
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                            <input class="form-control form-control-sm bg-dark text-light border-secondary" style="max-width:160px;"
+                                   placeholder="Название жетона" @bind="_newTokenLabel" @bind:event="oninput" />
+                            <select class="form-select form-select-sm bg-dark text-light border-secondary" style="max-width:180px;" @bind="_newTokenOwnerId">
+                                <option value="">NPC / монстр</option>
+                                @foreach (var p in _state.Participants)
+                                {
+                                    <option value="@p.UserId">@p.Username</option>
+                                }
+                            </select>
+                            <button class="btn btn-ta-primary btn-sm" @onclick="AddTokenAsync" disabled="@string.IsNullOrWhiteSpace(_newTokenLabel)">
+                                Добавить
+                            </button>
+                        </div>
+                    }
+
+                    <div class="ta-showcase-frame d-flex align-items-center justify-content-center" id="table-showcase-container">
+                        @if (_state.ShowcaseImageUrl is not null)
+                        {
+                            <img src="@_state.ShowcaseImageUrl" alt="Сцена" style="pointer-events:none;" />
+                        }
+                        else
+                        {
+                            <div class="text-muted text-center py-5">
+                                <i class="bi bi-image fs-1 d-block mb-2"></i>
+                                @(_state.IsOrganizer ? "Загрузите изображение для игроков" : "ГМ ещё не выбрал изображение")
+                            </div>
+                        }
+
+                        @foreach (var t in _tokens)
+                        {
+                            <div class="ta-token" data-token-id="@t.Id" data-can-move="@(t.CanMove ? "true" : "false")"
+                                 style="left:@(Pct(t.X))%; top:@(Pct(t.Y))%; @(t.ImageUrl is not null ? $"background-image:url('{t.ImageUrl}')" : $"background-color:{t.Color}")">
+                                @if (t.ImageUrl is null)
+                                {
+                                    @t.Label.Substring(0, Math.Min(2, t.Label.Length)).ToUpperInvariant()
+                                }
+                                <span class="ta-token-label">@t.Label</span>
+                                @if (_state.IsOrganizer)
+                                {
+                                    <span class="ta-token-remove" @onclick="() => RemoveTokenAsync(t.Id)" @onclick:stopPropagation="true">×</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @if (_uploadError is not null)
+                    {
+                        <div class="text-danger small mt-2">@_uploadError</div>
+                    }
+                </div>
+
+                <!-- Кубики -->
+                <div class="ta-card p-3">
+                    <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-dice-6 me-2"></i>Кубики</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @foreach (var die in QuickDice)
+                        {
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => RollAsync(die)" disabled="@_rolling">@die</button>
+                        }
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <input class="form-control bg-dark text-light border-secondary" placeholder="напр. 2d6+3"
+                               @bind="_customExpression" @bind:event="oninput" @onkeydown="OnCustomDiceKeyDown" />
+                        <button class="btn btn-ta-primary" @onclick="() => RollAsync(_customExpression)" disabled="@(_rolling || string.IsNullOrWhiteSpace(_customExpression))">
+                            <i class="bi bi-dice-3"></i> Бросить
+                        </button>
+                    </div>
+                    @if (_rollError is not null)
+                    {
+                        <div class="text-danger small mt-2">@_rollError</div>
+                    }
+                </div>
+
+                <!-- Музыка -->
+                <div class="ta-card p-3 mt-3">
+                    <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-music-note-beamed me-2"></i>Музыка</h6>
+
+                    @if (_state.Audio.TrackUrl is null)
+                    {
+                        <div class="text-muted small mb-2">Трек не выбран.</div>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-vinyl-fill" style="color:var(--ta-accent-light)"></i>
+                            <span class="small">@(_state.Audio.TrackTitle ?? "Без названия")</span>
+                            @if (_state.Audio.IsPlaying)
+                            {
+                                <span class="badge bg-success small">Играет</span>
+                            }
+                        </div>
+                    }
+
+                    @if (_state.IsOrganizer)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <InputFile OnChange="OnTrackFileSelected" class="d-none" id="trackFile" accept="audio/*" />
+                            <label for="trackFile" class="btn btn-outline-secondary btn-sm mb-0" style="cursor:pointer;">
+                                <i class="bi bi-upload me-1"></i>Загрузить трек
+                            </label>
+                            @if (_state.Audio.TrackUrl is not null)
+                            {
+                                @if (_state.Audio.IsPlaying)
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="PauseAsync">
+                                        <i class="bi bi-pause-fill"></i> Пауза
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-ta-primary btn-sm" @onclick="PlayAsync">
+                                        <i class="bi bi-play-fill"></i> Играть
+                                    </button>
+                                }
+                                <button class="btn btn-outline-danger btn-sm" @onclick="ClearAudioAsync">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            }
+                        </div>
+                        <div class="input-group input-group-sm mb-2">
+                            <input class="form-control bg-dark text-light border-secondary" placeholder="URL аудиофайла…"
+                                   @bind="_trackUrlInput" @bind:event="oninput" />
+                            <button class="btn btn-outline-secondary" @onclick="SetTrackByUrlAsync" disabled="@string.IsNullOrWhiteSpace(_trackUrlInput)">
+                                <i class="bi bi-link-45deg"></i>
+                            </button>
+                        </div>
+                    }
+
+                    @if (_state.Audio.TrackUrl is not null)
+                    {
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-volume-down small text-muted"></i>
+                            <input type="range" class="form-range" min="0" max="1" step="0.05"
+                                   value="@(Inv(_volume))" @oninput="OnVolumeChanged" style="max-width:140px;" />
+                            <i class="bi bi-volume-up small text-muted"></i>
+                        </div>
+                    }
+                    @if (_audioError is not null)
+                    {
+                        <div class="text-danger small mt-2">@_audioError</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Правая колонка: участники + чат -->
+            <div class="col-lg-4">
+                <div class="ta-card p-3 mb-3">
+                    <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-people me-2"></i>За столом</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        @foreach (var p in _state.Participants)
+                        {
+                            <li class="mb-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrEmpty(p.AvatarUrl))
+                                    {
+                                        <img src="@p.AvatarUrl" class="rounded-circle" style="width:24px;height:24px;object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle"></i>
+                                    }
+                                    <span>@p.Username</span>
+                                    @if (p.IsDungeonMaster)
+                                    {
+                                        <span class="badge bg-secondary small">ГМ</span>
+                                    }
+                                    @if (_state.IsOrganizer && !p.IsDungeonMaster)
+                                    {
+                                        <button class="btn btn-link btn-sm p-0 ms-auto" title="Шепнуть"
+                                                @onclick="() => ToggleWhisperTarget(p.UserId)">
+                                            <i class="bi bi-incognito" style="color:var(--ta-accent-light)"></i>
+                                        </button>
+                                    }
+                                </div>
+                                @if (_whisperTargetId == p.UserId)
+                                {
+                                    <div class="input-group input-group-sm mt-1">
+                                        <input class="form-control bg-dark text-light border-secondary" placeholder="Шёпот для @p.Username…"
+                                               @bind="_whisperInput" @bind:event="oninput" @onkeydown="OnWhisperKeyDown" />
+                                        <button class="btn btn-outline-secondary" @onclick="() => SendWhisperAsync(p.UserId)" disabled="@string.IsNullOrWhiteSpace(_whisperInput)">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="ta-card p-3 d-flex flex-column" style="height:520px;">
+                    <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-chat-dots me-2"></i>Чат стола</h6>
+                    <div class="flex-grow-1 overflow-auto mb-2" style="min-height:0;" @ref="_chatLogRef">
+                        @foreach (var m in _messages)
+                        {
+                            <div class="mb-2 small @(m.Kind == TableMessageKind.System ? "text-muted fst-italic" : "")">
+                                @if (m.Kind == TableMessageKind.Roll)
+                                {
+                                    <div class="ta-roll-line">
+                                        <i class="bi bi-dice-5 me-1" style="color:var(--ta-gold)"></i>
+                                        <strong>@m.SenderUsername</strong> бросил: @m.Content
+                                    </div>
+                                }
+                                else if (m.Kind == TableMessageKind.System)
+                                {
+                                    <div>@m.Content</div>
+                                }
+                                else if (m.Kind == TableMessageKind.Whisper)
+                                {
+                                    <div class="ta-whisper-line">
+                                        <i class="bi bi-incognito me-1"></i>
+                                        <strong>@m.SenderUsername → @m.RecipientUsername:</strong> @m.Content
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div><strong style="color:var(--ta-accent-light)">@m.SenderUsername:</strong> @m.Content</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="input-group input-group-sm">
+                        <input class="form-control bg-dark text-light border-secondary" placeholder="Сообщение…"
+                               @bind="_chatInput" @bind:event="oninput" @onkeydown="OnChatKeyDown" />
+                        <button class="btn btn-ta-primary" @onclick="SendChatAsync" disabled="@string.IsNullOrWhiteSpace(_chatInput)">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

@@ -5,6 +5,8 @@ using Scalar.AspNetCore;
 using Serilog;
 using TTRPGHub;
 using TTRPGHub.Endpoints.Auth;
+using TTRPGHub.Endpoints.Calendar;
+using TTRPGHub.Endpoints.GameTable;
 using TTRPGHub.Endpoints.Characters;
 using TTRPGHub.Endpoints.Sessions;
 using TTRPGHub.Endpoints.Campaigns;
@@ -12,11 +14,16 @@ using TTRPGHub.Endpoints.SessionNotes;
 using TTRPGHub.Endpoints.Encounters;
 using TTRPGHub.Endpoints.Initiative;
 using TTRPGHub.Endpoints.Dnd5e;
+using TTRPGHub.Endpoints.Rules;
+using TTRPGHub.Endpoints.Pf2e;
 using TTRPGHub.Endpoints.Users;
 using TTRPGHub.API.Endpoints.Forum;
 using TTRPGHub.API.Endpoints.Homebrew;
 using TTRPGHub.API.Endpoints.Ratings;
 using TTRPGHub.API.Endpoints.Events;
+using TTRPGHub.API.Endpoints.Discussions;
+using TTRPGHub.Endpoints.Tickets;
+using TTRPGHub.Endpoints.Moderation;
 using TTRPGHub.Hubs;
 using TTRPGHub.Services;
 using TTRPGHub.Seeding;
@@ -64,6 +71,8 @@ try
 
     builder.Services.AddSignalR();
     builder.Services.AddScoped<ITrackerNotifier, SignalRTrackerNotifier>();
+    builder.Services.AddScoped<ITableNotifier, SignalRTableNotifier>();
+    builder.Services.AddHostedService<SessionReminderBackgroundService>();
 
     builder.Services.AddCors(options =>
         options.AddDefaultPolicy(policy =>
@@ -78,6 +87,11 @@ try
         using var scope = app.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<Open5eImporter>().ImportIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<Pf2eImporter>().ImportIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<LegacyRuleMigrator>().MigrateIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<Open5eRulesImporter>().ImportIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<Pf2eRulesSeeder>().SeedIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<GuidesSeeder>().SeedIfEmptyAsync();
         await ForumSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
     }
 
@@ -110,12 +124,20 @@ try
     app.MapEncounters();
     app.MapInitiative();
     app.MapDnd5e();
+    app.MapRulesEndpoints();
+    app.MapPf2e();
     app.MapUsers();
     app.MapForum();
     app.MapHomebrew();
     app.MapRatings();
     app.MapEvents();
+    app.MapDiscussions();
+    app.MapCalendarEndpoints();
+    app.MapGameTableEndpoints();
+    app.MapTickets();
+    app.MapModerationEndpoints();
     app.MapHub<InitiativeHub>("/hubs/initiative");
+    app.MapHub<TableHub>("/hubs/table");
 
     app.Run();
 }

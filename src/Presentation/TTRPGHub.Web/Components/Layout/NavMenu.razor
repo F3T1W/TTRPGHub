@@ -6,6 +6,10 @@
         <i class="bi bi-house-door"></i> Таверна
     </NavLink>
 
+    <NavLink class="ta-nav-link" href="/start">
+        <i class="bi bi-signpost-2"></i> С чего начать
+    </NavLink>
+
     <div class="ta-sidebar-section mt-2">Игра</div>
 
     <NavLink class="ta-nav-link" href="/characters">
@@ -17,11 +21,11 @@
     </NavLink>
 
     <NavLink class="ta-nav-link" href="/sessions">
-        <i class="bi bi-dice-5"></i> Сессии
+        <i class="bi bi-dice-5"></i> Игры
     </NavLink>
 
-    <NavLink class="ta-nav-link" href="/campaigns">
-        <i class="bi bi-journal-bookmark"></i> Кампании
+    <NavLink class="ta-nav-link" href="/tools/multiclass">
+        <i class="bi bi-calculator"></i> Мультикласс
     </NavLink>
 
     <div class="ta-sidebar-section mt-2">Сообщество</div>
@@ -41,5 +45,33 @@
     <NavLink class="ta-nav-link" href="/events">
         <i class="bi bi-calendar-event"></i> События
     </NavLink>
+
+    <NavLink class="ta-nav-link" href="/glossary">
+        <i class="bi bi-journal-text"></i> Словарь
+    </NavLink>
+
+    <NavLink class="ta-nav-link" href="/calendar">
+        <i class="bi bi-calendar3"></i> Напоминания
+    </NavLink>
+
+    <NavLink class="ta-nav-link" href="/tickets">
+        <i class="bi bi-life-preserver"></i> Поддержка
+    </NavLink>
+
+    <AuthorizeView Roles="Moderator,Admin">
+        <div class="ta-sidebar-section mt-2">Модерация</div>
+        <NavLink class="ta-nav-link" href="/admin/tickets">
+            <i class="bi bi-kanban"></i> Тикеты
+        </NavLink>
+        <NavLink class="ta-nav-link" href="/admin/reports">
+            <i class="bi bi-flag"></i> Жалобы
+        </NavLink>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Admin">
+        <NavLink class="ta-nav-link" href="/admin/users">
+            <i class="bi bi-person-gear"></i> Пользователи
+        </NavLink>
+    </AuthorizeView>
 
 </nav>

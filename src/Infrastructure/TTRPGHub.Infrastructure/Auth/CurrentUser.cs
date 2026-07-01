@@ -24,4 +24,15 @@ internal sealed class CurrentUser(IHttpContextAccessor httpContextAccessor) : IC
                 : UserId.Empty;
         }
     }
+
+    public UserRole Role
+    {
+        get
+        {
+            var role = User?.FindFirstValue(ClaimTypes.Role);
+            return role is not null && Enum.TryParse<UserRole>(role, out var parsed)
+                ? parsed
+                : UserRole.Player;
+        }
+    }
 }

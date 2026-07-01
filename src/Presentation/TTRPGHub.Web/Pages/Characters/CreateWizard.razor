@@ -1,0 +1,122 @@
+@page "/characters/create-wizard"
+@attribute [Authorize]
+<PageTitle>Мастер создания персонажа — Таверна Аферистов</PageTitle>
+
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/characters" style="color:var(--ta-accent-light);">Персонажи</a></li>
+            <li class="breadcrumb-item"><a href="/characters/create" style="color:var(--ta-accent-light);">Создать</a></li>
+            <li class="breadcrumb-item active">Мастер</li>
+        </ol>
+    </nav>
+    <h2 class="mb-1">Мастер создания персонажа</h2>
+    <p class="text-muted small">
+        Раса и класс берутся из справочника — характеристики, HP и класс защиты рассчитаются автоматически.
+        После создания лист можно доработать вручную.
+    </p>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="ta-card p-4">
+            @if (_error is not null)
+            {
+                <div class="alert alert-danger py-2 small"><i class="bi bi-exclamation-circle me-1"></i>@_error</div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label">Система</label>
+                <select class="form-select" value="@_systemSlug" @onchange="OnSystemChangedAsync">
+                    <option value="dnd5e">D&D 5e</option>
+                    <option value="pf2e">Pathfinder 2e</option>
+                </select>
+                @if (_systemSlug == "pf2e")
+                {
+                    <div class="form-text">
+                        Автоматика PF2e упрощена: HP и КЗ считаются приближённо (тренированное владение без брони),
+                        свободный выбор буста характеристик (у Человека/Полуорка, второй ключевой атрибут Бойца/Следопыта)
+                        не применяется автоматически — доведи вручную после создания.
+                    </div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Имя персонажа</label>
+                <input class="form-control" @bind="_name" @bind:event="oninput" placeholder="Аргус Тёмный" />
+            </div>
+
+            @if (_loadingLists)
+            {
+                <div class="text-center py-4"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+            }
+            else
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Раса</label>
+                        <select class="form-select" @bind="_raceSlug">
+                            <option value="">— выбери расу —</option>
+                            @foreach (var r in _races)
+                            {
+                                <option value="@r.Slug">@r.Title</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Класс</label>
+                        <select class="form-select" @bind="_classSlug">
+                            <option value="">— выбери класс —</option>
+                            @foreach (var c in _classes)
+                            {
+                                <option value="@c.Slug">@c.Title</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Начальный уровень: <strong style="color:var(--ta-accent-light);">@_level</strong></label>
+                    <input type="range" class="form-range" min="1" max="20" @bind="_level" @bind:event="oninput" />
+                </div>
+
+                <label class="form-label">Базовые характеристики (до расовых бонусов)</label>
+                <div class="row g-2 mb-4">
+                    @foreach (var (label, getter, setter) in AbilityFields)
+                    {
+                        <div class="col-4 col-md-2">
+                            <div class="small text-muted text-center">@label</div>
+                            <input type="number" class="form-control text-center" min="1" max="20"
+                                   value="@getter()" @onchange="e => setter(ParseInt(e.Value))" />
+                        </div>
+                    }
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-ta-primary flex-grow-1" @onclick="SubmitAsync"
+                            disabled="@(_submitting || string.IsNullOrWhiteSpace(_name) || string.IsNullOrEmpty(_raceSlug) || string.IsNullOrEmpty(_classSlug))">
+                        @if (_submitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        Создать персонажа
+                    </button>
+                    <a href="/characters/create" class="btn btn-outline-secondary">Назад к анкете</a>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="ta-card p-4">
+            <h6 class="mb-3" style="color:var(--ta-gold)"><i class="bi bi-info-circle me-2"></i>Что посчитается автоматически</h6>
+            <ul class="small text-muted mb-0">
+                <li>Расовые бонусы к характеристикам (если у расы фиксированный бонус — например, «Ловкость +2»)</li>
+                <li>Максимум HP на основе кости хитов класса и модификатора Телосложения</li>
+                <li>Класс защиты: 10 + модификатор Ловкости</li>
+                <li>Спасброски, в которых класс имеет владение</li>
+                <li>Список навыков/брони/оружия на выбор — текстовой подсказкой в разделе «Умения»</li>
+            </ul>
+        </div>
+    </div>
+</div>

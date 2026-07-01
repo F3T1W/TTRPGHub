@@ -22,7 +22,7 @@ public partial class Create
         {
             var response = await Api.CreateSessionAsync(new CreateSessionRequest(
                 _form.Title!, _form.Description, _form.System!,
-                _form.MaxPlayers, _form.ScheduledAt));
+                _form.MaxPlayers, _form.ScheduledAt, _form.Format, _form.Location));
             Nav.NavigateTo($"/sessions/{response.SessionId}");
         }
         catch (Refit.ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
@@ -49,5 +49,10 @@ public partial class Create
         public int MaxPlayers { get; set; }
 
         public DateTime ScheduledAt { get; set; }
+
+        public SessionFormat Format { get; set; } = SessionFormat.Online;
+
+        [MaxLength(300)]
+        public string? Location { get; set; }
     }
 }

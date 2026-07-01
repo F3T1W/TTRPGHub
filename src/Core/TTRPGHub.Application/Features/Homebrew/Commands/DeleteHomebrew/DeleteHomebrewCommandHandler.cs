@@ -1,6 +1,7 @@
 using MediatR;
 using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
+using TTRPGHub.Entities;
 using TTRPGHub.Entities.Homebrew;
 using TTRPGHub.Repositories;
 
@@ -18,8 +19,9 @@ internal sealed class DeleteHomebrewCommandHandler(
         if (item is null)
             return Error.NotFound(nameof(item));
 
-        if (item.AuthorId != currentUser.Id)
-            return Error.Validation("Author", "Можно удалять только свои материалы");
+        var isModerator = currentUser.Role is UserRole.Moderator or UserRole.Admin;
+        if (item.AuthorId != currentUser.Id && !isModerator)
+            return Error.Forbidden();
 
         homebrew.Remove(item);
         await uow.SaveChangesAsync(ct);

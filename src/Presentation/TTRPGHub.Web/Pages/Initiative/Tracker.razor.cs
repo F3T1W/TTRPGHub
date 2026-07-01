@@ -10,6 +10,7 @@ public partial class Tracker : IAsyncDisposable
     [Parameter] public Guid Id { get; set; }
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private TokenStorage TokenStorage { get; set; } = default!;
 
     private TrackerDetailDto? _state;
     private readonly List<EditEntry> _editEntries = [];
@@ -52,7 +53,10 @@ public partial class Tracker : IAsyncDisposable
     {
         var apiBase = Nav.BaseUri.TrimEnd('/').Replace(":5141", ":5014");
         _hub = new HubConnectionBuilder()
-            .WithUrl($"{apiBase}/hubs/initiative")
+            .WithUrl($"{apiBase}/hubs/initiative", options =>
+            {
+                options.AccessTokenProvider = () => TokenStorage.GetAccessTokenAsync();
+            })
             .WithAutomaticReconnect()
             .Build();
 

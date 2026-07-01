@@ -1,16 +1,22 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities.Dnd5e;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Dnd5e;
+using TTRPGHub.Translation;
 
 namespace TTRPGHub.Seeding;
 
+// Open5e — англоязычный источник, поэтому весь текстовый контент переводится на русский
+// перед сохранением (ITranslationService). Slug генерируется из оригинального английского
+// имени ДО перевода, чтобы URL оставались стабильными и человекочитаемыми на латинице.
 public sealed class Open5eImporter(
     IDnd5eSpellRepository spellRepo,
     IDnd5eMonsterRepository monsterRepo,
     IUnitOfWork unitOfWork,
+    ITranslationService translator,
     ILogger<Open5eImporter> logger,
     HttpClient http)
 {
@@ -20,17 +26,20 @@ public sealed class Open5eImporter(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Игровая нотация костей ("1d6") ломается машинным переводом — не переводим такие поля.
+    private static readonly HashSet<string> DiceNotationKeys = ["damage_dice"];
+
     public async Task ImportIfEmptyAsync(CancellationToken ct = default)
     {
         if (!await spellRepo.AnyAsync(ct))
         {
-            logger.LogInformation("Импорт заклинаний D&D 5e из Open5e...");
+            logger.LogInformation("Импорт и перевод заклинаний D&D 5e из Open5e...");
             await ImportSpellsAsync(ct);
         }
 
         if (!await monsterRepo.AnyAsync(ct))
         {
-            logger.LogInformation("Импорт монстров D&D 5e из Open5e...");
+            logger.LogInformation("Импорт и перевод монстров D&D 5e из Open5e...");
             await ImportMonstersAsync(ct);
         }
     }
@@ -44,22 +53,28 @@ public sealed class Open5eImporter(
             var page = JsonSerializer.Deserialize<Open5ePage<Open5eSpell>>(response, JsonOpts);
             if (page?.Results is null) return;
 
-            var spells = page.Results.Select(s => Dnd5eSpell.Create(
-                slug:          s.Slug ?? s.Name.ToLowerInvariant().Replace(" ", "-"),
-                name:          s.Name,
-                level:         s.LevelInt,
-                school:        s.School ?? "",
-                castingTime:   s.CastingTime ?? "",
-                range:         s.Range ?? "",
-                components:    s.Components ?? "",
-                duration:      s.Duration ?? "",
-                concentration: s.Concentration?.Contains("yes", StringComparison.OrdinalIgnoreCase) ?? false,
-                ritual:        s.Ritual?.Contains("yes", StringComparison.OrdinalIgnoreCase) ?? false,
-                description:   s.Desc ?? "",
-                higherLevel:   s.HigherLevel,
-                classes:       s.DndClass ?? "",
-                material:      s.Material,
-                source:        "SRD 5.1")).ToList();
+            var spells = new List<Dnd5eSpell>();
+            foreach (var s in page.Results)
+            {
+                var slug = s.Slug ?? s.Name.ToLowerInvariant().Replace(" ", "-");
+
+                spells.Add(Dnd5eSpell.Create(
+                    slug:          slug,
+                    name:          await translator.TranslateAsync(s.Name, ct),
+                    level:         s.LevelInt,
+                    school:        await translator.TranslateAsync(s.School ?? "", ct),
+                    castingTime:   await translator.TranslateAsync(s.CastingTime ?? "", ct),
+                    range:         await translator.TranslateAsync(s.Range ?? "", ct),
+                    components:    s.Components ?? "",
+                    duration:      await translator.TranslateAsync(s.Duration ?? "", ct),
+                    concentration: s.Concentration?.Contains("yes", StringComparison.OrdinalIgnoreCase) ?? false,
+                    ritual:        s.Ritual?.Contains("yes", StringComparison.OrdinalIgnoreCase) ?? false,
+                    description:   await translator.TranslateAsync(s.Desc ?? "", ct),
+                    higherLevel:   s.HigherLevel is null ? null : await translator.TranslateAsync(s.HigherLevel, ct),
+                    classes:       await translator.TranslateAsync(s.DndClass ?? "", ct),
+                    material:      s.Material is null ? null : await translator.TranslateAsync(s.Material, ct),
+                    source:        "SRD 5.1"));
+            }
 
             await spellRepo.AddRangeAsync(spells, ct);
             await unitOfWork.SaveChangesAsync(ct);
@@ -80,33 +95,39 @@ public sealed class Open5eImporter(
             var page = JsonSerializer.Deserialize<Open5ePage<Open5eMonster>>(response, JsonOpts);
             if (page?.Results is null) return;
 
-            var monsters = page.Results.Select(m => Dnd5eMonster.Create(
-                slug:             m.Slug ?? m.Name.ToLowerInvariant().Replace(" ", "-"),
-                name:             m.Name,
-                size:             m.Size ?? "",
-                type:             m.Type ?? "",
-                subtype:          string.IsNullOrEmpty(m.Subtype) ? null : m.Subtype,
-                alignment:        m.Alignment ?? "",
-                armorClass:       m.ArmorClass,
-                armorDesc:        m.ArmorDesc,
-                hitPoints:        m.HitPoints,
-                hitDice:          m.HitDice ?? "",
-                speed:            m.Speed != null ? FormatSpeed(m.Speed) : "",
-                str:              m.Strength,
-                dex:              m.Dexterity,
-                con:              m.Constitution,
-                intel:            m.Intelligence,
-                wis:              m.Wisdom,
-                cha:              m.Charisma,
-                challengeRating:  m.ChallengeRating ?? "0",
-                xp:               m.Xp,
-                senses:           m.Senses,
-                languages:        m.Languages,
-                actions:          m.Actions != null ? JsonSerializer.Serialize(m.Actions) : null,
-                specialAbilities: m.SpecialAbilities != null ? JsonSerializer.Serialize(m.SpecialAbilities) : null,
-                reactions:        m.Reactions != null ? JsonSerializer.Serialize(m.Reactions) : null,
-                legendaryActions: m.LegendaryActions != null ? JsonSerializer.Serialize(m.LegendaryActions) : null,
-                source:           "SRD 5.1")).ToList();
+            var monsters = new List<Dnd5eMonster>();
+            foreach (var m in page.Results)
+            {
+                var slug = m.Slug ?? m.Name.ToLowerInvariant().Replace(" ", "-");
+
+                monsters.Add(Dnd5eMonster.Create(
+                    slug:             slug,
+                    name:             await translator.TranslateAsync(m.Name, ct),
+                    size:             await translator.TranslateAsync(m.Size ?? "", ct),
+                    type:             await translator.TranslateAsync(m.Type ?? "", ct),
+                    subtype:          string.IsNullOrEmpty(m.Subtype) ? null : await translator.TranslateAsync(m.Subtype, ct),
+                    alignment:        await translator.TranslateAsync(m.Alignment ?? "", ct),
+                    armorClass:       m.ArmorClass,
+                    armorDesc:        m.ArmorDesc is null ? null : await translator.TranslateAsync(m.ArmorDesc, ct),
+                    hitPoints:        m.HitPoints,
+                    hitDice:          m.HitDice ?? "",
+                    speed:            m.Speed != null ? await translator.TranslateAsync(FormatSpeed(m.Speed), ct) : "",
+                    str:              m.Strength,
+                    dex:              m.Dexterity,
+                    con:              m.Constitution,
+                    intel:            m.Intelligence,
+                    wis:              m.Wisdom,
+                    cha:              m.Charisma,
+                    challengeRating:  m.ChallengeRating ?? "0",
+                    xp:               m.Xp,
+                    senses:           m.Senses is null ? null : await translator.TranslateAsync(m.Senses, ct),
+                    languages:        m.Languages is null ? null : await translator.TranslateAsync(m.Languages, ct),
+                    actions:          m.Actions != null ? await JsonTranslationHelper.TranslateJsonAsync(translator, JsonSerializer.Serialize(m.Actions), DiceNotationKeys, ct) : null,
+                    specialAbilities: m.SpecialAbilities != null ? await JsonTranslationHelper.TranslateJsonAsync(translator, JsonSerializer.Serialize(m.SpecialAbilities), DiceNotationKeys, ct) : null,
+                    reactions:        m.Reactions != null ? await JsonTranslationHelper.TranslateJsonAsync(translator, JsonSerializer.Serialize(m.Reactions), DiceNotationKeys, ct) : null,
+                    legendaryActions: m.LegendaryActions != null ? await JsonTranslationHelper.TranslateJsonAsync(translator, JsonSerializer.Serialize(m.LegendaryActions), DiceNotationKeys, ct) : null,
+                    source:           "SRD 5.1"));
+            }
 
             await monsterRepo.AddRangeAsync(monsters, ct);
             await unitOfWork.SaveChangesAsync(ct);

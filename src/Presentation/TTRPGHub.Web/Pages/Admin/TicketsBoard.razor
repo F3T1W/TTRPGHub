@@ -1,0 +1,49 @@
+@page "/admin/tickets"
+@attribute [Authorize(Roles = "Moderator,Admin")]
+<PageTitle>Тикеты — Таверна Аферистов</PageTitle>
+
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Канбан-доска тикетов</h2>
+
+    @if (_loading)
+    {
+        <div class="text-muted small">Загрузка...</div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var column in _columns)
+            {
+                <div class="col-md-4"
+                     @ondragover="AllowDrop" @ondragover:preventDefault="true"
+                     @ondrop="() => DropAsync(column)">
+                    <div class="ta-card p-3 h-100" style="min-height:70vh;">
+                        <h6 class="mb-3" style="color:var(--ta-gold)">@ColumnLabel(column) (@TicketsIn(column).Count)</h6>
+                        @foreach (var t in TicketsIn(column))
+                        {
+                            <div class="ta-card p-2 mb-2" draggable="true"
+                                 @ondragstart="() => _draggedId = t.Id">
+                                <div class="fw-semibold small">@t.Title</div>
+                                <div class="text-muted" style="font-size:0.75rem;">@t.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</div>
+                                <p class="mb-1 small">@t.Description</p>
+                                @if (t.ContactInfo is not null)
+                                {
+                                    <div class="small text-muted">Контакт: @t.ContactInfo</div>
+                                }
+                                @if (t.Attachments.Count > 0)
+                                {
+                                    <div class="mt-1 d-flex gap-2 flex-wrap">
+                                        @foreach (var a in t.Attachments)
+                                        {
+                                            <a href="@a.Url" target="_blank" class="small">📎 @a.FileName</a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

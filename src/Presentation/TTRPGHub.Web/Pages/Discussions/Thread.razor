@@ -1,0 +1,131 @@
+@page "/discussions/{EntityType}/{EntitySlug}"
+<PageTitle>Обсуждение: @EntitySlug</PageTitle>
+
+<div class="container py-4" style="max-width:860px;">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="/reference" style="color:var(--ta-accent-light);" class="text-decoration-none">Справочник</a></li>
+            <li class="breadcrumb-item active text-muted">Обсуждение: @EntitySlug</li>
+        </ol>
+    </nav>
+
+    <h4 class="text-white mb-4"><i class="bi bi-chat-dots me-2"></i>Обсуждение: @EntitySlug</h4>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        @if (_posts.Count == 0)
+        {
+            <div class="ta-card p-4 text-center text-muted mb-3">Обсуждений пока нет. Будьте первым!</div>
+        }
+        else
+        {
+            @foreach (var post in _posts)
+            {
+                <div class="ta-card p-3 mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        @if (!string.IsNullOrEmpty(post.AuthorAvatarUrl))
+                        {
+                            <img src="@post.AuthorAvatarUrl" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="@post.AuthorUsername" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;background:var(--ta-accent);color:#fff;font-size:.8rem;font-weight:600;">@post.AuthorUsername[0]</div>
+                        }
+                        <span class="text-white fw-semibold">@post.AuthorUsername</span>
+                        <span class="text-muted small ms-auto">@post.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    </div>
+                    <div class="text-white mb-2" style="white-space:pre-wrap;">@post.Content</div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <button class="btn btn-sm @(post.IsLikedByMe ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="() => ToggleLikeAsync(post.Id)" disabled="@(!_isAuthenticated)">
+                            <i class="bi @(post.IsLikedByMe ? "bi-heart-fill" : "bi-heart") me-1"></i>@post.LikeCount
+                        </button>
+                        @if (_isAuthenticated)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartReply(post.Id)">
+                                <i class="bi bi-reply me-1"></i>Ответить
+                            </button>
+                        }
+                        @if (post.IsOwn)
+                        {
+                            <button class="btn btn-sm btn-outline-danger ms-auto" @onclick="() => DeleteAsync(post.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        }
+                    </div>
+
+                    @if (_replyingToId == post.Id)
+                    {
+                        <div class="mt-3">
+                            <textarea class="form-control mb-2" rows="3" placeholder="Ваш ответ..." @bind="_replyContent" style="background:var(--ta-bg);color:#fff;border-color:var(--ta-border);"></textarea>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-ta-primary btn-sm" @onclick="() => SubmitReplyAsync(post.Id)" disabled="@_submitting">Отправить</button>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => _replyingToId = null">Отмена</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (post.Replies.Count > 0)
+                    {
+                        <div class="mt-3 ms-4 border-start ps-3" style="border-color:var(--ta-border)!important;">
+                            @foreach (var reply in post.Replies)
+                            {
+                                <div class="mb-3">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        @if (!string.IsNullOrEmpty(reply.AuthorAvatarUrl))
+                                        {
+                                            <img src="@reply.AuthorAvatarUrl" class="rounded-circle" style="width:26px;height:26px;object-fit:cover;" alt="@reply.AuthorUsername" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:var(--ta-accent);color:#fff;font-size:.7rem;font-weight:600;">@reply.AuthorUsername[0]</div>
+                                        }
+                                        <span class="text-white small fw-semibold">@reply.AuthorUsername</span>
+                                        <span class="text-muted small ms-auto">@reply.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                    </div>
+                                    <div class="text-white small mb-1" style="white-space:pre-wrap;">@reply.Content</div>
+                                    <div class="d-flex gap-2 align-items-center">
+                                        <button class="btn btn-sm @(reply.IsLikedByMe ? "btn-ta-primary" : "btn-outline-secondary")" style="font-size:.75rem;padding:.2rem .5rem;" @onclick="() => ToggleLikeAsync(reply.Id)" disabled="@(!_isAuthenticated)">
+                                            <i class="bi @(reply.IsLikedByMe ? "bi-heart-fill" : "bi-heart") me-1"></i>@reply.LikeCount
+                                        </button>
+                                        @if (reply.IsOwn)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger ms-auto" style="font-size:.75rem;padding:.2rem .5rem;" @onclick="() => DeleteAsync(reply.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+        @if (_isAuthenticated)
+        {
+            <div class="ta-card p-3 mt-4">
+                <h6 class="text-muted mb-3">Написать сообщение</h6>
+                <textarea class="form-control mb-2" rows="4" placeholder="Ваше сообщение..." @bind="_newContent" style="background:var(--ta-bg);color:#fff;border-color:var(--ta-border);"></textarea>
+                <button class="btn btn-ta-primary" @onclick="SubmitAsync" disabled="@_submitting">
+                    @if (_submitting) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                    Отправить
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="ta-card p-3 mt-4 text-center text-muted">
+                <a href="/login" style="color:var(--ta-accent-light);">Войдите</a>, чтобы оставить сообщение.
+            </div>
+        }
+    }
+</div>

@@ -6,4 +6,5 @@ public interface ICurrentUser
 {
     UserId Id { get; }
     bool IsAuthenticated { get; }
+    UserRole Role { get; }
 }

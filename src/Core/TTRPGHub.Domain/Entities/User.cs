@@ -11,6 +11,7 @@ public sealed class User : Entity<UserId>
     public string PasswordHash { get; private set; } = null!;
     public DateTime CreatedAt { get; private init; }
     public UserProfile Profile { get; private set; } = null!;
+    public UserRole Role { get; private set; }
 
     private User() { }
 
@@ -23,7 +24,8 @@ public sealed class User : Entity<UserId>
             Email = email,
             PasswordHash = passwordHash,
             CreatedAt = DateTime.UtcNow,
-            Profile = UserProfile.Default()
+            Profile = UserProfile.Default(),
+            Role = UserRole.Player
         };
 
         user.RaiseDomainEvent(new UserCreatedEvent(user.Id));
@@ -34,7 +36,11 @@ public sealed class User : Entity<UserId>
         Profile = Profile.Update(displayName, bio, city);
 
     public void SetPassword(string passwordHash) => PasswordHash = passwordHash;
+
+    public void SetRole(UserRole role) => Role = role;
 }
+
+public enum UserRole { Player, Moderator, Admin }
 
 public sealed record UserProfile(
     string? DisplayName,

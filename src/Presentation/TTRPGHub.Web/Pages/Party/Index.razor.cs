@@ -16,6 +16,8 @@ public partial class Index
     private string _search = "";
     private string _systemFilter = "";
     private int _spotsFilter;
+    private string _formatFilter = "";
+    private string _locationFilter = "";
     private int _page = 1;
     private const int PageSize = 20;
 
@@ -70,12 +72,15 @@ public partial class Index
                         (s.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
             .Where(s => string.IsNullOrEmpty(_systemFilter) || s.System == _systemFilter)
             .Where(s => _spotsFilter == 0 || (s.MaxPlayers - s.CurrentPlayers) >= _spotsFilter)
+            .Where(s => string.IsNullOrEmpty(_formatFilter) || s.Format.ToString() == _formatFilter)
+            .Where(s => string.IsNullOrWhiteSpace(_locationFilter) ||
+                        (s.Location?.Contains(_locationFilter, StringComparison.OrdinalIgnoreCase) ?? false))
             .ToList();
     }
 
     private void ResetFilters()
     {
-        _search = ""; _systemFilter = ""; _spotsFilter = 0;
+        _search = ""; _systemFilter = ""; _spotsFilter = 0; _formatFilter = ""; _locationFilter = "";
         ApplyFilters();
     }
 

@@ -1,0 +1,29 @@
+@page "/reference/create-system"
+@attribute [Authorize]
+<PageTitle>Создать систему — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:640px;">
+    <h2 class="mb-1">Своя система</h2>
+    <p class="text-muted small mb-4">
+        Заведи справочник под любую систему — Call of Cthulhu, Savage Worlds, самописный хоумбрю.
+        Дальше сможешь добавлять туда классы, монстров, заклинания и любые другие категории —
+        они будут выглядеть и искаться так же, как официальные D&D 5e и Pathfinder 2e.
+    </p>
+
+    <div class="ta-card p-4">
+        <div class="mb-3">
+            <label class="form-label small text-muted">Название системы</label>
+            <input class="form-control" @bind="_name" maxlength="100" placeholder="Например: Зов Ктулху (домашний перевод)" />
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="text-danger small mb-2">@_error</div>
+        }
+
+        <button class="btn btn-ta-primary" @onclick="SubmitAsync" disabled="@(_submitting || string.IsNullOrWhiteSpace(_name))">
+            @if (_submitting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            Создать
+        </button>
+    </div>
+</div>

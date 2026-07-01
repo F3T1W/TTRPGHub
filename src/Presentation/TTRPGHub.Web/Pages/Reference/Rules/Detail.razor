@@ -1,0 +1,94 @@
+@page "/reference/{SystemSlug}/rules/{Category}/{Slug}"
+@attribute [Authorize]
+<PageTitle>@(_entry?.Title ?? "Справочник") — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:860px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@_error</div>
+        <a href="/reference/@SystemSlug/rules/@Category" class="btn btn-outline-secondary btn-sm">Назад к списку</a>
+    }
+    else if (_entry is not null)
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="/reference" class="text-decoration-none" style="color:var(--ta-accent-light);">Справочник</a></li>
+                <li class="breadcrumb-item"><a href="/reference/@SystemSlug/rules/@Category" class="text-decoration-none" style="color:var(--ta-accent-light);">@CategoryLabel(Category)</a></li>
+                <li class="breadcrumb-item active text-muted">@_entry.Title</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                <h2 class="mb-0" style="font-family:'Cinzel',serif;">@_entry.Title</h2>
+                <div class="d-flex align-items-center gap-2">
+                    @if (_entry.IsHomebrew)
+                    {
+                        <span class="badge bg-warning text-dark">Homebrew</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@_entry.Source</span>
+                    }
+                    @if (_entry.CanEdit)
+                    {
+                        <a href="/reference/@SystemSlug/rules/@Category/@Slug/edit" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="DeleteAsync" disabled="@_deleting">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            @if (_deleteError is not null)
+            {
+                <div class="text-danger small mb-2">@_deleteError</div>
+            }
+
+            @if (!string.IsNullOrEmpty(_entry.Summary))
+            {
+                <p class="text-muted mb-3">@_entry.Summary</p>
+            }
+
+            @if (_entry.Tags.Length > 0)
+            {
+                <div class="d-flex gap-1 flex-wrap mb-3">
+                    @foreach (var tag in _entry.Tags)
+                    {
+                        <span class="badge small" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@tag</span>
+                    }
+                </div>
+            }
+
+            @if (_statFields.Count > 0)
+            {
+                <div class="row g-2 mb-3">
+                    @foreach (var (label, value) in _statFields)
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted">@label</div>
+                            <div class="text-white">@value</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @foreach (var (label, html) in _blockFields)
+            {
+                <h6 class="mt-3 mb-1" style="color:var(--ta-gold)">@label</h6>
+                <div class="ta-rule-content">@html</div>
+            }
+
+            @if (_contentHtml is not null)
+            {
+                <hr style="border-color:var(--ta-border);" />
+                <div class="ta-rule-content">@_contentHtml</div>
+            }
+        </div>
+    }
+</div>

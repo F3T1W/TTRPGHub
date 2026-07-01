@@ -9,8 +9,8 @@ internal sealed class GetEventsQueryHandler(IGameEventRepository repo)
 {
     public async Task<Result<EventsPagedResult>> Handle(GetEventsQuery request, CancellationToken ct)
     {
-        var items = await repo.GetUpcomingAsync(request.Page, request.PageSize, ct);
-        var total = await repo.CountUpcomingAsync(ct);
+        var items = await repo.GetUpcomingAsync(request.Page, request.PageSize, request.Location, request.Format, ct);
+        var total = await repo.CountUpcomingAsync(request.Location, request.Format, ct);
 
         var dtos = items.Select(e => new GameEventSummaryDto(
             e.Id.Value, e.Title, e.System, e.Format.ToString(),

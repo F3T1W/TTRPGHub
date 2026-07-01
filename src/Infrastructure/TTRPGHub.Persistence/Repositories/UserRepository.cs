@@ -19,4 +19,22 @@ internal sealed class UserRepository(AppDbContext db) : IUserRepository
 
     public void Update(User user) =>
         db.Users.Update(user);
+
+    public async Task<(IReadOnlyList<User> Items, int Total)> SearchAsync(
+        string? search, int page, int pageSize, CancellationToken ct = default)
+    {
+        var query = db.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(u =>
+                EF.Functions.ILike(u.Username, $"%{search}%") || EF.Functions.ILike(u.Email.Value, $"%{search}%"));
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(u => u.Username)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
 }

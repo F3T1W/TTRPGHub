@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
+using System.Text.Json;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Campaigns;
@@ -10,6 +12,7 @@ public partial class Detail
     [Inject] private IApiClient Api { get; set; } = default!;
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
 
     private CampaignDetailDto? _campaign;
     private List<SessionNoteSummaryDto> _notes = [];
@@ -61,6 +64,14 @@ public partial class Detail
     {
         try { await Api.RemoveCampaignParticipantAsync(Id, userId); await Load(); }
         catch (Exception ex) { _error = ex.Message; }
+    }
+
+    internal async Task ExportAsync()
+    {
+        if (_campaign is null) return;
+        var export = new ImportCampaignRequest(_campaign.Title, _campaign.System, _campaign.Description);
+        var json = JsonSerializer.Serialize(export, new JsonSerializerOptions { WriteIndented = true });
+        await Js.InvokeVoidAsync("downloadJson", $"{_campaign.Title.Replace(" ", "_")}.json", json);
     }
 
     private static string StatusBadge(CampaignStatus status) => status switch

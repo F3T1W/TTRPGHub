@@ -28,4 +28,5 @@ internal sealed class ForumTopicRepository(AppDbContext db) : IForumTopicReposit
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public void Add(ForumTopic topic) => db.ForumTopics.Add(topic);
+    public void Remove(ForumTopic topic) => db.ForumTopics.Remove(topic);
 }

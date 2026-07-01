@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TTRPGHub.Persistence.Repositories;
+using TTRPGHub.Persistence.Repositories.Forum;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Dnd5e;
+using TTRPGHub.Repositories.Pf2e;
 using TTRPGHub.Repositories.Forum;
-using TTRPGHub.Persistence.Repositories.Forum;
-using TTRPGHub.Persistence.Repositories;
+using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Seeding;
+using TTRPGHub.Translation;
 
 namespace TTRPGHub;
 
@@ -33,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IInitiativeTrackerRepository, InitiativeTrackerRepository>();
         services.AddScoped<IDnd5eSpellRepository, Dnd5eSpellRepository>();
         services.AddScoped<IDnd5eMonsterRepository, Dnd5eMonsterRepository>();
+        services.AddScoped<IPf2eSpellRepository, Pf2eSpellRepository>();
+        services.AddScoped<IPf2eMonsterRepository, Pf2eMonsterRepository>();
         services.AddScoped<IEmailConfirmationTokenRepository, EmailConfirmationTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IForumCategoryRepository, ForumCategoryRepository>();
@@ -42,9 +47,28 @@ public static class DependencyInjection
         services.AddScoped<IRatingRepository, RatingRepository>();
         services.AddScoped<IGameEventRepository, GameEventRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IDiscussionRepository, DiscussionRepository>();
+        services.AddScoped<IUserCalendarPreferenceRepository, UserCalendarPreferenceRepository>();
+        services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
+        services.AddScoped<ISessionReminderLogRepository, SessionReminderLogRepository>();
+        services.AddScoped<ITableMessageRepository, TableMessageRepository>();
+        services.AddScoped<ITableTokenRepository, TableTokenRepository>();
+        services.AddScoped<IGameSystemRepository, GameSystemRepository>();
+        services.AddScoped<IRuleEntryRepository, RuleEntryRepository>();
+        services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+        services.AddScoped<IContentReportRepository, ContentReportRepository>();
+
+        services.AddHttpClient<GoogleTranslateService>();
+        services.AddScoped<ITranslationService, GoogleTranslateService>();
 
         services.AddHttpClient<Open5eImporter>();
         services.AddScoped<Open5eImporter>();
+        services.AddScoped<Pf2eImporter>();
+        services.AddHttpClient<Open5eRulesImporter>();
+        services.AddScoped<Open5eRulesImporter>();
+        services.AddScoped<LegacyRuleMigrator>();
+        services.AddScoped<Pf2eRulesSeeder>();
+        services.AddScoped<GuidesSeeder>();
 
         return services;
     }

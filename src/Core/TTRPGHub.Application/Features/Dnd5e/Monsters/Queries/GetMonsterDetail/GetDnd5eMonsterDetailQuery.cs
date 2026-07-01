@@ -7,6 +7,7 @@ public sealed record GetDnd5eMonsterDetailQuery(Guid Id) : IRequest<Result<Monst
 
 public sealed record MonsterDetailDto(
     Guid Id,
+    string Slug,
     string Name,
     string Size,
     string Type,

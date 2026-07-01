@@ -66,6 +66,18 @@ else if (_char is not null)
         <div class="d-flex gap-2">
             @if (!_editing)
             {
+                <button class="btn btn-outline-secondary" @onclick="ExportAsync" title="Экспорт в JSON">
+                    <i class="bi bi-download me-1"></i>JSON
+                </button>
+                <a href="@_pdfUrl" target="_blank" class="btn btn-outline-secondary" title="Скачать PDF">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                </a>
+                @if (_char.Level < 20)
+                {
+                    <button class="btn btn-outline-secondary" @onclick="() => _showLevelUp = !_showLevelUp" title="Повысить уровень">
+                        <i class="bi bi-arrow-up-circle me-1"></i>Уровень
+                    </button>
+                }
                 <button class="btn btn-ta-primary" @onclick="StartEdit">
                     <i class="bi bi-pencil me-1"></i>Редактировать
                 </button>
@@ -80,6 +92,36 @@ else if (_char is not null)
             }
         </div>
     </div>
+
+    @if (_showLevelUp)
+    {
+        <div class="ta-card p-3 mb-3">
+            <div class="d-flex align-items-end gap-2 flex-wrap">
+                <div>
+                    <label class="form-label small text-muted mb-1">Новый уровень</label>
+                    <input type="number" class="form-control" style="width:100px;" min="@(_char.Level + 1)" max="20" @bind="_newLevel" />
+                </div>
+                <button class="btn btn-ta-primary" @onclick="LevelUpAsync" disabled="@_levelingUp">
+                    @if (_levelingUp) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Повысить
+                </button>
+            </div>
+            @if (_levelUpError is not null)
+            {
+                <div class="text-danger small mt-2">@_levelUpError</div>
+            }
+            @if (_levelUpResult is not null)
+            {
+                <div class="alert alert-success py-2 mt-2 mb-0 small">
+                    <i class="bi bi-check-circle me-1"></i>Уровень @_levelUpResult.Level, HP: @_levelUpResult.MaxHitPoints.
+                    @if (!string.IsNullOrEmpty(_levelUpResult.WhatsNew))
+                    {
+                        <div class="mt-1">Новое на этом уровне: @_levelUpResult.WhatsNew</div>
+                    }
+                </div>
+            }
+        </div>
+    }
 
     @if (_saveError is not null)
     {

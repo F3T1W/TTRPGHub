@@ -148,6 +148,142 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
     cursor: pointer;
 }
 
+/* ── Игровой стол ────────────────────────────────────────── */
+.ta-showcase-frame {
+    background: var(--ta-bg);
+    border: 1px dashed var(--ta-border);
+    border-radius: 8px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    position: relative;
+    overflow: hidden;
+}
+
+.ta-showcase-frame img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ta-token {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--ta-accent-light);
+    background-color: var(--ta-surface);
+    background-size: cover;
+    background-position: center;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--ta-text);
+    z-index: 10;
+}
+
+.ta-token[data-can-move="true"] {
+    cursor: grab;
+}
+
+.ta-token[data-can-move="false"] {
+    cursor: default;
+    opacity: 0.9;
+}
+
+.ta-token.dragging {
+    cursor: grabbing;
+    z-index: 50;
+    box-shadow: 0 4px 16px var(--ta-accent-glow);
+}
+
+.ta-token-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.65rem;
+    background: rgba(13, 13, 26, 0.85);
+    padding: 0 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+}
+
+.ta-token-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--ta-bg);
+    border: 1px solid var(--ta-border);
+    color: #ef4444;
+    font-size: 0.6rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 11;
+}
+
+.ta-roll-line {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 2px solid var(--ta-gold);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.ta-rule-content p {
+    color: var(--ta-text);
+    line-height: 1.6;
+}
+
+.ta-rule-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.ta-rule-content th, .ta-rule-content td {
+    border: 1px solid var(--ta-border);
+    padding: 0.4rem 0.6rem;
+    color: var(--ta-text);
+}
+
+.ta-rule-content th {
+    background: var(--ta-surface);
+    color: var(--ta-gold);
+}
+
+.ta-rule-content ul, .ta-rule-content ol {
+    color: var(--ta-text);
+    padding-left: 1.4rem;
+}
+
+.ta-rule-content h1, .ta-rule-content h2, .ta-rule-content h3 {
+    color: var(--ta-accent-light);
+    margin-top: 1rem;
+}
+
+.ta-whisper-line {
+    background: rgba(124, 58, 237, 0.1);
+    border-left: 2px solid var(--ta-accent);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-style: italic;
+}
+
 /* ── Кнопки ──────────────────────────────────────────────── */
 .btn-ta-primary {
     background: var(--ta-accent);

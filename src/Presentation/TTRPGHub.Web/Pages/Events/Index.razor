@@ -11,6 +11,28 @@
         </AuthorizeView>
     </div>
 
+    <div class="ta-card p-3 mb-4">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+                <label class="form-label small text-muted mb-1">Город / место</label>
+                <input class="form-control" placeholder="Например: Москва" @bind="_location" @bind:event="oninput" @onkeydown="OnFilterKeyDown" />
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small text-muted mb-1">Формат</label>
+                <select class="form-select" @bind="_format">
+                    <option value="">Любой</option>
+                    <option value="Online">Онлайн</option>
+                    <option value="Offline">Оффлайн</option>
+                    <option value="Hybrid">Гибрид</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button class="btn btn-ta-primary flex-grow-1" @onclick="ApplyFilters"><i class="bi bi-funnel me-1"></i>Найти</button>
+                <button class="btn btn-outline-secondary" @onclick="ResetFilters" title="Сбросить"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+    </div>
+
     @if (_loading)
     {
         <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent)"></div></div>

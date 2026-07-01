@@ -12,7 +12,7 @@ internal sealed class GetUpcomingSessionsQueryHandler(
 {
     public async Task<Result<IReadOnlyList<SessionSummaryDto>>> Handle(GetUpcomingSessionsQuery query, CancellationToken ct)
     {
-        var sessions = await repository.GetUpcomingAsync(query.Page, query.PageSize, ct);
+        var sessions = await repository.GetUpcomingAsync(query.Page, query.PageSize, query.Location, query.Format, ct);
         var result = new List<SessionSummaryDto>(sessions.Count);
 
         foreach (var s in sessions)
@@ -27,6 +27,6 @@ internal sealed class GetUpcomingSessionsQueryHandler(
     private static SessionSummaryDto ToDto(GameSession s, string organizerName) => new(
         s.Id.Value, s.Title, s.Description, s.System,
         s.MaxPlayers, s.Participants.Count,
-        s.ScheduledAt, s.Status,
+        s.ScheduledAt, s.Format, s.Location, s.Status,
         s.OrganizerId.Value, organizerName);
 }

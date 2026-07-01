@@ -26,6 +26,9 @@
                 </span>
             </div>
             <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ExportAsync" title="Экспорт в JSON">
+                    <i class="bi bi-download me-1"></i>JSON
+                </button>
                 <span class="badge @StatusBadge(_campaign.Status)">@StatusLabel(_campaign.Status)</span>
                 @if (_campaign.IsCurrentUserOrganizer)
                 {

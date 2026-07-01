@@ -1,0 +1,48 @@
+@page "/admin/reports"
+@attribute [Authorize(Roles = "Moderator,Admin")]
+<PageTitle>Жалобы — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-4">Жалобы на контент</h2>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_reports.Count == 0)
+    {
+        <div class="ta-card p-5 text-center text-muted">
+            <i class="bi bi-check-circle mb-2" style="font-size:2.5rem"></i>
+            <p class="mb-0">Открытых жалоб нет.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var r in _reports)
+        {
+            <div class="ta-card p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <span class="badge bg-secondary">@EntityTypeLabel(r.EntityType)</span>
+                        <span class="text-muted small ms-2">от @r.ReporterUsername, @r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        <p class="mb-1 mt-2">@r.Reason</p>
+                        <span class="text-muted small">ID контента: @r.EntityId</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" @onclick="() => ResolveAsync(r.Id, ResolvedStatus)" disabled="@(_resolvingId == r.Id)">
+                            Решено
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => ResolveAsync(r.Id, DismissedStatus)" disabled="@(_resolvingId == r.Id)">
+                            Отклонить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+    @if (_error is not null)
+    {
+        <div class="text-danger small mt-2">@_error</div>
+    }
+</div>

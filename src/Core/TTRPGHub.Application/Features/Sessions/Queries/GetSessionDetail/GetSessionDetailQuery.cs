@@ -13,6 +13,8 @@ public sealed record SessionDetailDto(
     string System,
     int MaxPlayers,
     DateTime ScheduledAt,
+    SessionFormat Format,
+    string? Location,
     SessionStatus Status,
     Guid OrganizerId,
     string OrganizerName,

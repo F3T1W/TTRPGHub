@@ -21,6 +21,7 @@ internal static class ResultExtensions
             var c when c.EndsWith(".NotFound") => StatusCodes.Status404NotFound,
             var c when c.EndsWith(".Conflict") => StatusCodes.Status409Conflict,
             "Auth.Unauthorized" => StatusCodes.Status401Unauthorized,
+            "Auth.Forbidden" => StatusCodes.Status403Forbidden,
             var c when c.StartsWith("Validation.") => StatusCodes.Status422UnprocessableEntity,
             _ => StatusCodes.Status400BadRequest
         };

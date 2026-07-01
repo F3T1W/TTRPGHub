@@ -6,6 +6,8 @@ using TTRPGHub.Features.Campaigns.Commands.CreateCampaign;
 using TTRPGHub.Features.Campaigns.Commands.RemoveParticipant;
 using TTRPGHub.Features.Campaigns.Commands.UpdateCampaign;
 using TTRPGHub.Features.Campaigns.Queries.GetCampaignDetail;
+using TTRPGHub.Features.Campaigns.Commands.ImportCampaign;
+using TTRPGHub.Features.Campaigns.Queries.GetAllCampaigns;
 using TTRPGHub.Features.Campaigns.Queries.GetMyCampaigns;
 using TTRPGHub.Entities;
 
@@ -16,6 +18,12 @@ public static class CampaignsEndpoints
     public static void MapCampaigns(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/campaigns").RequireAuthorization();
+
+        group.MapGet("/", async (ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetAllCampaignsQuery(), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        }).AllowAnonymous();
 
         group.MapGet("/me", async (ISender sender, CancellationToken ct) =>
         {
@@ -60,8 +68,19 @@ public static class CampaignsEndpoints
             var result = await sender.Send(new ChangeCampaignStatusCommand(id, req.Status), ct);
             return result.IsSuccess ? Results.NoContent() : result.ToResponse();
         });
+
+        group.MapPost("/import", async (ImportCampaignRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new ImportCampaignCommand(req.Title, req.System, req.Description), ct);
+            return result.IsSuccess
+                ? Results.Created($"/api/v1/campaigns/{result.Value!.CampaignId}", result.Value)
+                : result.ToResponse();
+        })
+        .WithSummary("Импортировать кампанию из JSON");
     }
 }
+
+public record ImportCampaignRequest(string Title, string System, string? Description = null);
 
 public record CreateCampaignRequest(string Title, string? Description, string System);
 public record UpdateCampaignRequest(string Title, string? Description, string System);

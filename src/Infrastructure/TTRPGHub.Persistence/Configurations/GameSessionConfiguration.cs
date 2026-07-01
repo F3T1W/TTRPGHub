@@ -29,11 +29,24 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
         builder.Property(s => s.System).HasMaxLength(100).IsRequired().HasColumnName("system");
         builder.Property(s => s.MaxPlayers).IsRequired().HasColumnName("max_players");
         builder.Property(s => s.ScheduledAt).IsRequired().HasColumnName("scheduled_at");
+        builder.Property(s => s.Format)
+            .IsRequired()
+            .HasDefaultValue(SessionFormat.Online)
+            .HasConversion<string>()
+            .HasColumnName("format");
+        builder.Property(s => s.Location).HasMaxLength(300).HasColumnName("location");
+        builder.HasIndex(s => s.Format);
         builder.Property(s => s.Status)
             .IsRequired()
             .HasDefaultValue(SessionStatus.Planned)
             .HasColumnName("status")
             .HasConversion<string>();
+        builder.Property(s => s.CurrentShowcaseImageUrl).HasMaxLength(1000).HasColumnName("current_showcase_image_url");
+        builder.Property(s => s.CurrentTrackUrl).HasMaxLength(1000).HasColumnName("current_track_url");
+        builder.Property(s => s.CurrentTrackTitle).HasMaxLength(200).HasColumnName("current_track_title");
+        builder.Property(s => s.IsAudioPlaying).IsRequired().HasDefaultValue(false).HasColumnName("is_audio_playing");
+        builder.Property(s => s.AudioPositionSeconds).IsRequired().HasDefaultValue(0d).HasColumnName("audio_position_seconds");
+        builder.Property(s => s.AudioUpdatedAt).IsRequired().HasDefaultValueSql("now()").HasColumnName("audio_updated_at");
         builder.Property(s => s.CreatedAt).IsRequired().HasColumnName("created_at");
         builder.Property(s => s.UpdatedAt).IsRequired().HasColumnName("updated_at");
 

@@ -1,6 +1,7 @@
 using MediatR;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Common;
+using TTRPGHub.Entities;
 using TTRPGHub.Entities.Ratings;
 using TTRPGHub.Repositories;
 
@@ -18,7 +19,8 @@ internal sealed class DeleteRatingCommandHandler(
         if (rating is null)
             return Error.NotFound(nameof(UserRating));
 
-        if (rating.RaterId != currentUser.Id)
+        var isModerator = currentUser.Role is UserRole.Moderator or UserRole.Admin;
+        if (rating.RaterId != currentUser.Id && !isModerator)
             return Error.Forbidden();
 
         ratingRepo.Remove(rating);

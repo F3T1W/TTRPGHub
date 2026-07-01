@@ -1,4 +1,5 @@
 using MediatR;
+using TTRPGHub.Entities.Events;
 using TTRPGHub.Extensions;
 using TTRPGHub.Features.Events.Commands.CancelEvent;
 using TTRPGHub.Features.Events.Commands.CreateEvent;
@@ -15,8 +16,11 @@ public static class EventEndpoints
     {
         var g = app.MapGroup("/api/v1/events").WithTags("Events");
 
-        g.MapGet("/", async (int page, int pageSize, IMediator m, CancellationToken ct) =>
-            (await m.Send(new GetEventsQuery(page, pageSize), ct)).ToResponse())
+        g.MapGet("/", async (int page, int pageSize, string? location, string? format, IMediator m, CancellationToken ct) =>
+        {
+            EventFormat? parsedFormat = Enum.TryParse<EventFormat>(format, ignoreCase: true, out var f) ? f : null;
+            return (await m.Send(new GetEventsQuery(page, pageSize, location, parsedFormat), ct)).ToResponse();
+        })
             .AllowAnonymous();
 
         g.MapGet("/{id:guid}", async (Guid id, IMediator m, CancellationToken ct) =>

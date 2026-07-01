@@ -1,18 +1,34 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference;
 
 public partial class Index
 {
+    [Inject] private IApiClient Api { get; set; } = default!;
+
+    private List<GameSystemDto> _customSystems = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var systems = await Api.GetGameSystemsAsync();
+            _customSystems = systems.Where(s => !s.IsOfficial).ToList();
+        }
+        catch { /* если не удалось — просто не покажем кастомные системы */ }
+    }
+
     private readonly List<GameSystemCard> _systems =
     [
         new("D&D 5e", "🐉", "/reference/dnd5e/spells",
             "Dungeons & Dragons 5-е издание — самая популярная НРИ в мире. Полный SRD: заклинания, монстры, снаряжение.",
             ["Заклинания", "Бестиарий"], Available: true),
 
-        new("Pathfinder 2e", "⚔️", "/reference/pf2e",
+        new("Pathfinder 2e", "⚔️", "/reference/pf2e/spells",
             "Pathfinder 2nd Edition — глубокая система с богатой тактикой и огромным выбором вариантов персонажа.",
-            ["Заклинания", "Бестиарий", "Черты"], Available: false),
+            ["Заклинания", "Бестиарий"], Available: true),
 
         new("Cyberpunk RED", "🤖", "/reference/cpred",
             "Тёмное киберпанк-будущее. Хакеры, наёмники и корпоративные войны в системе Cyberpunk RED.",

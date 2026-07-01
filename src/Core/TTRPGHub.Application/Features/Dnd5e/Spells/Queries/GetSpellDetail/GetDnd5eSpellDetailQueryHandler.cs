@@ -15,7 +15,7 @@ internal sealed class GetDnd5eSpellDetailQueryHandler(IDnd5eSpellRepository repo
         if (spell is null) return Error.NotFound(nameof(Dnd5eSpell));
 
         return new SpellDetailDto(
-            spell.Id.Value, spell.Name, spell.Level, spell.School,
+            spell.Id.Value, spell.Slug, spell.Name, spell.Level, spell.School,
             spell.CastingTime, spell.Range, spell.Components, spell.Material,
             spell.Duration, spell.Concentration, spell.Ritual,
             spell.Description, spell.HigherLevel, spell.Classes, spell.Source);

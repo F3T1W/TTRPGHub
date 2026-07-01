@@ -29,7 +29,7 @@ internal sealed class GetMySessionsQueryHandler(
             result.Add(new SessionSummaryDto(
                 s.Id.Value, s.Title, s.Description, s.System,
                 s.MaxPlayers, s.Participants.Count,
-                s.ScheduledAt, s.Status,
+                s.ScheduledAt, s.Format, s.Location, s.Status,
                 s.OrganizerId.Value, organizer?.Username ?? "—"));
         }
 

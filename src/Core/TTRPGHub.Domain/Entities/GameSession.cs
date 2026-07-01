@@ -11,9 +11,17 @@ public sealed class GameSession : Entity<GameSessionId>
     public string System { get; private set; } = null!;   // «D&D 5e», «Pathfinder», etc.
     public int MaxPlayers { get; private set; }
     public DateTime ScheduledAt { get; private set; }
+    public SessionFormat Format { get; private set; }
+    public string? Location { get; private set; }
     public SessionStatus Status { get; private set; }
     public DateTime CreatedAt { get; private init; }
     public DateTime UpdatedAt { get; private set; }
+    public string? CurrentShowcaseImageUrl { get; private set; }
+    public string? CurrentTrackUrl { get; private set; }
+    public string? CurrentTrackTitle { get; private set; }
+    public bool IsAudioPlaying { get; private set; }
+    public double AudioPositionSeconds { get; private set; }
+    public DateTime AudioUpdatedAt { get; private set; }
 
     private readonly List<SessionParticipant> _participants = [];
     public IReadOnlyList<SessionParticipant> Participants => _participants.AsReadOnly();
@@ -22,7 +30,8 @@ public sealed class GameSession : Entity<GameSessionId>
 
     public static GameSession Create(
         UserId organizerId, string title, string? description,
-        string system, int maxPlayers, DateTime scheduledAt)
+        string system, int maxPlayers, DateTime scheduledAt,
+        SessionFormat format, string? location)
     {
         var now = DateTime.UtcNow;
         var session = new GameSession
@@ -34,6 +43,8 @@ public sealed class GameSession : Entity<GameSessionId>
             System = system,
             MaxPlayers = maxPlayers,
             ScheduledAt = scheduledAt,
+            Format = format,
+            Location = location,
             Status = SessionStatus.Planned,
             CreatedAt = now,
             UpdatedAt = now
@@ -106,15 +117,94 @@ public sealed class GameSession : Entity<GameSessionId>
         return null;
     }
 
-    public void Update(string title, string? description, string system, int maxPlayers, DateTime scheduledAt)
+    public void Update(
+        string title, string? description, string system, int maxPlayers, DateTime scheduledAt,
+        SessionFormat format, string? location)
     {
         Title = title;
         Description = description;
         System = system;
         MaxPlayers = maxPlayers;
         ScheduledAt = scheduledAt;
+        Format = format;
+        Location = location;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public Error? SetShowcaseImage(UserId requesterId, string? imageUrl)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        CurrentShowcaseImageUrl = imageUrl;
+        UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? SetTrack(UserId requesterId, string trackUrl, string? trackTitle)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        CurrentTrackUrl = trackUrl;
+        CurrentTrackTitle = trackTitle;
+        IsAudioPlaying = false;
+        AudioPositionSeconds = 0;
+        AudioUpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? PlayAudio(UserId requesterId, double positionSeconds)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+        if (CurrentTrackUrl is null)
+            return Error.Validation("Audio.NoTrack", "Трек не выбран.");
+
+        IsAudioPlaying = true;
+        AudioPositionSeconds = positionSeconds;
+        AudioUpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? PauseAudio(UserId requesterId, double positionSeconds)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        IsAudioPlaying = false;
+        AudioPositionSeconds = positionSeconds;
+        AudioUpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? SeekAudio(UserId requesterId, double positionSeconds)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        AudioPositionSeconds = positionSeconds;
+        AudioUpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? ClearAudio(UserId requesterId)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        CurrentTrackUrl = null;
+        CurrentTrackTitle = null;
+        IsAudioPlaying = false;
+        AudioPositionSeconds = 0;
+        AudioUpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public bool IsParticipant(UserId userId) => _participants.Any(p => p.UserId == userId);
 }
 
 public enum SessionStatus { Planned, InProgress, Completed, Cancelled }
+public enum SessionFormat { Online, Offline, Hybrid }

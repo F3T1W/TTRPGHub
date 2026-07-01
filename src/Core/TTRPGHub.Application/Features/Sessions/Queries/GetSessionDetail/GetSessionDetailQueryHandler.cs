@@ -29,7 +29,7 @@ internal sealed class GetSessionDetailQueryHandler(
 
         return new SessionDetailDto(
             session.Id.Value, session.Title, session.Description, session.System,
-            session.MaxPlayers, session.ScheduledAt, session.Status,
+            session.MaxPlayers, session.ScheduledAt, session.Format, session.Location, session.Status,
             session.OrganizerId.Value, organizer?.Username ?? "—",
             participants,
             session.Participants.Any(p => p.UserId == currentUser.Id),

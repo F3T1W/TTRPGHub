@@ -20,7 +20,9 @@ internal sealed class CreateSessionCommandHandler(
             command.Description,
             command.System,
             command.MaxPlayers,
-            command.ScheduledAt.ToUniversalTime());
+            command.ScheduledAt.ToUniversalTime(),
+            command.Format,
+            command.Location);
 
         await repository.AddAsync(session, ct);
         await unitOfWork.SaveChangesAsync(ct);

@@ -10,6 +10,7 @@ public interface IForumPostRepository
     Task<ForumPost?> GetByIdAsync(ForumPostId id, CancellationToken ct = default);
     Task<bool> HasLikeAsync(ForumPostId postId, UserId userId, CancellationToken ct = default);
     void Add(ForumPost post);
+    void Remove(ForumPost post);
     void AddLike(ForumPostLike like);
     void RemoveLike(ForumPostLike like);
 }

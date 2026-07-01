@@ -53,6 +53,21 @@
                 </div>
             </div>
 
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <label class="form-label">Формат *</label>
+                    <InputSelect class="form-select" @bind-Value="_form.Format">
+                        <option value="@SessionFormat.Online">Онлайн</option>
+                        <option value="@SessionFormat.Offline">Оффлайн (за столом)</option>
+                        <option value="@SessionFormat.Hybrid">Гибрид</option>
+                    </InputSelect>
+                </div>
+                <div class="col-6">
+                    <label class="form-label">Город / место</label>
+                    <InputText class="form-control" @bind-Value="_form.Location" placeholder="Например: Москва, антикафе «Тавропед»" />
+                </div>
+            </div>
+
             <div class="mb-4">
                 <label class="form-label">Описание</label>
                 <InputTextArea class="form-control" rows="4" @bind-Value="_form.Description"

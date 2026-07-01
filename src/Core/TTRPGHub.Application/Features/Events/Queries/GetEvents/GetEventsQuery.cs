@@ -1,9 +1,12 @@
 using MediatR;
 using TTRPGHub.Common;
+using TTRPGHub.Entities.Events;
 
 namespace TTRPGHub.Features.Events.Queries.GetEvents;
 
-public sealed record GetEventsQuery(int Page, int PageSize) : IRequest<Result<EventsPagedResult>>;
+public sealed record GetEventsQuery(
+    int Page, int PageSize, string? Location = null, EventFormat? Format = null
+) : IRequest<Result<EventsPagedResult>>;
 
 public sealed record GameEventSummaryDto(
     Guid Id, string Title, string System, string Format,

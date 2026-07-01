@@ -17,7 +17,31 @@ public sealed record ResetPasswordRequest(string Token, string NewPassword);
 // ── Characters ────────────────────────────────────────────────────────────────
 
 public sealed record CreateCharacterRequest(string Name, string Race, string Class, int Level);
+
+public sealed record CreateCharacterFromRulesRequest(
+    string Name, string SystemSlug, string RaceSlug, string ClassSlug, int Level,
+    int Strength, int Dexterity, int Constitution, int Intelligence, int Wisdom, int Charisma);
+
+public sealed record LevelUpRequest(int NewLevel);
+public sealed record LevelUpResponse(Guid CharacterId, int Level, int MaxHitPoints, int CurrentHitPoints, string? WhatsNew);
+
+public sealed record CreateCharacterFromRulesResponse(
+    Guid CharacterId, string Name, string Race, string Class, int Level,
+    int Strength, int Dexterity, int Constitution, int Intelligence, int Wisdom, int Charisma,
+    int MaxHitPoints, int ArmorClass, List<string> SavingThrowProficiencies, string? ProficiencyNotes);
 public sealed record CreateCharacterResponse(Guid CharacterId, string Name, string Race, string Class, int Level);
+public sealed record ImportCharacterResponse(Guid CharacterId, string Name);
+public sealed record ImportCharacterRequest(
+    string Name, string Race, string Class, int Level,
+    bool IsPublic = false,
+    string? Background = null, string? Alignment = null, int ExperiencePoints = 0,
+    string? PersonalityTraits = null, string? Ideals = null, string? Bonds = null, string? Flaws = null,
+    int Strength = 10, int Dexterity = 10, int Constitution = 10,
+    int Intelligence = 10, int Wisdom = 10, int Charisma = 10,
+    int MaxHitPoints = 1, int CurrentHitPoints = 1, int TemporaryHitPoints = 0,
+    int ArmorClass = 10, int Speed = 30, string HitDice = "1d8",
+    List<string>? SkillProficiencies = null, List<string>? SavingThrowProficiencies = null,
+    string? FeaturesAndTraits = null, string? Equipment = null);
 
 public sealed record CharacterSummaryDto(
     Guid Id, string Name, string Race, string Class,
@@ -124,6 +148,12 @@ public interface IApiClient
     [Post("/api/characters")]
     Task<CreateCharacterResponse> CreateCharacterAsync([Body] CreateCharacterRequest request, CancellationToken ct = default);
 
+    [Post("/api/characters/from-rules")]
+    Task<CreateCharacterFromRulesResponse> CreateCharacterFromRulesAsync([Body] CreateCharacterFromRulesRequest request, CancellationToken ct = default);
+
+    [Post("/api/characters/{id}/level-up")]
+    Task<LevelUpResponse> LevelUpCharacterAsync(Guid id, [Body] LevelUpRequest request, CancellationToken ct = default);
+
     [Get("/api/characters/{id}")]
     Task<CharacterDetailDto> GetCharacterByIdAsync(Guid id, CancellationToken ct = default);
 
@@ -134,8 +164,13 @@ public interface IApiClient
     [Multipart]
     Task<AvatarUploadResponse> UploadAvatarAsync(Guid id, [AliasAs("file")] StreamPart file, CancellationToken ct = default);
 
+    [Post("/api/characters/import")]
+    Task<ImportCharacterResponse> ImportCharacterAsync([Body] ImportCharacterRequest request, CancellationToken ct = default);
+
     [Get("/api/sessions/upcoming")]
-    Task<List<SessionSummaryDto>> GetUpcomingSessionsAsync([Query] int page = 1, [Query] int pageSize = 20, CancellationToken ct = default);
+    Task<List<SessionSummaryDto>> GetUpcomingSessionsAsync(
+        [Query] int page = 1, [Query] int pageSize = 20,
+        [Query] string? location = null, [Query] string? format = null, CancellationToken ct = default);
 
     [Get("/api/sessions/me")]
     Task<List<SessionSummaryDto>> GetMySessionsAsync(CancellationToken ct = default);
@@ -145,6 +180,9 @@ public interface IApiClient
 
     [Post("/api/sessions")]
     Task<CreateSessionResponse> CreateSessionAsync([Body] CreateSessionRequest request, CancellationToken ct = default);
+
+    [Post("/api/sessions/import")]
+    Task<ImportSessionResponse> ImportSessionAsync([Body] ImportSessionRequest request, CancellationToken ct = default);
 
     [Put("/api/sessions/{id}")]
     Task UpdateSessionAsync(Guid id, [Body] UpdateSessionRequest request, CancellationToken ct = default);
@@ -160,8 +198,14 @@ public interface IApiClient
 
     // ── Campaigns ────────────────────────────────────────────────────────────
 
+    [Get("/api/v1/campaigns")]
+    Task<List<CampaignSummaryDto>> GetAllCampaignsAsync(CancellationToken ct = default);
+
     [Get("/api/v1/campaigns/me")]
     Task<List<CampaignSummaryDto>> GetMyCampaignsAsync(CancellationToken ct = default);
+
+    [Post("/api/v1/campaigns/import")]
+    Task<ImportCampaignResponse> ImportCampaignAsync([Body] ImportCampaignRequest request, CancellationToken ct = default);
 
     [Get("/api/v1/campaigns/{id}")]
     Task<CampaignDetailDto> GetCampaignDetailAsync(Guid id, CancellationToken ct = default);
@@ -266,6 +310,28 @@ public interface IApiClient
     [Get("/api/v1/dnd5e/monsters/{id}")]
     Task<MonsterDetailDto> GetDnd5eMonsterAsync(Guid id, CancellationToken ct = default);
 
+    // ── Pathfinder 2e Reference ──────────────────────────────────────────────
+
+    [Get("/api/v1/pf2e/spells")]
+    Task<Pf2eSpellPagedResult> GetPf2eSpellsAsync(
+        [Query] string? search = null, [Query] string? tradition = null,
+        [Query] int? level = null, [Query] string? trait = null,
+        [Query] int page = 1, [Query] int pageSize = 30,
+        CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/spells/{id}")]
+    Task<Pf2eSpellDetailDto> GetPf2eSpellAsync(Guid id, CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/monsters")]
+    Task<Pf2eMonsterPagedResult> GetPf2eMonstersAsync(
+        [Query] string? search = null, [Query] string? trait = null,
+        [Query] string? size = null, [Query] int? level = null,
+        [Query] int page = 1, [Query] int pageSize = 30,
+        CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/monsters/{id}")]
+    Task<Pf2eMonsterDetailDto> GetPf2eMonsterAsync(Guid id, CancellationToken ct = default);
+
     // ── Users ─────────────────────────────────────────────────────────────────
 
     [Get("/api/v1/users/{id}")]
@@ -273,7 +339,10 @@ public interface IApiClient
 
     // Events
     [Get("/api/v1/events")]
-    Task<EventsPagedResult> GetEventsAsync([AliasAs("page")] int page, [AliasAs("pageSize")] int pageSize, CancellationToken ct = default);
+    Task<EventsPagedResult> GetEventsAsync(
+        [AliasAs("page")] int page, [AliasAs("pageSize")] int pageSize,
+        [AliasAs("location")] string? location = null, [AliasAs("format")] string? format = null,
+        CancellationToken ct = default);
 
     [Get("/api/v1/events/{id}")]
     Task<GameEventDetailDto> GetEventDetailAsync(Guid id, CancellationToken ct = default);
@@ -341,6 +410,163 @@ public interface IApiClient
 
     [Post("/api/v1/homebrew/{id}/like")]
     Task<ToggleLikeResult> ToggleHomebrewLikeAsync(Guid id, CancellationToken ct = default);
+
+    // Discussions
+    [Get("/api/v1/discussions/{entityType}/{entitySlug}")]
+    Task<List<DiscussionPostDto>> GetDiscussionAsync(string entityType, string entitySlug, CancellationToken ct = default);
+
+    [Post("/api/v1/discussions/{entityType}/{entitySlug}")]
+    Task<Guid> AddDiscussionPostAsync(string entityType, string entitySlug, [Body] AddDiscussionPostRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/discussions/posts/{postId}/like")]
+    Task<LikeResponse> ToggleDiscussionLikeAsync(Guid postId, CancellationToken ct = default);
+
+    [Delete("/api/v1/discussions/posts/{postId}")]
+    Task DeleteDiscussionPostAsync(Guid postId, CancellationToken ct = default);
+
+    // ── Calendar ──────────────────────────────────────────────────────────────
+
+    [Post("/api/calendar/preferences")]
+    Task<CalendarPreferenceDto> UpsertCalendarPreferenceAsync([Body] UpsertCalendarPreferenceRequest request, CancellationToken ct = default);
+
+    [Get("/api/calendar/preferences")]
+    Task<CalendarPreferenceDto> GetCalendarPreferenceAsync(CancellationToken ct = default);
+
+    [Get("/api/calendar/sessions/{id}.ics")]
+    Task<string> GetSessionIcsAsync(Guid id, CancellationToken ct = default);
+
+    [Get("/api/calendar/push/vapid-public-key")]
+    Task<string> GetVapidPublicKeyAsync(CancellationToken ct = default);
+
+    [Post("/api/calendar/push/subscribe")]
+    Task SubscribePushAsync([Body] SubscribePushRequest request, CancellationToken ct = default);
+
+    [Post("/api/calendar/push/unsubscribe")]
+    Task UnsubscribePushAsync([Body] UnsubscribePushRequest request, CancellationToken ct = default);
+
+    // ── Game Table ────────────────────────────────────────────────────────────
+
+    [Get("/api/table/{sessionId}/state")]
+    Task<TableStateDto> GetTableStateAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/messages")]
+    Task<TableMessageDto> SendTableChatAsync(Guid sessionId, [Body] SendChatRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/roll")]
+    Task<TableMessageDto> RollTableDiceAsync(Guid sessionId, [Body] RollDiceRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/showcase")]
+    Task SetTableShowcaseAsync(Guid sessionId, [Body] SetShowcaseRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/showcase/upload")]
+    [Multipart]
+    Task<AvatarUploadResponse> UploadTableShowcaseAsync(Guid sessionId, [AliasAs("file")] StreamPart file, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/whisper")]
+    Task<TableMessageDto> SendTableWhisperAsync(Guid sessionId, [Body] SendWhisperRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/audio/track")]
+    Task SetTableTrackAsync(Guid sessionId, [Body] SetTrackRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/audio/upload")]
+    [Multipart]
+    Task<AvatarUploadResponse> UploadTableTrackAsync(Guid sessionId, [AliasAs("file")] StreamPart file, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/audio/play")]
+    Task PlayTableAudioAsync(Guid sessionId, [Body] AudioPositionRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/audio/pause")]
+    Task PauseTableAudioAsync(Guid sessionId, [Body] AudioPositionRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/audio/seek")]
+    Task SeekTableAudioAsync(Guid sessionId, [Body] AudioPositionRequest request, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/audio")]
+    Task ClearTableAudioAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/tokens")]
+    Task<TableTokenDto> AddTableTokenAsync(Guid sessionId, [Body] AddTokenRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/tokens/{tokenId}/position")]
+    Task MoveTableTokenAsync(Guid sessionId, Guid tokenId, [Body] TokenPositionRequest request, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/tokens/{tokenId}")]
+    Task RemoveTableTokenAsync(Guid sessionId, Guid tokenId, CancellationToken ct = default);
+
+    // ── Rules Reference 2.0 (системно-независимый справочник) ──────────────────
+
+    [Get("/api/v1/rules/systems")]
+    Task<List<GameSystemDto>> GetGameSystemsAsync(CancellationToken ct = default);
+
+    [Get("/api/v1/rules/{systemSlug}/{category}")]
+    Task<RuleEntryPageDto> GetRuleEntriesAsync(
+        string systemSlug, string category, [Query] string? search = null,
+        [Query] int page = 1, [Query] int pageSize = 40, CancellationToken ct = default);
+
+    [Get("/api/v1/rules/{systemSlug}/{category}/{slug}")]
+    Task<RuleEntryDetailDto> GetRuleEntryDetailAsync(
+        string systemSlug, string category, string slug, CancellationToken ct = default);
+
+    [Post("/api/v1/rules/{systemSlug}/multiclass")]
+    Task<MulticlassResultDto> CalculateMulticlassAsync(
+        string systemSlug, [Body] List<ClassLevelInputDto> classes, CancellationToken ct = default);
+
+    [Post("/api/v1/rules/systems")]
+    Task<CreateGameSystemResponse> CreateGameSystemAsync([Body] CreateGameSystemRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/rules/{systemSlug}/{category}")]
+    Task<CreateRuleEntryResponse> CreateRuleEntryAsync(
+        string systemSlug, string category, [Body] CreateRuleEntryRequest request, CancellationToken ct = default);
+
+    [Put("/api/v1/rules/{systemSlug}/{category}/{slug}")]
+    Task UpdateRuleEntryAsync(
+        string systemSlug, string category, string slug, [Body] CreateRuleEntryRequest request, CancellationToken ct = default);
+
+    [Delete("/api/v1/rules/{systemSlug}/{category}/{slug}")]
+    Task DeleteRuleEntryAsync(string systemSlug, string category, string slug, CancellationToken ct = default);
+
+    // ── Тикеты поддержки ─────────────────────────────────────────────────────────
+
+    [Post("/api/tickets")]
+    [Multipart]
+    Task<CreateTicketResponse> CreateTicketAsync(
+        [AliasAs("title")] string title,
+        [AliasAs("description")] string description,
+        [AliasAs("contactInfo")] string? contactInfo,
+        [AliasAs("files")] List<StreamPart>? files,
+        CancellationToken ct = default);
+
+    [Get("/api/tickets/me")]
+    Task<PagedTicketsResult> GetMyTicketsAsync([Query] int page = 1, [Query] int pageSize = 20, CancellationToken ct = default);
+
+    [Get("/api/tickets")]
+    Task<List<TicketDto>> GetAllTicketsAsync(CancellationToken ct = default);
+
+    [Patch("/api/tickets/{id}/status")]
+    Task ChangeTicketStatusAsync(Guid id, [Body] ChangeTicketStatusRequest request, CancellationToken ct = default);
+
+    // ── Модерация ─────────────────────────────────────────────────────────────────
+
+    [Get("/api/v1/users/admin")]
+    Task<AdminUserPageDto> GetAllUsersAsync([Query] string? search = null, [Query] int page = 1, [Query] int pageSize = 30, CancellationToken ct = default);
+
+    [Patch("/api/v1/users/admin/{id}/role")]
+    Task ChangeUserRoleAsync(Guid id, [Body] ChangeRoleRequest request, CancellationToken ct = default);
+
+    [Post("/api/v1/reports")]
+    Task<Guid> CreateReportAsync([Body] CreateReportRequest request, CancellationToken ct = default);
+
+    [Get("/api/v1/reports")]
+    Task<List<ContentReportDto>> GetOpenReportsAsync(CancellationToken ct = default);
+
+    [Patch("/api/v1/reports/{id}/resolve")]
+    Task ResolveReportAsync(Guid id, [Body] ResolveReportRequest request, CancellationToken ct = default);
+
+    [Delete("/api/v1/forum/topics/{topicId}")]
+    Task DeleteForumTopicAsync(Guid topicId, CancellationToken ct = default);
+
+    [Delete("/api/v1/forum/posts/{postId}")]
+    Task DeleteForumPostAsync(Guid postId, CancellationToken ct = default);
 }
 
 public sealed record AvatarUploadResponse(string Url);
@@ -349,20 +575,26 @@ public sealed record AvatarUploadResponse(string Url);
 
 public enum SessionStatus { Planned, InProgress, Completed, Cancelled }
 public enum ParticipantRole { Player, DungeonMaster }
+public enum SessionFormat { Online, Offline, Hybrid }
 
 public sealed record CreateSessionRequest(
-    string Title, string? Description, string System, int MaxPlayers, DateTime ScheduledAt);
+    string Title, string? Description, string System, int MaxPlayers, DateTime ScheduledAt,
+    SessionFormat Format, string? Location);
 
 public sealed record CreateSessionResponse(Guid SessionId, string Title);
+public sealed record ImportSessionResponse(Guid SessionId, string Title);
+public sealed record ImportSessionRequest(
+    string Title, string System, DateTime ScheduledAt, int MaxPlayers, string? Description = null);
 
 public sealed record SessionSummaryDto(
     Guid Id, string Title, string? Description, string System,
     int MaxPlayers, int CurrentPlayers, DateTime ScheduledAt,
+    SessionFormat Format, string? Location,
     SessionStatus Status, Guid OrganizerId, string OrganizerName);
 
 public sealed record SessionDetailDto(
     Guid Id, string Title, string? Description, string System,
-    int MaxPlayers, DateTime ScheduledAt, SessionStatus Status,
+    int MaxPlayers, DateTime ScheduledAt, SessionFormat Format, string? Location, SessionStatus Status,
     Guid OrganizerId, string OrganizerName,
     List<SessionParticipantDto> Participants,
     bool IsCurrentUserParticipant, bool IsCurrentUserOrganizer);
@@ -370,7 +602,8 @@ public sealed record SessionDetailDto(
 public sealed record SessionParticipantDto(Guid UserId, string Username, ParticipantRole Role, DateTime JoinedAt);
 
 public sealed record UpdateSessionRequest(
-    Guid SessionId, string Title, string? Description, string System, int MaxPlayers, DateTime ScheduledAt);
+    Guid SessionId, string Title, string? Description, string System, int MaxPlayers, DateTime ScheduledAt,
+    SessionFormat Format, string? Location);
 
 public sealed record ChangeStatusRequest(SessionStatus Status);
 
@@ -384,6 +617,9 @@ public sealed record CreateCampaignResponse(Guid CampaignId, string Title);
 public sealed record UpdateCampaignRequest(string Title, string? Description, string System);
 public sealed record AddParticipantRequest(Guid UserId);
 public sealed record ChangeCampaignStatusRequest(CampaignStatus Status);
+
+public sealed record ImportCampaignResponse(Guid CampaignId, string Title);
+public sealed record ImportCampaignRequest(string Title, string System, string? Description = null);
 
 public sealed record CampaignSummaryDto(
     Guid Id, string Title, string? Description, string System,
@@ -478,7 +714,7 @@ public sealed record SpellSummaryDto(
     bool Concentration, bool Ritual, string Classes);
 
 public sealed record SpellDetailDto(
-    Guid Id, string Name, int Level, string School,
+    Guid Id, string Slug, string Name, int Level, string School,
     string CastingTime, string Range, string Components, string? Material,
     string Duration, bool Concentration, bool Ritual,
     string Description, string? HigherLevel, string Classes, string Source);
@@ -492,7 +728,7 @@ public sealed record MonsterSummaryDto(
     string ChallengeRating, int Xp);
 
 public sealed record MonsterDetailDto(
-    Guid Id, string Name, string Size, string Type, string? Subtype,
+    Guid Id, string Slug, string Name, string Size, string Type, string? Subtype,
     string Alignment, int ArmorClass, string? ArmorDesc, int HitPoints, string HitDice,
     string Speed,
     int Strength, int Dexterity, int Constitution,
@@ -504,6 +740,35 @@ public sealed record MonsterDetailDto(
 
 public sealed record MonsterPagedResult(
     List<MonsterSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
+
+// ── Pathfinder 2e ────────────────────────────────────────────────────────────
+
+public sealed record Pf2eSpellSummaryDto(
+    Guid Id, string Name, int Level, string Traditions, string Traits,
+    string Cast, string? Range, string Duration);
+
+public sealed record Pf2eSpellDetailDto(
+    Guid Id, string Slug, string Name, int Level, string Traditions, string Traits,
+    string Cast, string? Range, string? Area, string? Targets, string Duration,
+    string Description, string? Heightened, string Source);
+
+public sealed record Pf2eSpellPagedResult(
+    List<Pf2eSpellSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
+
+public sealed record Pf2eMonsterSummaryDto(
+    Guid Id, string Name, int Level, string Size, string Traits,
+    int ArmorClass, int HitPoints);
+
+public sealed record Pf2eMonsterDetailDto(
+    Guid Id, string Slug, string Name, int Level, string Size, string Traits,
+    int Perception, string? Senses, string? Languages, string? Skills,
+    int Strength, int Dexterity, int Constitution,
+    int Intelligence, int Wisdom, int Charisma,
+    int ArmorClass, int Fortitude, int Reflex, int Will, int HitPoints,
+    string Speed, string? Attacks, string? Abilities, string Source);
+
+public sealed record Pf2eMonsterPagedResult(
+    List<Pf2eMonsterSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
@@ -608,3 +873,122 @@ public sealed record UserRatingDto(
 public sealed record UserRatingsResult(List<UserRatingDto> Ratings, double AverageScore, int TotalCount);
 
 public sealed record RateUserRequest(int Score, string? Comment, string Role);
+
+// ── Discussions ───────────────────────────────────────────────────────────────
+
+public sealed record DiscussionPostDto(
+    Guid Id, Guid AuthorId, string AuthorUsername, string? AuthorAvatarUrl,
+    string Content, Guid? ParentId, int LikeCount, bool IsLikedByMe, bool IsOwn,
+    DateTime CreatedAt, List<DiscussionPostDto> Replies);
+
+public sealed record AddDiscussionPostRequest(string Content, Guid? ParentId = null);
+
+public sealed record LikeResponse(bool IsLiked);
+
+// ── Calendar ──────────────────────────────────────────────────────────────────
+
+public sealed record CalendarPreferenceDto(Guid CalendarToken, int ReminderMinutes, bool PushEnabled);
+public sealed record UpsertCalendarPreferenceRequest(int ReminderMinutes, bool RegenerateToken = false);
+
+// ── Game Table ────────────────────────────────────────────────────────────────
+
+public enum TableMessageKind { Chat, Roll, System, Whisper }
+
+public sealed record TableMessageDto(
+    Guid Id, Guid SenderId, string SenderUsername,
+    Guid? RecipientId, string? RecipientUsername,
+    TableMessageKind Kind, string Content, DateTime CreatedAt);
+
+public sealed record TableParticipantDto(Guid UserId, string Username, string? AvatarUrl, bool IsDungeonMaster);
+
+public sealed record AudioStateDto(
+    string? TrackUrl, string? TrackTitle,
+    bool IsPlaying, double PositionSeconds, DateTime ServerTimestamp);
+
+public sealed record TableTokenDto(
+    Guid Id, string Label, string? ImageUrl, string Color,
+    double X, double Y, Guid? OwnerId, bool CanMove);
+
+public sealed record TableStateDto(
+    Guid SessionId, string Title, string? ShowcaseImageUrl,
+    bool IsOrganizer, bool CanAccess,
+    List<TableParticipantDto> Participants,
+    List<TableMessageDto> RecentMessages,
+    AudioStateDto Audio,
+    List<TableTokenDto> Tokens);
+
+public sealed record SendChatRequest(string Content);
+public sealed record RollDiceRequest(string Expression);
+public sealed record SetShowcaseRequest(string? ImageUrl);
+public sealed record SendWhisperRequest(Guid RecipientUserId, string Content);
+public sealed record SetTrackRequest(string TrackUrl, string? TrackTitle);
+public sealed record AudioPositionRequest(double PositionSeconds);
+public sealed record AddTokenRequest(string Label, string? ImageUrl, string Color, double X, double Y, Guid? OwnerUserId);
+public sealed record TokenPositionRequest(double X, double Y);
+public sealed record SubscribePushRequest(string Endpoint, string P256dh, string Auth);
+public sealed record UnsubscribePushRequest(string Endpoint);
+
+// ── Rules Reference 2.0 ─────────────────────────────────────────────────────────
+
+public sealed record GameSystemDto(Guid Id, string Slug, string Name, bool IsOfficial, bool IsMine);
+
+public sealed record RuleEntrySummaryDto(Guid Id, string Slug, string Title, string? Summary, string[] Tags);
+
+public sealed record RuleEntryPageDto(List<RuleEntrySummaryDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)Total / PageSize));
+}
+
+public sealed record RuleEntryDetailDto(
+    Guid Id, string SystemSlug, string Category, string Slug, string Title,
+    string? Summary, string? ContentMarkdown, string StatsJson,
+    string[] Tags, bool IsHomebrew, string Source, bool CanEdit);
+
+public sealed record CreateGameSystemRequest(string Name);
+public sealed record CreateGameSystemResponse(Guid Id, string Slug, string Name);
+
+public sealed record CreateRuleEntryRequest(
+    string Title, string? Summary, string? ContentMarkdown, string? StatsJson, string[]? Tags);
+public sealed record CreateRuleEntryResponse(Guid Id, string Slug);
+
+public sealed record ClassLevelInputDto(string ClassSlug, int Level);
+public sealed record ClassLevelResultDto(string ClassTitle, int Level, string HitDice, int AverageHpContribution);
+public sealed record MulticlassResultDto(
+    int TotalLevel, int ProficiencyBonus, List<ClassLevelResultDto> Classes, List<string> HitDicePool);
+
+// ── Тикеты поддержки ─────────────────────────────────────────────────────────
+
+public sealed record CreateTicketResponse(Guid Id);
+
+public sealed record TicketAttachmentDto(Guid Id, string Url, string FileName, string ContentType);
+
+public sealed record TicketDto(
+    Guid Id, string Title, string Description, string? ContactInfo,
+    string Status, DateTime CreatedAt, DateTime UpdatedAt,
+    List<TicketAttachmentDto> Attachments);
+
+public sealed record PagedTicketsResult(List<TicketDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)Total / PageSize));
+}
+
+public sealed record ChangeTicketStatusRequest(string Status);
+
+// ── Модерация ─────────────────────────────────────────────────────────────────
+
+public sealed record AdminUserDto(Guid Id, string Username, string Email, string Role, DateTime CreatedAt);
+
+public sealed record AdminUserPageDto(List<AdminUserDto> Items, int Total, int Page, int PageSize)
+{
+    public int TotalPages => Math.Max(1, (int)Math.Ceiling((double)Total / PageSize));
+}
+
+public sealed record ChangeRoleRequest(string Role);
+
+public sealed record CreateReportRequest(string EntityType, Guid EntityId, string Reason);
+
+public sealed record ContentReportDto(
+    Guid Id, string EntityType, Guid EntityId, string Reason,
+    Guid ReporterId, string ReporterUsername, DateTime CreatedAt);
+
+public sealed record ResolveReportRequest(string Status);

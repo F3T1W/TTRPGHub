@@ -1,6 +1,8 @@
 using MediatR;
 using TTRPGHub.Features.Forum.Commands.CreatePost;
 using TTRPGHub.Features.Forum.Commands.CreateTopic;
+using TTRPGHub.Features.Forum.Commands.DeletePost;
+using TTRPGHub.Features.Forum.Commands.DeleteTopic;
 using TTRPGHub.Features.Forum.Commands.ToggleLike;
 using TTRPGHub.Features.Forum.Queries.GetCategories;
 using TTRPGHub.Features.Forum.Queries.GetPosts;
@@ -49,6 +51,16 @@ public static class ForumEndpoints
         g.MapPost("/posts/{postId:guid}/like", async (
             Guid postId, IMediator m, CancellationToken ct) =>
             (await m.Send(new ToggleLikeCommand(postId), ct)).ToResponse())
+            .RequireAuthorization();
+
+        g.MapDelete("/topics/{topicId:guid}", async (
+            Guid topicId, IMediator m, CancellationToken ct) =>
+            (await m.Send(new DeleteTopicCommand(topicId), ct)).ToResponse())
+            .RequireAuthorization();
+
+        g.MapDelete("/posts/{postId:guid}", async (
+            Guid postId, IMediator m, CancellationToken ct) =>
+            (await m.Send(new DeletePostCommand(postId), ct)).ToResponse())
             .RequireAuthorization();
 
         return app;

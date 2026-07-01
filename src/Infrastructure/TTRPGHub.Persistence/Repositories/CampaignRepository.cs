@@ -21,6 +21,13 @@ internal sealed class CampaignRepository(AppDbContext db) : ICampaignRepository
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Campaign>> GetActiveAsync(CancellationToken ct = default) =>
+        await db.Campaigns
+            .Include(c => c.Participants)
+            .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Paused)
+            .OrderByDescending(c => c.UpdatedAt)
+            .ToListAsync(ct);
+
     public async Task AddAsync(Campaign campaign, CancellationToken ct = default) =>
         await db.Campaigns.AddAsync(campaign, ct);
 

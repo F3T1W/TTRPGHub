@@ -3,6 +3,7 @@ using TTRPGHub.Entities;
 using TTRPGHub.Extensions;
 using TTRPGHub.Features.Sessions.Commands.ChangeSessionStatus;
 using TTRPGHub.Features.Sessions.Commands.CreateSession;
+using TTRPGHub.Features.Sessions.Commands.ImportSession;
 using TTRPGHub.Features.Sessions.Commands.JoinSession;
 using TTRPGHub.Features.Sessions.Commands.LeaveSession;
 using TTRPGHub.Features.Sessions.Commands.UpdateSession;
@@ -94,6 +95,15 @@ internal static class SessionsEndpoints
         .WithSummary("Изменить статус сессии")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/import", async (ImportSessionCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Created($"/api/sessions/{result.Value!.SessionId}", result.Value)
+                : result.ToResponse();
+        })
+        .WithSummary("Импортировать сессию из JSON");
     }
 }
 

@@ -14,11 +14,20 @@
                 <li class="breadcrumb-item active">@_data.Title</li>
             </ol>
         </nav>
-        <h1 class="h4 mb-4">
-            @if (_data.IsPinned) { <i class="bi bi-pin-fill me-1" style="color:var(--ta-gold)"></i> }
-            @if (_data.IsLocked) { <i class="bi bi-lock-fill me-1 text-secondary"></i> }
-            @_data.Title
-        </h1>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+            <h1 class="h4 mb-0">
+                @if (_data.IsPinned) { <i class="bi bi-pin-fill me-1" style="color:var(--ta-gold)"></i> }
+                @if (_data.IsLocked) { <i class="bi bi-lock-fill me-1 text-secondary"></i> }
+                @_data.Title
+            </h1>
+            <AuthorizeView Roles="Moderator,Admin">
+                <Authorized>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="DeleteTopicAsync">
+                        <i class="bi bi-trash me-1"></i>Удалить тему
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        </div>
 
         @foreach (var post in _data.Posts.Items)
         {
@@ -49,19 +58,42 @@
                             }
                         </div>
                         <div style="white-space:pre-wrap">@post.Content</div>
-                        <div class="mt-2">
+                        <div class="mt-2 d-flex gap-2 align-items-center">
                             <AuthorizeView>
                                 <Authorized>
                                     <button class="btn btn-sm @(post.LikedByMe ? "btn-ta-primary" : "btn-outline-secondary")"
                                             @onclick="() => ToggleLikeAsync(post)">
                                         <i class="bi bi-heart@(post.LikedByMe ? "-fill" : "") me-1"></i>@post.LikeCount
                                     </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => ReportPostAsync(post.Id)" title="Пожаловаться">
+                                        <i class="bi bi-flag"></i>
+                                    </button>
+                                    @if (post.AuthorId == _currentUserId)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePostAsync(post.Id)" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <AuthorizeView Roles="Moderator,Admin" Context="modCtx">
+                                            <Authorized>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePostAsync(post.Id)" title="Удалить (модератор)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    }
                                 </Authorized>
                                 <NotAuthorized>
                                     <span class="text-secondary small"><i class="bi bi-heart me-1"></i>@post.LikeCount</span>
                                 </NotAuthorized>
                             </AuthorizeView>
                         </div>
+                        @if (_actionMessage is not null)
+                        {
+                            <div class="small text-muted mt-1">@_actionMessage</div>
+                        }
                     </div>
                 </div>
             </div>

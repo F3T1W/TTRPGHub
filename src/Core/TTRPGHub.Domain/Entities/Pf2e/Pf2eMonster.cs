@@ -1,0 +1,71 @@
+using TTRPGHub.Common;
+
+namespace TTRPGHub.Entities.Pf2e;
+
+public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
+{
+    public new Pf2eMonsterId Id { get; private set; }
+    public string Slug { get; private set; } = "";
+    public string Name { get; private set; } = "";
+    public int Level { get; private set; }
+    public string Size { get; private set; } = "";
+    public string Traits { get; private set; } = "";
+    public int Perception { get; private set; }
+    public string? Senses { get; private set; }
+    public string? Languages { get; private set; }
+    public string? Skills { get; private set; }
+    public int Strength { get; private set; }
+    public int Dexterity { get; private set; }
+    public int Constitution { get; private set; }
+    public int Intelligence { get; private set; }
+    public int Wisdom { get; private set; }
+    public int Charisma { get; private set; }
+    public int ArmorClass { get; private set; }
+    public int Fortitude { get; private set; }
+    public int Reflex { get; private set; }
+    public int Will { get; private set; }
+    public int HitPoints { get; private set; }
+    public string Speed { get; private set; } = "";
+    public string? Attacks { get; private set; }
+    public string? Abilities { get; private set; }
+    public string Source { get; private set; } = "PF2e SRD";
+
+    private Pf2eMonster() { }
+
+    public static Pf2eMonster Create(
+        string slug, string name, int level, string size, string traits,
+        int perception, string? senses, string? languages, string? skills,
+        int str, int dex, int con, int intel, int wis, int cha,
+        int armorClass, int fortitude, int reflex, int will, int hitPoints,
+        string speed, string? attacks, string? abilities, string source)
+    {
+        return new Pf2eMonster
+        {
+            Id           = Pf2eMonsterId.New(),
+            Slug         = slug,
+            Name         = name,
+            Level        = level,
+            Size         = size,
+            Traits       = traits,
+            Perception   = perception,
+            Senses       = senses,
+            Languages    = languages,
+            Skills       = skills,
+            Strength     = str,
+            Dexterity    = dex,
+            Constitution = con,
+            Intelligence = intel,
+            Wisdom       = wis,
+            Charisma     = cha,
+            ArmorClass   = armorClass,
+            Fortitude    = fortitude,
+            Reflex       = reflex,
+            Will         = will,
+            HitPoints    = hitPoints,
+            Speed        = speed,
+            Attacks      = attacks,
+            Abilities    = abilities,
+            Source       = source,
+        };
+    }
+}

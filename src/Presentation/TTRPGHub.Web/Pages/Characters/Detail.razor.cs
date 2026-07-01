@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Configuration;
 using Microsoft.JSInterop;
+using System.Text.Json;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Characters;
@@ -8,9 +10,11 @@ namespace TTRPGHub.Pages.Characters;
 public partial class Detail
 {
     [Parameter] public Guid Id { get; set; }
+    [Inject] private IConfiguration Config { get; set; } = default!;
 
     private CharacterDetailDto? _char;
     private CharacterFormModel _form = new();
+    private string _pdfUrl = string.Empty;
     private bool _loading = true;
     private bool _editing;
     private bool _saving;
@@ -20,15 +24,47 @@ public partial class Detail
     private string? _avatarError;
     private InputFile? _fileInput;
 
+    private bool _showLevelUp;
+    private bool _levelingUp;
+    private int _newLevel;
+    private string? _levelUpError;
+    private LevelUpResponse? _levelUpResult;
+
     protected override async Task OnInitializedAsync()
     {
+        var apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5014";
+        _pdfUrl = $"{apiBase}/api/characters/{Id}/pdf";
         try
         {
             _char = await Api.GetCharacterByIdAsync(Id);
             _form = CharacterFormModel.From(_char);
+            _newLevel = _char.Level + 1;
         }
         catch { _error = "Не удалось загрузить персонажа."; }
         finally { _loading = false; }
+    }
+
+    private async Task LevelUpAsync()
+    {
+        if (_char is null) return;
+        _levelingUp = true;
+        _levelUpError = null;
+        _levelUpResult = null;
+        try
+        {
+            var result = await Api.LevelUpCharacterAsync(Id, new LevelUpRequest(_newLevel));
+            _levelUpResult = result;
+            _char = await Api.GetCharacterByIdAsync(Id);
+            _newLevel = _char.Level + 1;
+        }
+        catch
+        {
+            _levelUpError = "Не удалось повысить уровень.";
+        }
+        finally
+        {
+            _levelingUp = false;
+        }
     }
 
     private void StartEdit()  { _form = CharacterFormModel.From(_char!); _editing = true;  _saveError = null; }
@@ -106,6 +142,25 @@ public partial class Detail
         }
         catch { _avatarError = "Ошибка загрузки. Проверьте формат файла (JPEG, PNG, WebP)."; }
         finally { _uploading = false; }
+    }
+
+    private async Task ExportAsync()
+    {
+        if (_char is null) return;
+        var export = new ImportCharacterRequest(
+            _char.Name, _char.Race, _char.Class, _char.Level, _char.IsPublic,
+            _char.Background, _char.Alignment, _char.ExperiencePoints,
+            _char.PersonalityTraits, _char.Ideals, _char.Bonds, _char.Flaws,
+            _char.Strength, _char.Dexterity, _char.Constitution,
+            _char.Intelligence, _char.Wisdom, _char.Charisma,
+            _char.MaxHitPoints, _char.CurrentHitPoints, _char.TemporaryHitPoints,
+            _char.ArmorClass, _char.Speed, _char.HitDice,
+            [.. _char.SkillProficiencies], [.. _char.SavingThrowProficiencies],
+            _char.FeaturesAndTraits, _char.Equipment);
+
+        var json = JsonSerializer.Serialize(export, new JsonSerializerOptions { WriteIndented = true });
+        var filename = $"{_char.Name.Replace(" ", "_")}.json";
+        await Js.InvokeVoidAsync("downloadJson", filename, json);
     }
 
     private static int CalcMod(int score) => (int)Math.Floor((score - 10) / 2.0);

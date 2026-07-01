@@ -1,0 +1,82 @@
+@page "/tools/multiclass"
+@attribute [Authorize]
+<PageTitle>Калькулятор мультикласса — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:760px;">
+    <div class="mb-4">
+        <h2 class="mb-1">Калькулятор мультикласса</h2>
+        <p class="text-muted small">
+            Добавь классы и уровни в них — посчитаем суммарный уровень персонажа, бонус мастерства
+            и пул костей хитов для коротких отдыхов. Первый уровень первого класса берёт максимум кости
+            хитов, все остальные — среднее (стандартное правило мультиклассирования).
+        </p>
+    </div>
+
+    <div class="ta-card p-4 mb-4">
+        @foreach (var (row, index) in _rows.Select((r, i) => (r, i)))
+        {
+            <div class="row g-2 mb-2 align-items-end">
+                <div class="col-7">
+                    <label class="form-label small text-muted mb-1">Класс</label>
+                    <select class="form-select" @bind="row.ClassSlug">
+                        <option value="">— выбери класс —</option>
+                        @foreach (var c in _classes)
+                        {
+                            <option value="@c.Slug">@c.Title</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-3">
+                    <label class="form-label small text-muted mb-1">Уровень</label>
+                    <input type="number" class="form-control" min="1" max="20" @bind="row.Level" />
+                </div>
+                <div class="col-2">
+                    <button class="btn btn-outline-danger w-100" @onclick="() => RemoveRow(index)" disabled="@(_rows.Count <= 1)">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+        }
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="AddRow"><i class="bi bi-plus-lg me-1"></i>Добавить класс</button>
+            <button class="btn btn-ta-primary btn-sm ms-auto" @onclick="CalculateAsync" disabled="@_loading">
+                @if (_loading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Посчитать
+            </button>
+        </div>
+        @if (_error is not null)
+        {
+            <div class="text-danger small mt-2">@_error</div>
+        }
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="ta-card p-4">
+            <div class="row text-center mb-3">
+                <div class="col-6">
+                    <div class="small text-muted">Суммарный уровень</div>
+                    <div class="fs-3" style="color:var(--ta-accent-light);">@_result.TotalLevel</div>
+                </div>
+                <div class="col-6">
+                    <div class="small text-muted">Бонус мастерства</div>
+                    <div class="fs-3" style="color:var(--ta-gold);">+@_result.ProficiencyBonus</div>
+                </div>
+            </div>
+
+            <h6 class="mb-2" style="color:var(--ta-gold)">Пул костей хитов</h6>
+            <p class="mb-3">@string.Join(" + ", _result.HitDicePool)</p>
+
+            <h6 class="mb-2" style="color:var(--ta-gold)">По классам</h6>
+            <table class="table table-dark table-sm mb-0" style="--bs-table-bg:transparent;">
+                <thead><tr class="text-muted small"><th>Класс</th><th>Уровень</th><th>Кость хитов</th><th>Вклад в HP (без Тел.)</th></tr></thead>
+                <tbody>
+                    @foreach (var c in _result.Classes)
+                    {
+                        <tr><td>@c.ClassTitle</td><td>@c.Level</td><td>@c.HitDice</td><td>@c.AverageHpContribution</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

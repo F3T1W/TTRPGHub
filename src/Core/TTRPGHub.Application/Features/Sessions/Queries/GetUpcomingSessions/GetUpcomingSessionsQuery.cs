@@ -4,8 +4,9 @@ using TTRPGHub.Entities;
 
 namespace TTRPGHub.Features.Sessions.Queries.GetUpcomingSessions;
 
-public sealed record GetUpcomingSessionsQuery(int Page = 1, int PageSize = 20)
-    : IRequest<Result<IReadOnlyList<SessionSummaryDto>>>;
+public sealed record GetUpcomingSessionsQuery(
+    int Page = 1, int PageSize = 20, string? Location = null, SessionFormat? Format = null
+) : IRequest<Result<IReadOnlyList<SessionSummaryDto>>>;
 
 public sealed record SessionSummaryDto(
     Guid Id,
@@ -15,6 +16,8 @@ public sealed record SessionSummaryDto(
     int MaxPlayers,
     int CurrentPlayers,
     DateTime ScheduledAt,
+    SessionFormat Format,
+    string? Location,
     SessionStatus Status,
     Guid OrganizerId,
     string OrganizerName

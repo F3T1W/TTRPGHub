@@ -1,0 +1,78 @@
+@page "/tickets"
+@attribute [Authorize]
+<PageTitle>Мои тикеты — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:760px;">
+    <h2 class="mb-1">Поддержка</h2>
+    <p class="text-muted small mb-4">Нашёл баг или есть предложение? Опиши проблему — модераторы разберутся.</p>
+
+    <div class="ta-card p-4 mb-4">
+        <h6 class="mb-3" style="color:var(--ta-gold)">Новый тикет</h6>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">Заголовок</label>
+            <input class="form-control" @bind="_title" maxlength="200" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label small text-muted">Описание</label>
+            <textarea class="form-control" rows="4" @bind="_description" maxlength="5000"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small text-muted">Контакт для связи (необязательно)</label>
+            <input class="form-control" @bind="_contactInfo" placeholder="Discord, email..." maxlength="300" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label small text-muted">Вложения (скриншоты, до 5 файлов)</label>
+            <InputFile OnChange="OnFilesSelected" multiple class="form-control" />
+            @if (_selectedFiles.Count > 0)
+            {
+                <div class="small text-muted mt-1">Выбрано: @string.Join(", ", _selectedFiles.Select(f => f.Name))</div>
+            }
+        </div>
+
+        @if (_error is not null)
+        {
+            <div class="text-danger small mb-2">@_error</div>
+        }
+
+        <button class="btn btn-ta-primary" @onclick="SubmitAsync" disabled="@(_submitting || string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_description))">
+            @if (_submitting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            Отправить
+        </button>
+    </div>
+
+    <h6 class="mb-2" style="color:var(--ta-gold)">Мои тикеты</h6>
+    @if (_loading)
+    {
+        <div class="text-muted small">Загрузка...</div>
+    }
+    else if (_tickets.Count == 0)
+    {
+        <div class="text-muted small">Тикетов пока нет.</div>
+    }
+    else
+    {
+        @foreach (var t in _tickets)
+        {
+            <div class="ta-card p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-semibold">@t.Title</div>
+                        <div class="small text-muted">@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                    </div>
+                    <span class="badge @StatusBadgeClass(t.Status)">@StatusLabel(t.Status)</span>
+                </div>
+                <p class="mb-0 mt-2 small">@t.Description</p>
+                @if (t.Attachments.Count > 0)
+                {
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        @foreach (var a in t.Attachments)
+                        {
+                            <a href="@a.Url" target="_blank" class="small">📎 @a.FileName</a>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>

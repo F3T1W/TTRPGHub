@@ -1,37 +1,68 @@
 @page "/sessions"
 @using TTRPGHub.Services
+@using Microsoft.AspNetCore.Components.Forms
 @attribute [Authorize]
 @inject IApiClient Api
 @inject NavigationManager Nav
 
-<PageTitle>Сессии — Таверна Аферистов</PageTitle>
+<PageTitle>Игры — Таверна Аферистов</PageTitle>
 
 <div class="container py-4">
 
     <!-- Заголовок -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h2 class="mb-0" style="font-family:'Cinzel',serif;">Игровые сессии</h2>
+            <h2 class="mb-0" style="font-family:'Cinzel',serif;">Игры</h2>
             <p class="text-muted small mb-0">Найди группу или организуй собственную игру</p>
         </div>
-        <button class="btn btn-ta-primary" @onclick='() => Nav.NavigateTo("/sessions/create")'>
-            <i class="bi bi-plus-lg me-1"></i>Создать сессию
-        </button>
+        <div class="d-flex gap-2">
+            <label class="btn btn-outline-secondary" title="Импорт из JSON">
+                <i class="bi bi-upload me-1"></i>Импорт
+                <InputFile OnChange="ImportAsync" accept=".json" style="display:none;" />
+            </label>
+            <button class="btn btn-ta-primary" @onclick="GoCreate">
+                <i class="bi bi-plus-lg me-1"></i>@(_kind == "oneshot" ? "Создать ваншот" : "Создать кампанию")
+            </button>
+        </div>
     </div>
 
-    <!-- Вкладки -->
-    <ul class="nav nav-pills mb-4 gap-2">
-        <li class="nav-item">
-            <button class="nav-link @(_tab == "upcoming" ? "active" : "")" @onclick='() => SwitchTab("upcoming")'>
-                Ближайшие
+    @if (_importError is not null)
+    {
+        <div class="alert alert-danger alert-dismissible mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>@_importError
+            <button type="button" class="btn-close" @onclick='() => _importError = null'></button>
+        </div>
+    }
+    @if (_importSuccess is not null)
+    {
+        <div class="alert alert-success alert-dismissible mb-3">
+            <i class="bi bi-check-circle me-2"></i>@_importSuccess
+            <button type="button" class="btn-close" @onclick='() => _importSuccess = null'></button>
+        </div>
+    }
+
+    <!-- Переключатель тип игры -->
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <div class="btn-group" role="group">
+            <button type="button"
+                    class="btn @(_kind == "oneshot" ? "btn-ta-primary" : "btn-outline-secondary")"
+                    @onclick='() => SwitchKind("oneshot")'>
+                <i class="bi bi-dice-5 me-1"></i>Ваншот
             </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link @(_tab == "my" ? "active" : "")" @onclick='() => SwitchTab("my")'>
-                Мои сессии
+            <button type="button"
+                    class="btn @(_kind == "campaign" ? "btn-ta-primary" : "btn-outline-secondary")"
+                    @onclick='() => SwitchKind("campaign")'>
+                <i class="bi bi-journal-bookmark me-1"></i>Кампания
             </button>
-        </li>
-    </ul>
+        </div>
+
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm @(_tab == "upcoming" ? "btn-outline-light" : "btn-outline-secondary")"
+                    @onclick='() => SwitchTab("upcoming")'>Ближайшие</button>
+            <button class="btn btn-sm @(_tab == "my" ? "btn-outline-light" : "btn-outline-secondary")"
+                    @onclick='() => SwitchTab("my")'>Мои</button>
+        </div>
+    </div>
 
     @if (_loading)
     {
@@ -43,48 +74,89 @@
     {
         <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>@_error</div>
     }
-    else if (_sessions.Count == 0)
+    else if (_kind == "oneshot")
     {
-        <div class="text-center py-5 text-muted">
-            <i class="bi bi-calendar-x" style="font-size:3rem;opacity:.3;"></i>
-            <p class="mt-3">
-                @(_tab == "upcoming"
-                    ? "Нет открытых сессий. Создай первую!"
-                    : "Вы не участвуете ни в одной сессии.")
-            </p>
-        </div>
+        @if (_sessions.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-calendar-x" style="font-size:3rem;opacity:.3;"></i>
+                <p class="mt-3">
+                    @(_tab == "upcoming" ? "Нет открытых ваншотов. Создай первый!" : "Вы не участвуете ни в одном ваншоте.")
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var s in _sessions)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="ta-card ta-card-link p-3 h-100 d-flex flex-column"
+                             @onclick="@(() => Nav.NavigateTo($"/sessions/{s.Id}"))">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="ta-level-badge">@s.System</span>
+                                <span class="badge @StatusBadgeClass(s.Status)">@StatusLabel(s.Status)</span>
+                            </div>
+                            <h5 class="mb-1">@s.Title</h5>
+                            @if (!string.IsNullOrEmpty(s.Description))
+                            {
+                                <p class="text-muted small mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                                    @s.Description
+                                </p>
+                            }
+                            <div class="mt-auto pt-2 border-top border-secondary d-flex justify-content-between small text-muted">
+                                <span><i class="bi bi-calendar3 me-1"></i>@s.ScheduledAt.ToLocalTime().ToString("d MMM, HH:mm")</span>
+                                <span><i class="bi bi-people me-1"></i>@s.CurrentPlayers / @s.MaxPlayers</span>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                <i class="bi bi-person me-1"></i>@s.OrganizerName
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     }
     else
     {
-        <div class="row g-3">
-            @foreach (var s in _sessions)
-            {
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="ta-card ta-card-link p-3 h-100 d-flex flex-column"
-                         @onclick="@(() => Nav.NavigateTo($"/sessions/{s.Id}"))">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="ta-level-badge">@s.System</span>
-                            <span class="badge @StatusBadgeClass(s.Status)">@StatusLabel(s.Status)</span>
-                        </div>
-                        <h5 class="mb-1">@s.Title</h5>
-                        @if (!string.IsNullOrEmpty(s.Description))
-                        {
-                            <p class="text-muted small mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
-                                @s.Description
-                            </p>
-                        }
-                        <div class="mt-auto pt-2 border-top border-secondary d-flex justify-content-between small text-muted">
-                            <span><i class="bi bi-calendar3 me-1"></i>@s.ScheduledAt.ToLocalTime().ToString("d MMM, HH:mm")</span>
-                            <span><i class="bi bi-people me-1"></i>@s.CurrentPlayers / @s.MaxPlayers</span>
-                        </div>
-                        <div class="small text-muted mt-1">
-                            <i class="bi bi-person me-1"></i>@s.OrganizerName
+        @if (_campaigns.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-journal-bookmark" style="font-size:3rem;opacity:.3;"></i>
+                <p class="mt-3">@(_tab == "upcoming" ? "Нет активных кампаний." : "Вы не участвуете ни в одной кампании.")</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var c in _campaigns)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="ta-card ta-card-link p-3 h-100 d-flex flex-column"
+                             @onclick="@(() => Nav.NavigateTo($"/campaigns/{c.Id}"))">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="ta-level-badge">@c.System</span>
+                                <span class="badge @CampaignStatusBadge(c.Status)">@CampaignStatusLabel(c.Status)</span>
+                            </div>
+                            <h5 class="mb-1">@c.Title</h5>
+                            @if (!string.IsNullOrEmpty(c.Description))
+                            {
+                                <p class="text-muted small mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                                    @c.Description
+                                </p>
+                            }
+                            <div class="mt-auto pt-2 border-top border-secondary d-flex justify-content-between small text-muted">
+                                <span><i class="bi bi-people me-1"></i>@c.ParticipantCount участников</span>
+                                @if (c.IsOrganizer)
+                                {
+                                    <span class="small" style="color:var(--ta-gold);"><i class="bi bi-star-fill me-1"></i>Организатор</span>
+                                }
+                            </div>
                         </div>
                     </div>
-                </div>
-            }
-        </div>
+                }
+            </div>
+        }
     }
 
 </div>
-
