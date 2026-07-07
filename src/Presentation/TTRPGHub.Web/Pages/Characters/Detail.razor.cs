@@ -44,6 +44,12 @@ public partial class Detail
         finally { _loading = false; }
     }
 
+    private Task OnCharacterPf2eUpdatedAsync(CharacterDetailDto c)
+    {
+        _char = c;
+        return Task.CompletedTask;
+    }
+
     private async Task LevelUpAsync()
     {
         if (_char is null) return;
@@ -276,4 +282,5 @@ public partial class Detail
             SkillProficiencies, SavingThrowProficiencies,
             FeaturesAndTraits, Equipment);
     }
+
 }

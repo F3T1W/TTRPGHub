@@ -9,6 +9,7 @@ using TTRPGHub.Features.Rules.Commands.DeleteRuleEntry;
 using TTRPGHub.Features.Rules.Commands.UpdateRuleEntry;
 using TTRPGHub.Features.Rules.Queries.GetGameSystems;
 using TTRPGHub.Features.Rules.Queries.GetRuleEntries;
+using TTRPGHub.Features.Rules.Queries.GetRuleEntriesBySlugs;
 using TTRPGHub.Features.Rules.Queries.GetRuleEntryDetail;
 
 namespace TTRPGHub.Endpoints.Rules;
@@ -53,6 +54,20 @@ internal static class RulesEndpoints
         })
         .WithSummary("Детали записи справочника")
         .Produces<RuleEntryDetailDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{systemSlug}/{category}/batch", async (
+            string systemSlug, string category, BatchSlugsRequest req,
+            ISender sender, CancellationToken ct) =>
+        {
+            if (!Enum.TryParse<RuleCategory>(category, ignoreCase: true, out var parsedCategory))
+                return Result<List<RuleEntryStatsDto>>.Failure(Error.Validation("RuleCategory.Invalid", "Неизвестная категория справочника.")).ToResponse();
+
+            var result = await sender.Send(new GetRuleEntriesBySlugsQuery(systemSlug, parsedCategory, req.Slugs), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Пакетная выборка записей справочника по слагам (для автоматизации правил — J.1)")
+        .Produces<List<RuleEntryStatsDto>>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/systems", async (CreateGameSystemRequest req, ISender sender, CancellationToken ct) =>
@@ -124,6 +139,8 @@ internal static class RulesEndpoints
 }
 
 internal sealed record CreateGameSystemRequest(string Name);
+
+internal sealed record BatchSlugsRequest(List<string> Slugs);
 
 internal sealed record CreateRuleEntryRequest(
     string Title, string? Summary, string? ContentMarkdown, string? StatsJson, string[]? Tags);

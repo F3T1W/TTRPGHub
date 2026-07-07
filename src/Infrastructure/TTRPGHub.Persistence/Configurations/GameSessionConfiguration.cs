@@ -41,7 +41,7 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
             .HasDefaultValue(SessionStatus.Planned)
             .HasColumnName("status")
             .HasConversion<string>();
-        builder.Property(s => s.CurrentShowcaseImageUrl).HasMaxLength(1000).HasColumnName("current_showcase_image_url");
+        builder.Property(s => s.ActiveSceneId).HasColumnName("active_scene_id");
         builder.Property(s => s.CurrentTrackUrl).HasMaxLength(1000).HasColumnName("current_track_url");
         builder.Property(s => s.CurrentTrackTitle).HasMaxLength(200).HasColumnName("current_track_title");
         builder.Property(s => s.IsAudioPlaying).IsRequired().HasDefaultValue(false).HasColumnName("is_audio_playing");

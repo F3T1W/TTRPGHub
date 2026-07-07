@@ -44,6 +44,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<SessionReminderLog> SessionReminderLogs => Set<SessionReminderLog>();
     public DbSet<TableMessage> TableMessages => Set<TableMessage>();
     public DbSet<TableToken> TableTokens => Set<TableToken>();
+    public DbSet<Scene> Scenes => Set<Scene>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<GameSystem> GameSystems => Set<GameSystem>();
     public DbSet<RuleEntry> RuleEntries => Set<RuleEntry>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();

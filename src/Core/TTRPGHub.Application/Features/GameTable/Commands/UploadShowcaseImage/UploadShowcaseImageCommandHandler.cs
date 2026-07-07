@@ -2,12 +2,14 @@ using MediatR;
 using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
+using TTRPGHub.Features.GameTable.Shared;
 using TTRPGHub.Repositories;
 
 namespace TTRPGHub.Features.GameTable.Commands.UploadShowcaseImage;
 
 internal sealed class UploadShowcaseImageCommandHandler(
     IGameSessionRepository sessionRepository,
+    ISceneRepository sceneRepository,
     IStorageService storage,
     IUnitOfWork unitOfWork,
     ITableNotifier notifier,
@@ -26,12 +28,12 @@ internal sealed class UploadShowcaseImageCommandHandler(
         if (command.FileSize > MaxBytes)
             return Error.Validation("ShowcaseImage", "Максимальный размер файла — 10 МБ.");
 
-        var session = await sessionRepository.GetByIdAsync(new GameSessionId(command.SessionId), ct);
-        if (session is null)
-            return Error.NotFound(nameof(GameSession));
+        var resolved = await ActiveSceneResolver.ResolveForGmAsync(
+            sessionRepository, sceneRepository, new GameSessionId(command.SessionId), currentUser.Id, ct);
+        if (resolved.IsFailure)
+            return resolved.Error!;
 
-        if (session.OrganizerId != currentUser.Id)
-            return Error.Unauthorized();
+        var scene = resolved.Value!.Scene;
 
         await storage.EnsureBucketExistsAsync(Bucket, ct);
 
@@ -44,11 +46,8 @@ internal sealed class UploadShowcaseImageCommandHandler(
         var objectName = $"{command.SessionId}/{Guid.NewGuid():N}.{ext}";
         var url = await storage.UploadAsync(Bucket, objectName, command.FileStream, command.ContentType, ct);
 
-        var error = session.SetShowcaseImage(currentUser.Id, url);
-        if (error is not null)
-            return error;
-
-        sessionRepository.Update(session);
+        scene.SetShowcaseImage(url);
+        sceneRepository.Update(scene);
         await unitOfWork.SaveChangesAsync(ct);
 
         await notifier.NotifyShowcaseImageChangedAsync(command.SessionId, url, ct);

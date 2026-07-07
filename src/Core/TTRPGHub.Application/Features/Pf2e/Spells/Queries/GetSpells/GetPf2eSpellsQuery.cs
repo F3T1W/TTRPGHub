@@ -15,6 +15,7 @@ public sealed record GetPf2eSpellsQuery(
 
 public sealed record Pf2eSpellSummaryDto(
     Guid Id,
+    string Slug,
     string Name,
     int Level,
     string Traditions,

@@ -91,6 +91,7 @@ try
         await scope.ServiceProvider.GetRequiredService<LegacyRuleMigrator>().MigrateIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<Open5eRulesImporter>().ImportIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<Pf2eRulesSeeder>().SeedIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<Pf2eContentSeeder>().SeedIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<GuidesSeeder>().SeedIfEmptyAsync();
         await ForumSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
     }

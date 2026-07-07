@@ -120,6 +120,7 @@ public partial class Detail
         "class" => "Классы",
         "race" => "Расы",
         "feat" => "Фиты",
+        "action" => "Действия",
         "condition" => "Состояния",
         "equipment" => "Снаряжение",
         "background" => "Предыстории",

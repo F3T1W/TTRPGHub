@@ -2,6 +2,7 @@ using MediatR;
 using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
+using TTRPGHub.Features.GameTable;
 using TTRPGHub.Features.GameTable.Shared;
 using TTRPGHub.Repositories;
 
@@ -25,12 +26,28 @@ internal sealed class RollDiceCommandHandler(
         if (!session.IsParticipant(currentUser.Id))
             return Error.Unauthorized();
 
-        var roll = DiceRoller.Roll(command.Expression);
-        if (roll is null)
-            return Error.Validation("Dice.InvalidExpression", "Не удалось разобрать формулу броска. Пример: 1d20+5.");
-
         var user = await userRepository.GetByIdAsync(currentUser.Id, ct);
-        var content = $"{roll.Expression}: {roll.Total} ({roll.Breakdown})";
+        var label = string.IsNullOrWhiteSpace(command.Label) ? null : $"{command.Label}: ";
+        string content;
+
+        if (command.Dc is { } dc)
+        {
+            var check = DiceRoller.RollCheck(command.Expression, dc);
+            if (check is null)
+                return Error.Validation("Dice.InvalidExpression",
+                    "Для проверки со Сложностью нужен ровно один d20 в формуле, например: 1d20+7.");
+
+            content = $"{label}{check.Expression}: {check.Total} ({check.Breakdown}) vs DC {check.Dc} → {DegreeLabel(check.Degree)}";
+        }
+        else
+        {
+            var roll = DiceRoller.Roll(command.Expression);
+            if (roll is null)
+                return Error.Validation("Dice.InvalidExpression", "Не удалось разобрать формулу броска. Пример: 1d20+5.");
+
+            content = $"{label}{roll.Expression}: {roll.Total} ({roll.Breakdown})";
+        }
+
         var message = TableMessage.CreateRoll(session.Id, currentUser.Id, user?.Username ?? "—", content);
 
         await messageRepository.AddAsync(message, ct);
@@ -41,4 +58,13 @@ internal sealed class RollDiceCommandHandler(
 
         return dto;
     }
+
+    private static string DegreeLabel(DegreeOfSuccess degree) => degree switch
+    {
+        DegreeOfSuccess.CriticalSuccess => "Критический успех!",
+        DegreeOfSuccess.Success => "Успех",
+        DegreeOfSuccess.Failure => "Провал",
+        DegreeOfSuccess.CriticalFailure => "Критический провал!",
+        _ => degree.ToString()
+    };
 }

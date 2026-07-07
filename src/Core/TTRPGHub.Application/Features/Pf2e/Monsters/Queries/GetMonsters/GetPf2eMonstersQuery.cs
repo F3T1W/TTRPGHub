@@ -15,6 +15,7 @@ public sealed record GetPf2eMonstersQuery(
 
 public sealed record Pf2eMonsterSummaryDto(
     Guid Id,
+    string Slug,
     string Name,
     int Level,
     string Size,

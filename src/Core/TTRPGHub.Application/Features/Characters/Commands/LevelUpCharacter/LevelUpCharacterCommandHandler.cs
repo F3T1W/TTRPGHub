@@ -3,16 +3,19 @@ using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
 using TTRPGHub.Features.Characters.Commands.CreateCharacterFromRules;
+using TTRPGHub.Features.Characters.Shared;
 using TTRPGHub.Repositories;
 
 namespace TTRPGHub.Features.Characters.Commands.LevelUpCharacter;
 
 internal sealed class LevelUpCharacterCommandHandler(
     ICharacterRepository characterRepository,
+    ITableTokenRepository tokenRepository,
     IGameSystemRepository systemRepository,
     IRuleEntryRepository entryRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork,
+    ITableNotifier notifier,
     ICacheService cache
 ) : IRequestHandler<LevelUpCharacterCommand, Result<LevelUpResponse>>
 {
@@ -80,7 +83,14 @@ internal sealed class LevelUpCharacterCommandHandler(
             return sheetResult.Error!;
 
         characterRepository.Update(character);
+
+        var tokenUpdates = await CharacterTokenSync.SyncTokensAsync(character, tokenRepository, ct);
+
         await unitOfWork.SaveChangesAsync(ct);
+
+        foreach (var (sessionId, dto) in tokenUpdates)
+            await notifier.NotifyTokenUpdatedAsync(sessionId, dto, ct);
+
         await cache.RemoveAsync($"characters:{command.CharacterId}", ct);
         await cache.RemoveAsync($"characters:owner:{currentUser.Id}", ct);
 

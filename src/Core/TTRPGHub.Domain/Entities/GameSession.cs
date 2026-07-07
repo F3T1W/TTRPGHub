@@ -16,7 +16,12 @@ public sealed class GameSession : Entity<GameSessionId>
     public SessionStatus Status { get; private set; }
     public DateTime CreatedAt { get; private init; }
     public DateTime UpdatedAt { get; private set; }
-    public string? CurrentShowcaseImageUrl { get; private set; }
+    // J.4 — карта/сетка/туман/стены/свет/бой раньше жили прямо здесь; вынесены в отдельную
+    // сущность Scene (своя таблица и репозиторий, как TableToken), чтобы ГМ мог иметь несколько
+    // карт в рамках одной игры. ActiveSceneId — какая из сцен сейчас показывается участникам;
+    // сама сессия не хранит список сцен (это делает ISceneRepository.GetBySessionAsync).
+    public Guid? ActiveSceneId { get; private set; }
+
     public string? CurrentTrackUrl { get; private set; }
     public string? CurrentTrackTitle { get; private set; }
     public bool IsAudioPlaying { get; private set; }
@@ -131,12 +136,14 @@ public sealed class GameSession : Entity<GameSessionId>
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public Error? SetShowcaseImage(UserId requesterId, string? imageUrl)
+    // Проверка "sceneId принадлежит этой сессии" делает обработчик команды (загружает Scene и
+    // сверяет Scene.SessionId == session.Id) — сущность здесь отвечает только за авторизацию ГМ.
+    public Error? SetActiveScene(UserId requesterId, Guid sceneId)
     {
         if (OrganizerId != requesterId)
             return Error.Unauthorized();
 
-        CurrentShowcaseImageUrl = imageUrl;
+        ActiveSceneId = sceneId;
         UpdatedAt = DateTime.UtcNow;
         return null;
     }

@@ -1,13 +1,13 @@
 @page "/reference/pf2e/spells/{Id:guid}"
 @attribute [Authorize]
-<PageTitle>@(_spell?.Name ?? "Заклинание") — Pathfinder 2e</PageTitle>
+<PageTitle>@(_display?.Name ?? _spell?.Name ?? "Заклинание") — Pathfinder 2e</PageTitle>
 
 <div class="container py-4" style="max-width:860px;">
     @if (_loading)
     {
         <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
     }
-    else if (_spell is null)
+    else if (_spell is null || _display is null)
     {
         <div class="ta-card text-center py-5"><p class="text-muted">Заклинание не найдено.</p></div>
     }
@@ -23,17 +23,20 @@
 
         <div class="ta-card p-4">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                <div>
-                    <h2 class="text-white mb-1">@_spell.Name</h2>
-                    <p class="text-muted mb-0">@(LevelLabel(_spell.Level)) — @_spell.Traditions</p>
-                </div>
+            <div>
+                <h2 class="text-white mb-1">@_display.Name</h2>
+                <p class="text-muted mb-0">@(LevelLabel(_spell.Level)) — @_display.Traditions</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <ContentLanguageToggle />
                 <span class="badge @LevelBadge(_spell.Level)" style="font-size:.9rem;padding:.4em .8em;">
                     @(_spell.Level == 0 ? "Заговор" : $"{_spell.Level} ур.")
                 </span>
             </div>
+        </div>
 
-            <div class="d-flex gap-2 flex-wrap mb-3">
-                @foreach (var trait in _spell.Traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        <div class="d-flex gap-2 flex-wrap mb-3">
+            @foreach (var trait in _display.Traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
                     <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@trait</span>
                 }
@@ -44,7 +47,7 @@
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="small text-muted mb-1">Применение</div>
-                    <div class="text-white">@_spell.Cast</div>
+                    <div class="text-white">@_display.Cast</div>
                 </div>
                 @if (!string.IsNullOrEmpty(_spell.Range))
                 {
@@ -69,22 +72,22 @@
                 }
                 <div class="col-6 col-md-3">
                     <div class="small text-muted mb-1">Длительность</div>
-                    <div class="text-white">@_spell.Duration</div>
+                    <div class="text-white">@_display.Duration</div>
                 </div>
             </div>
 
             <div class="mb-4">
                 <h6 class="text-muted mb-2" style="text-transform:uppercase;letter-spacing:.05em;font-size:.75rem;">Описание</h6>
-                <div class="text-white" style="line-height:1.7;white-space:pre-wrap;">@_spell.Description</div>
+                <div class="text-white" style="line-height:1.7;white-space:pre-wrap;">@_display.Description</div>
             </div>
 
-            @if (!string.IsNullOrEmpty(_spell.Heightened))
-            {
-                <div class="p-3 rounded" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);">
-                    <h6 class="mb-2" style="color:var(--ta-gold);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Усиление (heightened)</h6>
-                    <div class="text-white small" style="white-space:pre-wrap;">@_spell.Heightened</div>
-                </div>
-            }
+        @if (!string.IsNullOrEmpty(_display.Heightened))
+        {
+            <div class="p-3 rounded" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);">
+                <h6 class="mb-2" style="color:var(--ta-gold);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;">Усиление (heightened)</h6>
+                <div class="text-white small" style="white-space:pre-wrap;">@_display.Heightened</div>
+            </div>
+        }
 
             <hr style="border-color:var(--ta-border);">
 

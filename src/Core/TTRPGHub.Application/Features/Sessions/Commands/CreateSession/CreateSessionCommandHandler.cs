@@ -8,6 +8,7 @@ namespace TTRPGHub.Features.Sessions.Commands.CreateSession;
 
 internal sealed class CreateSessionCommandHandler(
     IGameSessionRepository repository,
+    ISceneRepository sceneRepository,
     IUnitOfWork unitOfWork,
     ICurrentUser currentUser
 ) : IRequestHandler<CreateSessionCommand, Result<CreateSessionResponse>>
@@ -25,6 +26,13 @@ internal sealed class CreateSessionCommandHandler(
             command.Location);
 
         await repository.AddAsync(session, ct);
+
+        // J.4 — каждая сессия стартует с одной сценой по умолчанию, чтобы игровой стол сразу был
+        // рабочим (не требует от ГМ обязательного шага "создать сцену" перед первым использованием).
+        var scene = Scene.Create(session.Id, "Сцена 1", sortOrder: 0);
+        await sceneRepository.AddAsync(scene, ct);
+        session.SetActiveScene(currentUser.Id, scene.Id);
+
         await unitOfWork.SaveChangesAsync(ct);
 
         return new CreateSessionResponse(session.Id.Value, session.Title);

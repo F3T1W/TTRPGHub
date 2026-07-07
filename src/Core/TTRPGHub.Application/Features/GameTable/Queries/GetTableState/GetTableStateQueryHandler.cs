@@ -9,6 +9,7 @@ namespace TTRPGHub.Features.GameTable.Queries.GetTableState;
 
 internal sealed class GetTableStateQueryHandler(
     IGameSessionRepository sessionRepository,
+    ISceneRepository sceneRepository,
     ITableMessageRepository messageRepository,
     ITableTokenRepository tokenRepository,
     IUserRepository userRepository,
@@ -26,6 +27,11 @@ internal sealed class GetTableStateQueryHandler(
 
         if (session.Status != SessionStatus.InProgress)
             return Error.Validation("Table.NotInProgress", "Игра ещё не началась.");
+
+        var scenes = await sceneRepository.GetBySessionAsync(session.Id, ct);
+        var activeScene = scenes.FirstOrDefault(s => s.Id == session.ActiveSceneId) ?? scenes.FirstOrDefault();
+        if (activeScene is null)
+            return Error.Validation("Scene.NoActiveScene", "У сессии нет ни одной сцены.");
 
         var participants = new List<TableParticipantDto>();
         foreach (var p in session.Participants)
@@ -46,16 +52,20 @@ internal sealed class GetTableStateQueryHandler(
             .ToList();
 
         var isOrganizer = session.OrganizerId == currentUser.Id;
-        var tokens = await tokenRepository.GetBySessionAsync(session.Id, ct);
+        var tokens = await tokenRepository.GetBySceneAsync(activeScene.Id, ct);
         var tokenDtos = tokens
-            .Select(t => new TableTokenDto(
-                t.Id, t.Label, t.ImageUrl, t.Color, t.X, t.Y,
-                t.OwnerId?.Value, t.CanBeMovedBy(currentUser.Id, isOrganizer)))
+            .Where(t => t.IsVisibleTo(currentUser.Id, isOrganizer, TableTokenMapper.ParseVisibleTo(t.VisibleToJson)))
+            .Select(t => TableTokenMapper.ToDto(t, t.CanBeMovedBy(currentUser.Id, isOrganizer)))
             .ToList();
 
         return new TableStateDto(
-            session.Id.Value, session.Title, session.CurrentShowcaseImageUrl,
+            session.Id.Value, session.Title, activeScene.ShowcaseImageUrl, activeScene.GridCellSizePx,
             isOrganizer, true,
-            participants, messageDtos, AudioStateMapper.ToDto(session), tokenDtos);
+            participants, messageDtos, AudioStateMapper.ToDto(session), tokenDtos,
+            activeScene.FogEnabled, activeScene.VisionRadiusFeet, activeScene.WallsJson,
+            activeScene.CombatActive, activeScene.CombatRound, activeScene.CombatTurnTokenId,
+            activeScene.LightsJson,
+            activeScene.TerrainTagsJson, activeScene.AmbientLighting,
+            scenes.Select(s => new SceneSummaryDto(s.Id, s.Name)).ToList(), activeScene.Id);
     }
 }

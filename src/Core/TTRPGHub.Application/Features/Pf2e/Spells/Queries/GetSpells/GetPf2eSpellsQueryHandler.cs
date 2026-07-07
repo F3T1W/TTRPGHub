@@ -16,7 +16,7 @@ internal sealed class GetPf2eSpellsQueryHandler(IPf2eSpellRepository repository)
             query.Page, query.PageSize, ct);
 
         var dtos = items.Select(s => new Pf2eSpellSummaryDto(
-            s.Id.Value, s.Name, s.Level, s.Traditions, s.Traits,
+            s.Id.Value, s.Slug, s.Name, s.Level, s.Traditions, s.Traits,
             s.Cast, s.Range, s.Duration)).ToList();
 
         return new PagedResult<Pf2eSpellSummaryDto>(dtos, total, query.Page, query.PageSize);

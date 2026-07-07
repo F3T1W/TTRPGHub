@@ -51,18 +51,39 @@ public partial class Index
         }
         try
         {
-            using var stream = file.OpenReadStream(maxAllowedSize: 1_048_576); // 1MB
-            var request = await JsonSerializer.DeserializeAsync<ImportCharacterRequest>(
-                stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            using var stream = file.OpenReadStream(maxAllowedSize: 5_242_880); // 5 MB — экспорт Foundry может быть крупным
+            using var doc = await JsonDocument.ParseAsync(stream);
 
-            if (request is null || string.IsNullOrWhiteSpace(request.Name))
+            // J.8 Pathbuilder → L.5 Foundry → наш экспорт (Detail "Экспорт JSON").
+            if (PathbuilderImporter.IsPathbuilderExport(doc.RootElement))
             {
-                _importError = "Файл не содержит корректных данных персонажа.";
-                return;
+                var (request, stats) = PathbuilderImporter.Parse(doc.RootElement);
+                var result = await Api.ImportCharacterAsync(request);
+                await Api.UpdatePf2eStatsAsync(result.CharacterId, new UpdatePf2eStatsRequest(stats.ToJson()));
+                _importSuccess = $"Персонаж «{result.Name}» импортирован из Pathbuilder 2e!";
+            }
+            else if (FoundryActorImporter.IsFoundryActorExport(doc.RootElement))
+            {
+                var (request, stats) = FoundryActorImporter.Parse(doc.RootElement);
+                var result = await Api.ImportCharacterAsync(request);
+                await Api.UpdatePf2eStatsAsync(result.CharacterId, new UpdatePf2eStatsRequest(stats.ToJson()));
+                _importSuccess = $"Персонаж «{result.Name}» импортирован из Foundry VTT (pf2e)!";
+            }
+            else
+            {
+                var request = doc.RootElement.Deserialize<ImportCharacterRequest>(
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (request is null || string.IsNullOrWhiteSpace(request.Name))
+                {
+                    _importError = "Файл не содержит корректных данных персонажа.";
+                    return;
+                }
+
+                var result = await Api.ImportCharacterAsync(request);
+                _importSuccess = $"Персонаж «{result.Name}» успешно импортирован!";
             }
 
-            var result = await Api.ImportCharacterAsync(request);
-            _importSuccess = $"Персонаж «{result.Name}» успешно импортирован!";
             await LoadAsync();
         }
         catch (JsonException)

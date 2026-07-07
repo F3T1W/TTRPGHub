@@ -8,6 +8,7 @@ using TTRPGHub.Features.Characters.Commands.CreateCharacterFromRules;
 using TTRPGHub.Features.Characters.Commands.ImportCharacter;
 using TTRPGHub.Features.Characters.Commands.LevelUpCharacter;
 using TTRPGHub.Features.Characters.Commands.UpdateCharacter;
+using TTRPGHub.Features.Characters.Commands.UpdateCharacterPf2eStats;
 using TTRPGHub.Features.Characters.Commands.UploadAvatar;
 using TTRPGHub.Features.Characters.Queries.GetCharacterDetail;
 using TTRPGHub.Features.Characters.Queries.GetMyCharacters;
@@ -72,6 +73,16 @@ internal static class CharactersEndpoints
             return result.IsSuccess ? Results.NoContent() : result.ToResponse();
         })
         .WithSummary("Обновить лист персонажа")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPut("/{id:guid}/pf2e-stats", async (Guid id, UpdatePf2eStatsRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new UpdateCharacterPf2eStatsCommand(id, req.StatsJson), ct);
+            return result.IsSuccess ? Results.NoContent() : result.ToResponse();
+        })
+        .WithSummary("Обновить PF2e-лист персонажа (ранги владения, спеллкастинг, инвентарь)")
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -143,3 +154,4 @@ internal static class CharactersEndpoints
 }
 
 internal sealed record LevelUpRequest(int NewLevel);
+internal sealed record UpdatePf2eStatsRequest(string StatsJson);

@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<ISessionReminderLogRepository, SessionReminderLogRepository>();
         services.AddScoped<ITableMessageRepository, TableMessageRepository>();
         services.AddScoped<ITableTokenRepository, TableTokenRepository>();
+        services.AddScoped<ISceneRepository, SceneRepository>();
+        services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
         services.AddScoped<IGameSystemRepository, GameSystemRepository>();
         services.AddScoped<IRuleEntryRepository, RuleEntryRepository>();
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
@@ -68,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<Open5eRulesImporter>();
         services.AddScoped<LegacyRuleMigrator>();
         services.AddScoped<Pf2eRulesSeeder>();
+        services.AddScoped<Pf2eContentSeeder>();
         services.AddScoped<GuidesSeeder>();
 
         return services;

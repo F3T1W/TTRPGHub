@@ -3,9 +3,15 @@
   "configurations": [
     {
       "name": "TTRPGHub.Web",
-      "runtimeExecutable": "dotnet",
+      "runtimeExecutable": "/usr/local/share/dotnet/dotnet",
       "runtimeArgs": ["run", "--project", "src/Presentation/TTRPGHub.Web"],
       "port": 5141
+    },
+    {
+      "name": "TTRPGHub.API",
+      "runtimeExecutable": "/usr/local/share/dotnet/dotnet",
+      "runtimeArgs": ["run", "--project", "src/Presentation/TTRPGHub.API", "--environment", "Development"],
+      "port": 5014
     }
   ]
 }

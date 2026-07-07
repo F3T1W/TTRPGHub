@@ -1,16 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference.Pf2e;
 
-public partial class Monsters
+public partial class Monsters : IDisposable
 {
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
+    [Inject] private ContentLanguageService Lang { get; set; } = default!;
 
     private Pf2eMonsterPagedResult? _result;
+    private Dictionary<Guid, Pf2eLocalizedMonsterRow> _localized = [];
     private bool _loading = true;
 
     private string _search = "";
@@ -30,7 +32,14 @@ public partial class Monsters
     private static readonly string[] _levels =
         ["-1", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Lang.InitializeAsync();
+        Lang.OnChanged += OnLanguageChanged;
+        await LoadAsync();
+    }
+
+    private async void OnLanguageChanged() => await InvokeAsync(LoadAsync);
 
     private async Task LoadAsync()
     {
@@ -45,10 +54,20 @@ public partial class Monsters
                 level:  level,
                 page:   _page,
                 pageSize: PageSize);
+
+            _localized = new Dictionary<Guid, Pf2eLocalizedMonsterRow>();
+            if (_result is not null)
+            {
+                foreach (var monster in _result.Items)
+                    _localized[monster.Id] = await Locale.LocalizeAsync(monster);
+            }
         }
-        catch { _result = null; }
+        catch { _result = null; _localized = []; }
         finally { _loading = false; }
     }
+
+    private Pf2eLocalizedMonsterRow Display(Pf2eMonsterSummaryDto monster) =>
+        _localized.GetValueOrDefault(monster.Id, new Pf2eLocalizedMonsterRow(monster.Name, monster.Traits, monster.Size));
 
     private async Task ApplyFilters() { _page = 1; await LoadAsync(); }
     private async Task ResetFilters() { _search = ""; _trait = ""; _size = ""; _level = ""; _page = 1; await LoadAsync(); }
@@ -68,4 +87,6 @@ public partial class Monsters
         <= 10 => "bg-danger",
         _ => "bg-dark border border-danger text-danger"
     };
+
+    public void Dispose() => Lang.OnChanged -= OnLanguageChanged;
 }

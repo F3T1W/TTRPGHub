@@ -25,6 +25,9 @@ internal sealed class Pf2eMonsterConfiguration : IEntityTypeConfiguration<Pf2eMo
         builder.Property(m => m.Skills).HasColumnName("skills");
         builder.Property(m => m.Speed).HasColumnName("speed");
         builder.Property(m => m.Attacks).HasColumnName("attacks");
+        builder.Property(m => m.AttacksJson).HasColumnType("jsonb").HasColumnName("attacks_json");
+        builder.Property(m => m.ResistancesJson).HasColumnType("jsonb").HasColumnName("resistances_json");
+        builder.Property(m => m.WeaknessesJson).HasColumnType("jsonb").HasColumnName("weaknesses_json");
         builder.Property(m => m.Abilities).HasColumnName("abilities");
         builder.Property(m => m.Source).HasColumnName("source");
 

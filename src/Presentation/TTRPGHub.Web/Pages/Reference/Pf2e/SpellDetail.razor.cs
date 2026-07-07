@@ -1,21 +1,37 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference.Pf2e;
 
-public partial class SpellDetail
+public partial class SpellDetail : IDisposable
 {
     [Parameter] public Guid Id { get; set; }
     [Inject] private IApiClient Api { get; set; } = default!;
+    [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
+    [Inject] private ContentLanguageService Lang { get; set; } = default!;
 
     private Pf2eSpellDetailDto? _spell;
+    private Pf2eLocalizedSpellDetail? _display;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        try { _spell = await Api.GetPf2eSpellAsync(Id); }
-        catch { _spell = null; }
+        await Lang.InitializeAsync();
+        Lang.OnChanged += OnLanguageChanged;
+        await LoadAsync();
+    }
+
+    private async void OnLanguageChanged() => await InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _spell = await Api.GetPf2eSpellAsync(Id);
+            _display = _spell is null ? null : await Locale.LocalizeAsync(_spell);
+        }
+        catch { _spell = null; _display = null; }
         finally { _loading = false; }
     }
 
@@ -31,4 +47,6 @@ public partial class SpellDetail
         9 => "bg-danger",
         _ => "bg-dark border border-warning text-warning"
     };
+
+    public void Dispose() => Lang.OnChanged -= OnLanguageChanged;
 }

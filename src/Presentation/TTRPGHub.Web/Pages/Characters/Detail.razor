@@ -209,7 +209,10 @@ else if (_char is not null)
                                 <input type="number" min="0" class="stat-chip-input" value="@_form.ArmorClass"
                                        @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v)) _form = _form with { ArmorClass = v }; }" />
                             }
-                            else { <div class="fw-bold">@_form.ArmorClass</div> }
+                            else
+                            {
+                                <div class="fw-bold">@_form.ArmorClass</div>
+                            }
                         </div>
                     </div>
                     <div class="col-3">
@@ -220,7 +223,10 @@ else if (_char is not null)
                                 <input type="number" min="0" step="5" class="stat-chip-input" value="@_form.Speed"
                                        @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v)) _form = _form with { Speed = v }; }" />
                             }
-                            else { <div class="fw-bold">@_form.Speed</div> }
+                            else
+                            {
+                                <div class="fw-bold">@_form.Speed фт</div>
+                            }
                         </div>
                     </div>
                     <div class="col-3">
@@ -413,5 +419,11 @@ else if (_char is not null)
             </div>
         </div>
     </div>
-}
 
+    <!-- ── PF2e-лист ─────────────────────────────────────────────────────────── -->
+    <div class="row g-4 mt-1">
+        <div class="col-12">
+            <Pf2eStatsSheet Character="_char" CharacterChanged="OnCharacterPf2eUpdatedAsync" />
+        </div>
+    </div>
+}

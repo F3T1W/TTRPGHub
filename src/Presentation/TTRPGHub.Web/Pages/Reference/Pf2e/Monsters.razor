@@ -11,9 +11,10 @@
         </ol>
     </nav>
 
-    <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <h2 class="text-white mb-0">⚔️ Pathfinder 2e — Бестиарий</h2>
-        <a href="/reference/pf2e/spells" class="btn btn-outline-secondary btn-sm">← Заклинания</a>
+        <ContentLanguageToggle />
+        <a href="/reference/pf2e/spells" class="btn btn-outline-secondary btn-sm ms-auto">← Заклинания</a>
     </div>
 
     <!-- Фильтры -->
@@ -88,11 +89,12 @@
                 <tbody>
                     @foreach (var monster in _result.Items)
                     {
+                        var row = Display(monster);
                         <tr style="border-color:var(--ta-border);cursor:pointer;" @onclick="@(() => Nav.NavigateTo($"/reference/pf2e/monsters/{monster.Id}"))">
-                            <td class="fw-semibold text-white">@monster.Name</td>
+                            <td class="fw-semibold text-white">@row.Name</td>
                             <td class="text-center"><span class="badge @LevelBadge(monster.Level)">@monster.Level</span></td>
-                            <td class="text-muted small">@monster.Size</td>
-                            <td class="text-muted small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@monster.Traits</td>
+                            <td class="text-muted small">@row.Size</td>
+                            <td class="text-muted small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@row.Traits</td>
                             <td class="text-center text-white">@monster.ArmorClass</td>
                             <td class="text-center text-white">@monster.HitPoints</td>
                         </tr>

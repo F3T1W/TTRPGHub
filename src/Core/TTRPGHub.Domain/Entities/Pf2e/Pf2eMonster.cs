@@ -30,6 +30,21 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
     public string? Abilities { get; private set; }
     public string Source { get; private set; } = "PF2e SRD";
 
+    // Структурированные атаки для автоматизации кнопок "Атаковать"/"Урон" на токене монстра
+    // (см. H.8 — то же для персонажей). null = у монстра есть только текстовое поле Attacks
+    // (старый контент, ещё не переструктурирован) — кнопки автоматизации не показываются,
+    // текст всё равно виден в статблоке. Формат — JSON-массив объектов
+    // {name, bonus, damageDice, damageBonus, damageType}, бонус атаки уже готовое число из
+    // статблока (не считается из ранга+уровня+характеристики, как у персонажей).
+    public string? AttacksJson { get; private set; }
+
+    // J.2 (combat tracker "до идеального состояния") — сопротивления/уязвимости из статблока
+    // для расчёта эффективного урона на токене (см. Table.razor.cs ApplyDamageAsync). Формат —
+    // JSON-массив {type, value, exceptions[]}: value может быть отрицательным по правилам PF2e
+    // не бывает — уязвимость и сопротивление хранятся в раздельных полях, а не одним знаком.
+    public string? ResistancesJson { get; private set; }
+    public string? WeaknessesJson { get; private set; }
+
     private Pf2eMonster() { }
 
     public static Pf2eMonster Create(
@@ -37,7 +52,8 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
         int perception, string? senses, string? languages, string? skills,
         int str, int dex, int con, int intel, int wis, int cha,
         int armorClass, int fortitude, int reflex, int will, int hitPoints,
-        string speed, string? attacks, string? abilities, string source)
+        string speed, string? attacks, string? abilities, string source,
+        string? attacksJson = null, string? resistancesJson = null, string? weaknessesJson = null)
     {
         return new Pf2eMonster
         {
@@ -66,6 +82,9 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
             Attacks      = attacks,
             Abilities    = abilities,
             Source       = source,
+            AttacksJson  = attacksJson,
+            ResistancesJson = resistancesJson,
+            WeaknessesJson  = weaknessesJson,
         };
     }
 }

@@ -50,6 +50,12 @@ public sealed class Character : Entity<CharacterId>
     // Profile picture
     public string? AvatarUrl { get; private set; }
 
+    // PF2e-специфика (ранги владения per-skill, ключевая характеристика, class DC, спеллкастинг,
+    // структурированный инвентарь) не влезает в плоские D&D5e-колонки выше и не нужна для D&D5e-
+    // персонажей — храним отдельным jsonb-блобом по прецеденту RuleEntry.StatsJson, null = обычный
+    // D&D5e-персонаж без PF2e-листа.
+    public string? Pf2eStatsJson { get; private set; }
+
     // Calculated props
     public int ProficiencyBonus => Level switch { <= 4 => 2, <= 8 => 3, <= 12 => 4, <= 16 => 5, _ => 6 };
     public int StrengthModifier     => Modifier(Strength);
@@ -148,6 +154,21 @@ public sealed class Character : Entity<CharacterId>
     public void SetPublic(bool isPublic)
     {
         IsPublic  = isPublic;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetPf2eStats(string? statsJson)
+    {
+        Pf2eStatsJson = statsJson;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Синхронизация HP при бое за столом (TableToken — "привязанный" токен, как связанный actor
+    // в Foundry): урон/лечение, применённые к токену игрока, должны отражаться на листе персонажа,
+    // а не жить только на копии токена (в отличие от монстров — те намеренно независимы, см. H.4).
+    public void SetCurrentHitPoints(int currentHp)
+    {
+        CurrentHitPoints = Math.Clamp(currentHp, 0, MaxHitPoints);
         UpdatedAt = DateTime.UtcNow;
     }
 

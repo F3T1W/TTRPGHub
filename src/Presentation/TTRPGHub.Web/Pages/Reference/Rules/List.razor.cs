@@ -5,13 +5,16 @@ using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference.Rules;
 
-public partial class List
+public partial class List : IDisposable
 {
     [Parameter] public string SystemSlug { get; set; } = "";
     [Parameter] public string Category { get; set; } = "";
     [Inject] private IApiClient Api { get; set; } = default!;
+    [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
+    [Inject] private ContentLanguageService Lang { get; set; } = default!;
 
     private RuleEntryPageDto? _result;
+    private Dictionary<string, string> _entryTitles = new(StringComparer.OrdinalIgnoreCase);
     private bool _loading = true;
     private string? _error;
     private bool _canManage;
@@ -21,11 +24,14 @@ public partial class List
     private int _page = 1;
     private const int PageSize = 30;
 
-    private static readonly string[] OfficialCategories = ["class", "race", "feat", "condition"];
-    private static readonly string[] CustomCategories =
-        ["spell", "monster", "class", "race", "feat", "condition", "equipment", "background", "rule"];
+    // D&D5e держит заклинания/монстров на отдельных legacy-страницах (/spells, /monsters) —
+    // здесь показываем только категории, которых там нет. Остальные системы (PF2e, кастомные)
+    // не имеют legacy-страниц вообще, поэтому показываем полный список.
+    private static readonly string[] Dnd5eCategories = ["class", "race", "feat", "condition"];
+    private static readonly string[] FullCategories =
+        ["spell", "monster", "class", "race", "feat", "action", "condition", "equipment", "background", "rule"];
 
-    private string[] AllCategories => _isOfficialSystem ? OfficialCategories : CustomCategories;
+    private string[] AllCategories => SystemSlug == "dnd5e" ? Dnd5eCategories : FullCategories;
 
     private bool _isOfficialSystem = true;
 
@@ -34,11 +40,16 @@ public partial class List
 
     protected override async Task OnParametersSetAsync()
     {
+        await Lang.InitializeAsync();
+        Lang.OnChanged -= OnLanguageChanged;
+        Lang.OnChanged += OnLanguageChanged;
         _page = 1;
         _search = "";
         await LoadSystemInfoAsync();
         await LoadAsync();
     }
+
+    private async void OnLanguageChanged() => await InvokeAsync(async () => { await LoadAsync(); });
 
     private async Task LoadSystemInfoAsync()
     {
@@ -66,6 +77,7 @@ public partial class List
                 SystemSlug, Category,
                 search: string.IsNullOrWhiteSpace(_search) ? null : _search,
                 page: _page, pageSize: PageSize);
+            await BuildEntryTitlesAsync();
         }
         catch
         {
@@ -77,6 +89,20 @@ public partial class List
             _loading = false;
         }
     }
+
+    private async Task BuildEntryTitlesAsync()
+    {
+        _entryTitles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (SystemSlug != "pf2e" || _result is null) return;
+        var cat = Category.ToLowerInvariant();
+        foreach (var item in _result.Items)
+            _entryTitles[item.Slug] = await Locale.NameAsync(cat, item.Slug, item.Title);
+    }
+
+    private string EntryTitle(RuleEntrySummaryDto item) =>
+        _entryTitles.GetValueOrDefault(item.Slug, item.Title);
+
+    public void Dispose() => Lang.OnChanged -= OnLanguageChanged;
 
     private async Task ApplyFilters() { _page = 1; await LoadAsync(); }
     private async Task ResetFilters() { _search = ""; _page = 1; await LoadAsync(); }
@@ -102,6 +128,7 @@ public partial class List
         "class" => "Классы",
         "race" => "Расы",
         "feat" => "Фиты",
+        "action" => "Действия",
         "condition" => "Состояния",
         "equipment" => "Снаряжение",
         "background" => "Предыстории",
@@ -116,6 +143,7 @@ public partial class List
         "class" => "⚔️",
         "race" => "🧬",
         "feat" => "⭐",
+        "action" => "🎯",
         "condition" => "☣️",
         _ => "📖"
     };

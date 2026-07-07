@@ -2,14 +2,17 @@ using MediatR;
 using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
+using TTRPGHub.Features.Characters.Shared;
 using TTRPGHub.Repositories;
 
 namespace TTRPGHub.Features.Characters.Commands.UpdateCharacter;
 
 internal sealed class UpdateCharacterCommandHandler(
     ICharacterRepository characterRepository,
+    ITableTokenRepository tokenRepository,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork,
+    ITableNotifier notifier,
     ICacheService cache
 ) : IRequestHandler<UpdateCharacterCommand, Result>
 {
@@ -36,7 +39,12 @@ internal sealed class UpdateCharacterCommandHandler(
         var result = character.UpdateSheet(data);
         if (result.IsFailure) return result;
 
+        var tokenUpdates = await CharacterTokenSync.SyncTokensAsync(character, tokenRepository, ct);
+
         await unitOfWork.SaveChangesAsync(ct);
+
+        foreach (var (sessionId, dto) in tokenUpdates)
+            await notifier.NotifyTokenUpdatedAsync(sessionId, dto, ct);
 
         await cache.RemoveAsync($"characters:owner:{currentUser.Id}", ct);
         await cache.RemoveAsync($"characters:{command.CharacterId}", ct);

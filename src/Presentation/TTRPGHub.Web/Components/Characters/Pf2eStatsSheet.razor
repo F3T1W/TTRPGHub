@@ -1,0 +1,501 @@
+@using TTRPGHub.Services
+
+@if (AllowCreate && !_showPf2e)
+{
+    <button class="btn btn-outline-secondary" @onclick="() => { _showPf2e = true; StartEditPf2e(); }" disabled="@ReadOnly">
+        <i class="bi bi-plus-lg me-1"></i>Добавить PF2e-лист
+    </button>
+}
+else if (_showPf2e)
+{
+    <div class="@(Compact ? "" : "ta-card p-4")">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="sheet-section-title mb-0">Лист PF2e · @Character.Name</h6>
+            @if (!ReadOnly)
+            {
+                @if (!_editingPf2e)
+                {
+                    <button class="btn btn-sm btn-ta-primary" @onclick="StartEditPf2e">
+                        <i class="bi bi-pencil me-1"></i>Редактировать
+                    </button>
+                }
+                else
+                {
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success" @onclick="SavePf2eAsync" disabled="@_savingPf2e">
+                            @if (_savingPf2e) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                            Сохранить
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEditPf2e">Отмена</button>
+                    </div>
+                }
+            }
+        </div>
+                    @if (_pf2eSaveError is not null)
+                    {
+                        <div class="alert alert-danger py-2 mb-3">@_pf2eSaveError</div>
+                    }
+
+                    <div class="row g-4">
+                        <div class="@ColClass">
+                            <h6 class="small text-muted mb-2">Основное</h6>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">Ключевая характеристика</label>
+                                @if (_editingPf2e)
+                                {
+                                    <select class="form-select form-select-sm" value="@_pf2e.KeyAbility"
+                                            @onchange='e => _pf2e = _pf2e with { KeyAbility = e.Value?.ToString() ?? "str" }'>
+                                        @foreach (var (key, label) in Pf2eAbilities)
+                                        {
+                                            <option value="@key">@label</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <div>@Pf2eAbilities.First(a => a.Key == _pf2e.KeyAbility).Label</div>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="small">Внимательность</span>
+                                @if (_editingPf2e)
+                                {
+                                    <select class="form-select form-select-sm" style="width:auto;" value="@_pf2e.PerceptionRank"
+                                            @onchange="e => _pf2e = _pf2e with { PerceptionRank = int.Parse(e.Value!.ToString()!) }">
+                                        @foreach (var (val, label) in Pf2eRanks)
+                                        {
+                                            <option value="@val">@label</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold" style="color:var(--ta-accent-light);">
+                                        +@(Pf2eBonus(_pf2e.PerceptionRank) + _perceptionBonusFromFeats)
+                                        @if (_perceptionBonusFromFeats != 0)
+                                        {
+                                            <small class="text-success" title="Автоматически из связанных фитов (J.1)">(@Pf2eBonus(_pf2e.PerceptionRank)+@_perceptionBonusFromFeats)</small>
+                                        }
+                                    </span>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="small">Class DC</span>
+                                @if (_editingPf2e)
+                                {
+                                    <select class="form-select form-select-sm" style="width:auto;" value="@_pf2e.ClassDcRank"
+                                            @onchange="e => _pf2e = _pf2e with { ClassDcRank = int.Parse(e.Value!.ToString()!) }">
+                                        @foreach (var (val, label) in Pf2eRanks)
+                                        {
+                                            <option value="@val">@label</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold" style="color:var(--ta-accent-light);">@(10 + Pf2eBonus(_pf2e.ClassDcRank))</span>
+                                }
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="small">Очки Героя</span>
+                                @if (_editingPf2e)
+                                {
+                                    <div class="d-flex align-items-center gap-1">
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => AdjustHeroPoints(-1)">−</button>
+                                        <span class="fw-semibold">@_pf2e.HeroPoints</span>
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => AdjustHeroPoints(1)">+</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold" style="color:var(--ta-gold);">@_pf2e.HeroPoints</span>
+                                }
+                            </div>
+
+                            <h6 class="small text-muted mt-3 mb-2">Спасброски</h6>
+                            @foreach (var (key, label) in Pf2eSaves)
+                            {
+                                var rank = _pf2e.SaveRanks.GetValueOrDefault(key);
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="small">@label</span>
+                                    @if (_editingPf2e)
+                                    {
+                                        <select class="form-select form-select-sm" style="width:auto;" value="@rank"
+                                                @onchange="e => { _pf2e.SaveRanks[key] = int.Parse(e.Value!.ToString()!); }">
+                                            @foreach (var (val, rlabel) in Pf2eRanks)
+                                            {
+                                                <option value="@val">@rlabel</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-semibold" style="color:var(--ta-accent-light);">+@Pf2eBonus(rank)</span>
+                                    }
+                                </div>
+                            }
+
+                            <h6 class="small text-muted mt-3 mb-2">Спеллкастинг</h6>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">Традиция</label>
+                                @if (_editingPf2e)
+                                {
+                                    <input class="form-control form-control-sm" @bind="_pf2e.SpellcastingTradition" placeholder="напр. Arcane" />
+                                }
+                                else
+                                {
+                                    <div>@(_pf2e.SpellcastingTradition ?? "—")</div>
+                                }
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="small">Ранг владения</span>
+                                @if (_editingPf2e)
+                                {
+                                    <select class="form-select form-select-sm" style="width:auto;" value="@_pf2e.SpellcastingRank"
+                                            @onchange="e => _pf2e = _pf2e with { SpellcastingRank = int.Parse(e.Value!.ToString()!) }">
+                                        @foreach (var (val, label) in Pf2eRanks)
+                                        {
+                                            <option value="@val">@label</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold" style="color:var(--ta-accent-light);">+@Pf2eBonus(_pf2e.SpellcastingRank)</span>
+                                }
+                            </div>
+
+                            @if (_editingPf2e)
+                            {
+                                <div class="mt-2">
+                                    <div class="small text-muted mb-1">Слоты по уровням</div>
+                                    @foreach (var lvl in SpellSlotLevels)
+                                    {
+                                        var slot = SpellSlotFor(lvl);
+                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                            <span class="small" style="width:60px;">@(lvl == 0 ? "Заговор" : $"Ур. {lvl}")</span>
+                                            <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" placeholder="исп."
+                                                   value="@slot.Used" @onchange="e => UpdateSpellSlot(lvl, slot with { Used = int.TryParse(e.Value?.ToString(), out var u) ? u : slot.Used })" />
+                                            <span class="small">/</span>
+                                            <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" placeholder="макс."
+                                                   value="@slot.Max" @onchange="e => UpdateSpellSlot(lvl, slot with { Max = int.TryParse(e.Value?.ToString(), out var m) ? m : slot.Max })" />
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (_pf2e.SpellSlots.Any(s => s.Value.Max > 0))
+                            {
+                                <div class="mt-2">
+                                    <div class="small text-muted mb-1">Слоты по уровням</div>
+                                    @foreach (var lvl in SpellSlotLevels)
+                                    {
+                                        var slot = SpellSlotFor(lvl);
+                                        @if (slot.Max > 0)
+                                        {
+                                            <div class="d-flex justify-content-between small mb-1">
+                                                <span>@(lvl == 0 ? "Заговор" : $"Ур. {lvl}")</span>
+                                                <span class="fw-semibold" style="color:var(--ta-accent-light);">@slot.Used / @slot.Max</span>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <h6 class="small text-muted mb-2">Навыки</h6>
+                            @foreach (var (key, label) in Pf2eSkills)
+                            {
+                                var rank = _pf2e.SkillRanks.GetValueOrDefault(key);
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="small">@label</span>
+                                    @if (_editingPf2e)
+                                    {
+                                        <select class="form-select form-select-sm" style="width:auto;" value="@rank"
+                                                @onchange="e => { _pf2e.SkillRanks[key] = int.Parse(e.Value!.ToString()!); }">
+                                            @foreach (var (val, rlabel) in Pf2eRanks)
+                                            {
+                                                <option value="@val">@rlabel</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        var featBonus = _skillBonusFromFeats.GetValueOrDefault(key);
+                                        <span class="fw-semibold" style="color:var(--ta-accent-light);">
+                                            +@(Pf2eBonus(rank) + featBonus)
+                                            @if (featBonus != 0)
+                                            {
+                                                <small class="text-success" title="Автоматически из связанных фитов (J.1)">(@Pf2eBonus(rank)+@featBonus)</small>
+                                            }
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Инвентарь</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddInventoryItem">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.Inventory.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.Inventory.Count; i++)
+                                {
+                                    var idx = i;
+                                    var item = _pf2e.Inventory[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="Название" value="@item.Name"
+                                                   @onchange='e => UpdateInventoryItem(idx, item with { Name = e.Value?.ToString() ?? "" })' />
+                                            <input type="number" min="0" class="form-control form-control-sm" style="width:56px;" value="@item.Quantity"
+                                                   @onchange="e => UpdateInventoryItem(idx, item with { Quantity = int.TryParse(e.Value?.ToString(), out var q) ? q : item.Quantity })" />
+                                            <input type="number" min="0" step="0.1" class="form-control form-control-sm" style="width:64px;" value="@item.Bulk"
+                                                   @onchange="e => UpdateInventoryItem(idx, item with { Bulk = double.TryParse(e.Value?.ToString(), out var b) ? b : item.Bulk })" />
+                                            <input type="checkbox" class="form-check-input" checked="@item.Equipped" title="Экипировано"
+                                                   @onchange="e => UpdateInventoryItem(idx, item with { Equipped = (bool)(e.Value ?? false) })" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveInventoryItem(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>@(item.Equipped ? "⚔ " : "")@item.Name ×@item.Quantity</span>
+                                            <span class="text-muted">@item.Bulk</span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Атаки</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddAttack">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.Attacks.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.Attacks.Count; i++)
+                                {
+                                    var idx = i;
+                                    var atk = _pf2e.Attacks[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex flex-column gap-1 mb-2 pb-2" style="border-bottom:1px solid var(--ta-border);">
+                                            <div class="d-flex gap-1">
+                                                <input class="form-control form-control-sm" placeholder="Название" value="@atk.Name"
+                                                       @onchange='e => UpdateAttack(idx, atk with { Name = e.Value?.ToString() ?? "" })' />
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveAttack(idx)">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                <select class="form-select form-select-sm" value="@atk.Rank"
+                                                        @onchange="e => UpdateAttack(idx, atk with { Rank = int.Parse(e.Value!.ToString()!) })">
+                                                    @foreach (var (val, label) in Pf2eRanks)
+                                                    {
+                                                        <option value="@val">@label</option>
+                                                    }
+                                                </select>
+                                                <select class="form-select form-select-sm" value="@atk.AbilityKey"
+                                                        @onchange='e => UpdateAttack(idx, atk with { AbilityKey = e.Value?.ToString() ?? "str" })'>
+                                                    @foreach (var (key, label) in Pf2eAbilities)
+                                                    {
+                                                        <option value="@key">@label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                <input class="form-control form-control-sm" placeholder="кость, напр. 1d6" style="width:80px;" value="@atk.DamageDice"
+                                                       @onchange='e => UpdateAttack(idx, atk with { DamageDice = e.Value?.ToString() ?? "1d4" })' />
+                                                <input type="number" class="form-control form-control-sm" placeholder="бонус" style="width:60px;" value="@atk.DamageBonus"
+                                                       @onchange="e => UpdateAttack(idx, atk with { DamageBonus = int.TryParse(e.Value?.ToString(), out var b) ? b : atk.DamageBonus })" />
+                                                <input class="form-control form-control-sm" placeholder="тип урона" value="@atk.DamageType"
+                                                       @onchange='e => UpdateAttack(idx, atk with { DamageType = e.Value?.ToString() })' />
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>@atk.Name</span>
+                                            <span class="text-muted">
+                                                +@(Pf2eBonus(atk.Rank) + AbilityModByKey(atk.AbilityKey)) · @atk.DamageDice@(atk.DamageBonus != 0 ? (atk.DamageBonus > 0 ? $"+{atk.DamageBonus}" : $"{atk.DamageBonus}") : "")
+                                            </span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mt-1">
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Ресурсы класса</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddResource">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.Resources.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто (напр. Focus Points, Ki)</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.Resources.Count; i++)
+                                {
+                                    var idx = i;
+                                    var res = _pf2e.Resources[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="Название" value="@res.Name"
+                                                   @onchange='e => UpdateResource(idx, res with { Name = e.Value?.ToString() ?? "" })' />
+                                            <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" value="@res.Current"
+                                                   @onchange="e => UpdateResource(idx, res with { Current = int.TryParse(e.Value?.ToString(), out var c) ? c : res.Current })" />
+                                            <span class="small">/</span>
+                                            <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" value="@res.Max"
+                                                   @onchange="e => UpdateResource(idx, res with { Max = int.TryParse(e.Value?.ToString(), out var m) ? m : res.Max })" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveResource(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>@res.Name</span>
+                                            <span class="fw-semibold" style="color:var(--ta-accent-light);">@res.Current / @res.Max</span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Фиты</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddFeat">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.Feats.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.Feats.Count; i++)
+                                {
+                                    var idx = i;
+                                    var feat = _pf2e.Feats[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="Название фита (точное — свяжется со справочником)" value="@feat.Name"
+                                                   @onchange='e => UpdateFeat(idx, feat with { Name = e.Value?.ToString() ?? "" })' />
+                                            <input type="number" min="1" max="20" class="form-control form-control-sm" style="width:55px;" placeholder="ур." value="@feat.Level"
+                                                   @onchange="e => UpdateFeat(idx, feat with { Level = int.TryParse(e.Value?.ToString(), out var l) ? l : feat.Level })" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFeat(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center small mb-1">
+                                            <span>
+                                                @feat.Name
+                                                @if (feat.Slug is not null)
+                                                {
+                                                    <i class="bi bi-link-45deg text-success" title="Связан со справочником — правила применяются автоматически"></i>
+                                                }
+                                            </span>
+                                            <span class="text-muted">ур. @feat.Level</span>
+                                        </div>
+                                        @if (feat.Slug is not null && _grantsByFeatSlug.TryGetValue(feat.Slug, out var grants))
+                                        {
+                                            <div class="small text-muted fst-italic mb-1" style="margin-top:-4px;">Даёт: @string.Join(", ", grants)</div>
+                                        }
+                                    }
+                                }
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Известные заклинания</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddKnownSpell">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.KnownSpells.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.KnownSpells.Count; i++)
+                                {
+                                    var idx = i;
+                                    var spell = _pf2e.KnownSpells[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="Название" value="@spell.Name"
+                                                   @onchange='e => UpdateKnownSpell(idx, spell with { Name = e.Value?.ToString() ?? "" })' />
+                                            <input type="number" min="0" max="10" class="form-control form-control-sm" style="width:50px;" placeholder="ур." value="@spell.Level"
+                                                   @onchange="e => UpdateKnownSpell(idx, spell with { Level = int.TryParse(e.Value?.ToString(), out var l) ? l : spell.Level })" />
+                                            <input type="checkbox" class="form-check-input" checked="@spell.Prepared" title="Подготовлено"
+                                                   @onchange="e => UpdateKnownSpell(idx, spell with { Prepared = (bool)(e.Value ?? false) })" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveKnownSpell(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>@(spell.Prepared ? "✓ " : "")@spell.Name</span>
+                                            <span class="text-muted">ур. @spell.Level</span>
+                                        </div>
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+    </div>
+}

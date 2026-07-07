@@ -16,7 +16,7 @@ internal sealed class GetPf2eMonstersQueryHandler(IPf2eMonsterRepository reposit
             query.Page, query.PageSize, ct);
 
         var dtos = items.Select(m => new Pf2eMonsterSummaryDto(
-            m.Id.Value, m.Name, m.Level, m.Size, m.Traits,
+            m.Id.Value, m.Slug, m.Name, m.Level, m.Size, m.Traits,
             m.ArmorClass, m.HitPoints)).ToList();
 
         return new PagedResult<Pf2eMonsterSummaryDto>(dtos, total, query.Page, query.PageSize);

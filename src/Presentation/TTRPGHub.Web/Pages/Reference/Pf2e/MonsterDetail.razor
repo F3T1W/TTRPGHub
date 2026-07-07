@@ -1,6 +1,6 @@
 @page "/reference/pf2e/monsters/{Id:guid}"
 @attribute [Authorize]
-<PageTitle>@(_monster?.Name ?? "Существо") — Pathfinder 2e</PageTitle>
+<PageTitle>@(_displayName ?? _monster?.Name ?? "Существо") — Pathfinder 2e</PageTitle>
 
 <div class="container py-4" style="max-width:860px;">
     @if (_loading)
@@ -24,14 +24,17 @@
         <div class="ta-card p-4">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                 <div>
-                    <h2 class="text-white mb-1">@_monster.Name</h2>
-                    <p class="text-muted mb-0">@_monster.Size</p>
+                    <h2 class="text-white mb-1">@_displayName</h2>
+                    <p class="text-muted mb-0">@_displaySize</p>
                 </div>
-                <span class="badge @LevelBadge(_monster.Level)" style="font-size:.9rem;padding:.4em .8em;">Уровень @_monster.Level</span>
+                <div class="d-flex align-items-center gap-2">
+                    <ContentLanguageToggle />
+                    <span class="badge @LevelBadge(_monster.Level)" style="font-size:.9rem;padding:.4em .8em;">Уровень @_monster.Level</span>
+                </div>
             </div>
 
             <div class="d-flex gap-2 flex-wrap mb-3">
-                @foreach (var trait in _monster.Traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                @foreach (var trait in (_displayTraits ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 {
                     <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@trait</span>
                 }

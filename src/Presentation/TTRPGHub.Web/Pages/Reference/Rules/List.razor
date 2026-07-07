@@ -19,6 +19,10 @@
                 <a href="/reference/@SystemSlug/rules/@cat" class="btn btn-outline-secondary btn-sm">@CategoryLabel(cat)</a>
             }
         </div>
+        @if (SystemSlug == "pf2e")
+        {
+            <ContentLanguageToggle />
+        }
         @if (_canManage)
         {
             <a href="/reference/@SystemSlug/rules/@Category/create" class="btn btn-ta-primary btn-sm ms-auto">
@@ -71,7 +75,7 @@
             {
                 <div class="col-12 col-md-6 col-lg-4">
                     <a href="/reference/@SystemSlug/rules/@Category/@item.Slug" class="ta-card ta-card-link d-block text-decoration-none h-100">
-                        <h6 class="text-white mb-1">@item.Title</h6>
+                        <h6 class="text-white mb-1">@EntryTitle(item)</h6>
                         @if (!string.IsNullOrEmpty(item.Summary))
                         {
                             <p class="text-muted small mb-2">@item.Summary</p>

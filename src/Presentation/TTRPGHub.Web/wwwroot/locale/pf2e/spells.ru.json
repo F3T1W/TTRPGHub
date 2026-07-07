@@ -1,0 +1,35 @@
+{
+  "heal": {
+    "name": "Исцеление"
+  },
+  "fireball": {
+    "name": "Огненный шар"
+  },
+  "shield": {
+    "name": "Щит"
+  },
+  "bless": {
+    "name": "Благословение"
+  },
+  "charm": {
+    "name": "Очарование"
+  },
+  "grease": {
+    "name": "Скользкость"
+  },
+  "lightning-bolt": {
+    "name": "Молния"
+  },
+  "invisibility": {
+    "name": "Невидимость"
+  },
+  "dispel-magic": {
+    "name": "Рассеивание магии"
+  },
+  "haste": {
+    "name": "Ускорение"
+  },
+  "slow": {
+    "name": "Замедление"
+  }
+}

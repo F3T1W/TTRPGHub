@@ -88,8 +88,11 @@ public sealed record CharacterDetailDto(
     string? Equipment,
     string? AvatarUrl,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? Pf2eStatsJson
 );
+
+public sealed record UpdatePf2eStatsRequest(string StatsJson);
 
 public sealed record UpdateCharacterRequest(
     Guid CharacterId,
@@ -159,6 +162,9 @@ public interface IApiClient
 
     [Put("/api/characters/{id}")]
     Task UpdateCharacterAsync(Guid id, [Body] UpdateCharacterRequest request, CancellationToken ct = default);
+
+    [Put("/api/characters/{id}/pf2e-stats")]
+    Task UpdatePf2eStatsAsync(Guid id, [Body] UpdatePf2eStatsRequest request, CancellationToken ct = default);
 
     [Post("/api/characters/{id}/avatar")]
     [Multipart]
@@ -493,6 +499,82 @@ public interface IApiClient
     [Delete("/api/table/{sessionId}/tokens/{tokenId}")]
     Task RemoveTableTokenAsync(Guid sessionId, Guid tokenId, CancellationToken ct = default);
 
+    [Patch("/api/table/{sessionId}/tokens/{tokenId}/stats")]
+    Task UpdateTableTokenStatsAsync(Guid sessionId, Guid tokenId, [Body] UpdateTokenStatsRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/tokens/{tokenId}/visibility")]
+    Task SetTableTokenVisibilityAsync(Guid sessionId, Guid tokenId, [Body] SetTokenVisibilityRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/tokens/{tokenId}/image")]
+    [Multipart]
+    Task<AvatarUploadResponse> UploadTokenImageAsync(Guid sessionId, Guid tokenId, [AliasAs("file")] StreamPart file, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/grid")]
+    Task SetTableGridCellSizeAsync(Guid sessionId, [Body] SetGridCellSizeRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/fog")]
+    Task SetTableFogSettingsAsync(Guid sessionId, [Body] SetFogSettingsRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/environment")]
+    Task SetTableSceneEnvironmentAsync(Guid sessionId, [Body] SetSceneEnvironmentRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/walls")]
+    Task SetTableWallsAsync(Guid sessionId, [Body] SetWallsRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/lights")]
+    Task SetTableLightsAsync(Guid sessionId, [Body] SetLightsRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/combat/start")]
+    Task StartTableCombatAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/combat/end")]
+    Task EndTableCombatAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/combat/next")]
+    Task NextTableTurnAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/combat/previous")]
+    Task PreviousTableTurnAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/scenes")]
+    Task<CreateSceneResponse> CreateSceneAsync(Guid sessionId, [Body] CreateSceneRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/scenes/{sceneId}")]
+    Task RenameSceneAsync(Guid sessionId, Guid sceneId, [Body] CreateSceneRequest request, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/scenes/{sceneId}")]
+    Task DeleteSceneAsync(Guid sessionId, Guid sceneId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/scenes/{sceneId}/activate")]
+    Task ActivateSceneAsync(Guid sessionId, Guid sceneId, CancellationToken ct = default);
+
+    [Get("/api/table/{sessionId}/characters")]
+    Task<List<SessionCharacterDto>> GetSessionCharactersAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/tokens/{tokenId}/conditions")]
+    Task ApplyTokenConditionAsync(Guid sessionId, Guid tokenId, [Body] ApplyConditionRequest request, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/tokens/{tokenId}/conditions/{slug}")]
+    Task RemoveTokenConditionAsync(Guid sessionId, Guid tokenId, string slug, CancellationToken ct = default);
+
+    [Get("/api/table/{sessionId}/journal")]
+    Task<List<JournalEntryDto>> GetJournalEntriesAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/journal")]
+    Task<JournalEntryDto> CreateJournalEntryAsync(Guid sessionId, [Body] CreateJournalEntryRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/journal/{entryId}")]
+    Task UpdateJournalEntryAsync(Guid sessionId, Guid entryId, [Body] CreateJournalEntryRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/journal/{entryId}/published")]
+    Task SetJournalEntryPublishedAsync(Guid sessionId, Guid entryId, [Body] SetJournalEntryPublishedRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/journal/{entryId}/visibility")]
+    Task SetJournalEntryVisibilityAsync(Guid sessionId, Guid entryId, [Body] SetJournalEntryVisibilityRequest request, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/journal/{entryId}")]
+    Task DeleteJournalEntryAsync(Guid sessionId, Guid entryId, CancellationToken ct = default);
+
     // ── Rules Reference 2.0 (системно-независимый справочник) ──────────────────
 
     [Get("/api/v1/rules/systems")]
@@ -506,6 +588,10 @@ public interface IApiClient
     [Get("/api/v1/rules/{systemSlug}/{category}/{slug}")]
     Task<RuleEntryDetailDto> GetRuleEntryDetailAsync(
         string systemSlug, string category, string slug, CancellationToken ct = default);
+
+    [Post("/api/v1/rules/{systemSlug}/{category}/batch")]
+    Task<List<RuleEntryStatsDto>> GetRuleEntriesBySlugsAsync(
+        string systemSlug, string category, [Body] BatchSlugsRequest request, CancellationToken ct = default);
 
     [Post("/api/v1/rules/{systemSlug}/multiclass")]
     Task<MulticlassResultDto> CalculateMulticlassAsync(
@@ -744,7 +830,7 @@ public sealed record MonsterPagedResult(
 // ── Pathfinder 2e ────────────────────────────────────────────────────────────
 
 public sealed record Pf2eSpellSummaryDto(
-    Guid Id, string Name, int Level, string Traditions, string Traits,
+    Guid Id, string Slug, string Name, int Level, string Traditions, string Traits,
     string Cast, string? Range, string Duration);
 
 public sealed record Pf2eSpellDetailDto(
@@ -756,7 +842,7 @@ public sealed record Pf2eSpellPagedResult(
     List<Pf2eSpellSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
 
 public sealed record Pf2eMonsterSummaryDto(
-    Guid Id, string Name, int Level, string Size, string Traits,
+    Guid Id, string Slug, string Name, int Level, string Size, string Traits,
     int ArmorClass, int HitPoints);
 
 public sealed record Pf2eMonsterDetailDto(
@@ -765,7 +851,8 @@ public sealed record Pf2eMonsterDetailDto(
     int Strength, int Dexterity, int Constitution,
     int Intelligence, int Wisdom, int Charisma,
     int ArmorClass, int Fortitude, int Reflex, int Will, int HitPoints,
-    string Speed, string? Attacks, string? Abilities, string Source);
+    string Speed, string? Attacks, string? Abilities, string Source, string? AttacksJson,
+    string? ResistancesJson, string? WeaknessesJson);
 
 public sealed record Pf2eMonsterPagedResult(
     List<Pf2eMonsterSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
@@ -907,24 +994,63 @@ public sealed record AudioStateDto(
 
 public sealed record TableTokenDto(
     Guid Id, string Label, string? ImageUrl, string Color,
-    double X, double Y, Guid? OwnerId, bool CanMove);
+    double X, double Y, int Width, int Height, int Rotation, Guid? OwnerId, bool CanMove,
+    string CombatantType, Guid? CombatantId, int? CurrentHp, int? MaxHp, int? ArmorClass,
+    List<TokenConditionDto> Conditions, int? Initiative, bool HasDarkvision, bool HasLowLightVision,
+    List<Guid>? VisibleToUserIds);
+
+public sealed record TokenConditionDto(Guid Id, string Slug, string Name, int? Value);
+public sealed record ApplyConditionRequest(string Slug, string Name, int? Value);
+
+public sealed record SceneSummaryDto(Guid Id, string Name);
 
 public sealed record TableStateDto(
-    Guid SessionId, string Title, string? ShowcaseImageUrl,
+    Guid SessionId, string Title, string? ShowcaseImageUrl, int GridCellSizePx,
     bool IsOrganizer, bool CanAccess,
     List<TableParticipantDto> Participants,
     List<TableMessageDto> RecentMessages,
     AudioStateDto Audio,
-    List<TableTokenDto> Tokens);
+    List<TableTokenDto> Tokens,
+    bool FogEnabled, int VisionRadiusFeet, string? WallsJson,
+    bool CombatActive, int CombatRound, Guid? CombatTurnTokenId,
+    string? LightsJson,
+    string? TerrainTagsJson, string AmbientLighting,
+    List<SceneSummaryDto> Scenes, Guid ActiveSceneId);
 
 public sealed record SendChatRequest(string Content);
-public sealed record RollDiceRequest(string Expression);
+public sealed record RollDiceRequest(string Expression, int? Dc = null, string? Label = null);
 public sealed record SetShowcaseRequest(string? ImageUrl);
 public sealed record SendWhisperRequest(Guid RecipientUserId, string Content);
 public sealed record SetTrackRequest(string TrackUrl, string? TrackTitle);
 public sealed record AudioPositionRequest(double PositionSeconds);
-public sealed record AddTokenRequest(string Label, string? ImageUrl, string Color, double X, double Y, Guid? OwnerUserId);
+public sealed record AddTokenRequest(
+    string Label, string? ImageUrl, string Color, double X, double Y, Guid? OwnerUserId,
+    int Width = 1, int Height = 1, string CombatantType = "None", Guid? CombatantId = null);
 public sealed record TokenPositionRequest(double X, double Y);
+public sealed record UpdateTokenStatsRequest(
+    int? CurrentHp, int? Width, int? Height, int? Rotation,
+    bool SetInitiative = false, int? Initiative = null,
+    bool? HasDarkvision = null,
+    bool? HasLowLightVision = null);
+public sealed record SetTokenVisibilityRequest(List<Guid>? VisibleToUserIds);
+public sealed record SetGridCellSizeRequest(int Px);
+public sealed record SetFogSettingsRequest(bool Enabled, int VisionRadiusFeet);
+public sealed record SetSceneEnvironmentRequest(string? TerrainTagsJson, string AmbientLighting);
+public sealed record SetWallsRequest(string? WallsJson);
+public sealed record SetLightsRequest(string? LightsJson);
+public sealed record CreateSceneRequest(string Name);
+public sealed record CreateSceneResponse(Guid Id, string Name);
+public sealed record JournalEntryDto(
+    Guid Id, string Title, string ContentMarkdown, bool IsPublished,
+    Guid? ParentId, Guid? CampaignId, List<Guid>? VisibleToUserIds,
+    DateTime CreatedAt, DateTime UpdatedAt);
+public sealed record CreateJournalEntryRequest(
+    string Title, string ContentMarkdown, Guid? ParentId = null, Guid? CampaignId = null);
+public sealed record SetJournalEntryVisibilityRequest(List<Guid>? VisibleToUserIds);
+public sealed record SetJournalEntryPublishedRequest(bool Published);
+public sealed record SessionCharacterDto(
+    Guid Id, string Name, string? AvatarUrl, Guid OwnerId, string OwnerUsername,
+    int CurrentHitPoints, int MaxHitPoints, int ArmorClass);
 public sealed record SubscribePushRequest(string Endpoint, string P256dh, string Auth);
 public sealed record UnsubscribePushRequest(string Endpoint);
 
@@ -943,6 +1069,9 @@ public sealed record RuleEntryDetailDto(
     Guid Id, string SystemSlug, string Category, string Slug, string Title,
     string? Summary, string? ContentMarkdown, string StatsJson,
     string[] Tags, bool IsHomebrew, string Source, bool CanEdit);
+
+public sealed record RuleEntryStatsDto(string Slug, string Title, string StatsJson);
+public sealed record BatchSlugsRequest(List<string> Slugs);
 
 public sealed record CreateGameSystemRequest(string Name);
 public sealed record CreateGameSystemResponse(Guid Id, string Slug, string Name);

@@ -71,6 +71,9 @@ internal sealed class CharacterConfiguration : IEntityTypeConfiguration<Characte
         // Profile picture
         builder.Property(c => c.AvatarUrl).HasMaxLength(500).HasColumnName("avatar_url");
 
+        // PF2e-лист (см. комментарий на Character.Pf2eStatsJson)
+        builder.Property(c => c.Pf2eStatsJson).HasColumnType("jsonb").HasColumnName("pf2e_stats_json");
+
         // Calculated props
         builder.Ignore(c => c.ProficiencyBonus);
         builder.Ignore(c => c.StrengthModifier);

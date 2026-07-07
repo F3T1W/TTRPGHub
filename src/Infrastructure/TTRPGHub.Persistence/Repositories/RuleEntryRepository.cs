@@ -28,6 +28,18 @@ internal sealed class RuleEntryRepository(AppDbContext db) : IRuleEntryRepositor
     public Task<RuleEntry?> GetBySlugAsync(GameSystemId systemId, RuleCategory category, string slug, CancellationToken ct = default) =>
         db.RuleEntries.FirstOrDefaultAsync(e => e.SystemId == systemId && e.Category == category && e.Slug == slug, ct);
 
+    public async Task<IReadOnlyList<RuleEntry>> GetBySlugsAsync(
+        GameSystemId systemId, RuleCategory category, IReadOnlyCollection<string> slugs, CancellationToken ct = default)
+    {
+        if (slugs.Count == 0)
+            return [];
+
+        var list = await db.RuleEntries
+            .Where(e => e.SystemId == systemId && e.Category == category && slugs.Contains(e.Slug))
+            .ToListAsync(ct);
+        return list.AsReadOnly();
+    }
+
     public async Task AddRangeAsync(IEnumerable<RuleEntry> entries, CancellationToken ct = default) =>
         await db.RuleEntries.AddRangeAsync(entries, ct);
 

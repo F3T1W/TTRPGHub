@@ -189,6 +189,18 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
     z-index: 10;
 }
 
+.ta-token-visual {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
 .ta-token[data-can-move="true"] {
     cursor: grab;
 }
@@ -234,6 +246,257 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
     justify-content: center;
     cursor: pointer;
     z-index: 11;
+}
+
+.ta-grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px);
+    z-index: 1;
+}
+
+.ta-token-combatant {
+    border-color: var(--ta-gold);
+}
+
+.ta-token-template-hit {
+    box-shadow: 0 0 0 3px var(--ta-accent-light), 0 0 12px 3px var(--ta-accent-light);
+}
+
+.ta-measure-line {
+    position: absolute;
+    height: 2px;
+    background: var(--ta-gold);
+    transform-origin: 0 0;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.ta-measure-label {
+    position: absolute;
+    transform: translate(12px, -50%);
+    background: var(--ta-surface);
+    border: 1px solid var(--ta-gold);
+    color: var(--ta-gold);
+    font-size: .75rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 21;
+}
+
+.ta-template {
+    position: absolute;
+    background: rgba(124, 58, 237, .25);
+    border: 2px solid var(--ta-accent-light);
+    pointer-events: none;
+    z-index: 19;
+}
+
+.ta-template-burst {
+    border-radius: 50%;
+}
+
+/* K.4 — анимации/звук: чистая косметика поверх уже работающих фич (AOE-шаблоны, урон, кубики),
+   ничего не хранится и не синхронизируется — проигрывается локально у каждого клиента в момент
+   получения события (SignalR-сообщение/обновление токена), не требует новых полей на сервере. */
+@keyframes ta-template-pop {
+    0%   { opacity: 0; transform: scale(.6); }
+    60%  { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.ta-template.ta-template-pop {
+    animation: ta-template-pop .35s ease-out;
+}
+
+/* transform не используем (уже занят rotate() у line/cone в JS) — пульс через box-shadow/opacity. */
+@keyframes ta-token-damage-flash {
+    0%   { box-shadow: 0 0 0 4px rgba(239, 68, 68, .9); }
+    100% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+@keyframes ta-token-heal-flash {
+    0%   { box-shadow: 0 0 0 4px rgba(34, 197, 94, .9); }
+    100% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+
+.ta-token-damage-flash {
+    animation: ta-token-damage-flash .6s ease-out;
+}
+
+.ta-token-heal-flash {
+    animation: ta-token-heal-flash .6s ease-out;
+}
+
+.ta-template-line {
+    /* прямоугольник шириной в одну клетку — уже выставлено инлайн-стилями (height = cellSizePx) */
+}
+
+.ta-template-cone {
+    clip-path: polygon(0% 50%, 100% 0%, 100% 100%);
+    border: none;
+}
+
+.ta-fog-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 15;
+}
+
+.ta-light-glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.ta-wall-line, .ta-wall-preview {
+    position: absolute;
+    height: 3px;
+    background: repeating-linear-gradient(90deg, var(--ta-gold) 0 6px, transparent 6px 10px);
+    transform-origin: 0 0;
+    pointer-events: none;
+    z-index: 18;
+}
+
+.ta-wall-door {
+    background: repeating-linear-gradient(90deg, #0ea5e9 0 4px, transparent 4px 8px);
+    height: 4px;
+}
+
+.ta-wall-door-open {
+    background: rgba(14, 165, 233, .35);
+    height: 2px;
+    opacity: .6;
+}
+
+@keyframes ta-map-ping {
+    0%   { transform: translate(-50%, -50%) scale(.3); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+}
+
+.ta-map-ping {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--ta-gold);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 22;
+    animation: ta-map-ping 2s ease-out forwards;
+}
+
+.ta-token-hpbar {
+    position: absolute;
+    bottom: -4px;
+    left: 4px;
+    right: 4px;
+    height: 4px;
+    background: rgba(0,0,0,.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ta-token-hpbar-fill {
+    height: 100%;
+    background: #22c55e;
+}
+
+.ta-token-hp-controls {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 10px;
+    display: flex;
+    gap: 2px;
+    background: var(--ta-bg);
+    border: 1px solid var(--ta-border);
+    border-radius: 6px;
+    padding: 2px;
+    z-index: 20;
+}
+
+.ta-token-hp-controls button {
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    background: var(--ta-surface);
+    border: 1px solid var(--ta-border);
+    color: var(--ta-text);
+    border-radius: 4px;
+}
+
+.ta-token-conditions {
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+}
+
+.ta-combat-active-turn {
+    background: rgba(245, 158, 11, .15);
+    border: 1px solid rgba(245, 158, 11, .4);
+}
+
+/* L.3 — slide-over PF2e-лист за игровым столом */
+.ta-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: rgba(0, 0, 0, .55);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ta-sheet-panel {
+    width: min(520px, 100vw);
+    height: 100%;
+    overflow-y: auto;
+    background: var(--ta-surface);
+    border-left: 1px solid var(--ta-border);
+    padding: 1rem 1.25rem;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, .45);
+}
+
+.ta-condition-badge {
+    font-size: 0.55rem;
+    background: rgba(220,38,38,.85);
+    color: #fff;
+    padding: 0 3px;
+    border-radius: 3px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.ta-condition-remove {
+    cursor: pointer;
+    opacity: .8;
+}
+
+.ta-condition-select, .ta-condition-value {
+    font-size: 0.65rem;
+    background: var(--ta-surface);
+    border: 1px solid var(--ta-border);
+    color: var(--ta-text);
+    border-radius: 4px;
+    padding: 1px 2px;
+}
+
+.ta-condition-value {
+    width: 42px;
 }
 
 .ta-roll-line {

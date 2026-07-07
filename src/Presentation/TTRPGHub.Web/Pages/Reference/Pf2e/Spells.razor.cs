@@ -1,16 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference.Pf2e;
 
-public partial class Spells
+public partial class Spells : IDisposable
 {
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
+    [Inject] private ContentLanguageService Lang { get; set; } = default!;
 
     private Pf2eSpellPagedResult? _result;
+    private Dictionary<Guid, Pf2eLocalizedSpellRow> _localized = [];
     private bool _loading = true;
 
     private string _search = "";
@@ -27,7 +29,14 @@ public partial class Spells
         ["fire", "cold", "mental", "healing", "evocation", "abjuration",
          "illusion", "transmutation", "conjuration", "enchantment"];
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Lang.InitializeAsync();
+        Lang.OnChanged += OnLanguageChanged;
+        await LoadAsync();
+    }
+
+    private async void OnLanguageChanged() => await InvokeAsync(LoadAsync);
 
     private async Task LoadAsync()
     {
@@ -42,10 +51,20 @@ public partial class Spells
                 trait:  string.IsNullOrWhiteSpace(_trait) ? null : _trait,
                 page:   _page,
                 pageSize: PageSize);
+
+            _localized = new Dictionary<Guid, Pf2eLocalizedSpellRow>();
+            if (_result is not null)
+            {
+                foreach (var spell in _result.Items)
+                    _localized[spell.Id] = await Locale.LocalizeAsync(spell);
+            }
         }
-        catch { _result = null; }
+        catch { _result = null; _localized = []; }
         finally { _loading = false; }
     }
+
+    private Pf2eLocalizedSpellRow Display(Pf2eSpellSummaryDto spell) =>
+        _localized.GetValueOrDefault(spell.Id, new Pf2eLocalizedSpellRow(spell.Name, spell.Traditions, spell.Traits, spell.Cast, spell.Range, spell.Duration));
 
     private async Task ApplyFilters() { _page = 1; await LoadAsync(); }
     private async Task ResetFilters() { _search = ""; _level = ""; _tradition = ""; _trait = ""; _page = 1; await LoadAsync(); }
@@ -66,4 +85,6 @@ public partial class Spells
         9 => "bg-danger",
         _ => "bg-dark border border-warning text-warning"
     };
+
+    public void Dispose() => Lang.OnChanged -= OnLanguageChanged;
 }

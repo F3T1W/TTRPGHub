@@ -24,6 +24,7 @@ internal static partial class DiceRoller
         var sb = new StringBuilder();
         var total = 0;
         var firstToken = true;
+        int? naturalD20 = null;
 
         foreach (var (sign, token) in tokens)
         {
@@ -53,12 +54,50 @@ internal static partial class DiceRoller
                 groupSum += rolls[i];
             }
 
+            // Для степени успеха PF2e (RollCheck) нужен именно натуральный результат броска d20
+            // проверки — берём первую встреченную группу "1d20" в выражении.
+            if (naturalD20 is null && count == 1 && sides == 20)
+                naturalD20 = rolls[0];
+
             total += sign * groupSum;
             AppendTerm(sb, firstToken, sign, $"{count}d{sides}({string.Join(",", rolls)})");
             firstToken = false;
         }
 
-        return new DiceRollResult(expression, total, sb.ToString());
+        return new DiceRollResult(expression, total, sb.ToString(), naturalD20);
+    }
+
+    // Проверка PF2e: степень успеха = сравнение итога с DC (±10 — крит), затем натуральная 20
+    // повышает степень на шаг, натуральная 1 — понижает (с ограничением сверху/снизу).
+    // Работает только если в выражении есть ровно один d20 (обычный формат проверки "1d20+модификатор") —
+    // без него степень успеха посчитать нельзя (не с чем сравнивать критический диапазон).
+    internal static CheckRollResult? RollCheck(string expression, int dc, Random? random = null)
+    {
+        var roll = Roll(expression, random);
+        if (roll is null || roll.NaturalD20 is not { } natural)
+            return null;
+
+        var degree = ComputeDegree(roll.Total, dc, natural);
+        return new CheckRollResult(roll.Expression, roll.Total, roll.Breakdown, natural, dc, degree);
+    }
+
+    private static DegreeOfSuccess ComputeDegree(int total, int dc, int natural)
+    {
+        var diff = total - dc;
+        var degree = diff switch
+        {
+            >= 10 => DegreeOfSuccess.CriticalSuccess,
+            >= 0 => DegreeOfSuccess.Success,
+            <= -10 => DegreeOfSuccess.CriticalFailure,
+            _ => DegreeOfSuccess.Failure
+        };
+
+        if (natural == 20 && degree != DegreeOfSuccess.CriticalSuccess)
+            degree++;
+        else if (natural == 1 && degree != DegreeOfSuccess.CriticalFailure)
+            degree--;
+
+        return degree;
     }
 
     private static void AppendTerm(StringBuilder sb, bool first, int sign, string text)
@@ -95,4 +134,8 @@ internal static partial class DiceRoller
     }
 }
 
-internal sealed record DiceRollResult(string Expression, int Total, string Breakdown);
+internal sealed record DiceRollResult(string Expression, int Total, string Breakdown, int? NaturalD20);
+
+internal sealed record CheckRollResult(string Expression, int Total, string Breakdown, int NaturalD20, int Dc, DegreeOfSuccess Degree);
+
+internal enum DegreeOfSuccess { CriticalFailure, Failure, Success, CriticalSuccess }

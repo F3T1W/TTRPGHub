@@ -1,0 +1,131 @@
+{
+  "blinded": {
+    "name": "Ослеплён"
+  },
+  "broken": {
+    "name": "Сломан"
+  },
+  "clumsy": {
+    "name": "Неуклюжесть"
+  },
+  "concealed": {
+    "name": "Укрыт"
+  },
+  "confused": {
+    "name": "Замешательство"
+  },
+  "controlled": {
+    "name": "Подчинён"
+  },
+  "cursebound": {
+    "name": "Связан проклятием"
+  },
+  "dazzled": {
+    "name": "Ослеплён ярким светом"
+  },
+  "deafened": {
+    "name": "Оглох"
+  },
+  "doomed": {
+    "name": "Обречён"
+  },
+  "drained": {
+    "name": "Истощён"
+  },
+  "dying": {
+    "name": "Умирающий"
+  },
+  "encumbered": {
+    "name": "Перегружен"
+  },
+  "enfeebled": {
+    "name": "Ослаблен"
+  },
+  "fascinated": {
+    "name": "Очарован"
+  },
+  "fatigued": {
+    "name": "Усталость"
+  },
+  "fleeing": {
+    "name": "Бегство"
+  },
+  "friendly": {
+    "name": "Дружелюбный"
+  },
+  "frightened": {
+    "name": "Испуган"
+  },
+  "grabbed": {
+    "name": "Схвачен"
+  },
+  "helpful": {
+    "name": "Готов помочь"
+  },
+  "hidden": {
+    "name": "Скрыт"
+  },
+  "hostile": {
+    "name": "Враждебный"
+  },
+  "immobilized": {
+    "name": "Обездвижен"
+  },
+  "indifferent": {
+    "name": "Безразличный"
+  },
+  "invisible": {
+    "name": "Невидим"
+  },
+  "observed": {
+    "name": "Замечен"
+  },
+  "off-guard": {
+    "name": "Застигнут врасплох"
+  },
+  "paralyzed": {
+    "name": "Парализован"
+  },
+  "persistent-damage": {
+    "name": "Продолжительный урон"
+  },
+  "petrified": {
+    "name": "Окаменён"
+  },
+  "prone": {
+    "name": "Сбит с ног"
+  },
+  "quickened": {
+    "name": "Ускорен"
+  },
+  "restrained": {
+    "name": "Скован"
+  },
+  "sickened": {
+    "name": "Тошнота"
+  },
+  "slowed": {
+    "name": "Замедлен"
+  },
+  "stunned": {
+    "name": "Ошеломлён"
+  },
+  "stupefied": {
+    "name": "Ступор"
+  },
+  "unconscious": {
+    "name": "Без сознания"
+  },
+  "undetected": {
+    "name": "Не обнаружен"
+  },
+  "unfriendly": {
+    "name": "Недружелюбный"
+  },
+  "unnoticed": {
+    "name": "Незамечен"
+  },
+  "wounded": {
+    "name": "Ранен"
+  }
+}

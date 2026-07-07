@@ -24,4 +24,7 @@ public sealed record Pf2eMonsterDetailDto(
     string Speed,
     string? Attacks,
     string? Abilities,
-    string Source);
+    string Source,
+    string? AttacksJson,
+    string? ResistancesJson,
+    string? WeaknessesJson);

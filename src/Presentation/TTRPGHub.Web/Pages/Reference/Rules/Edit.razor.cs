@@ -14,7 +14,7 @@ public partial class Edit
     private bool IsEditMode => !string.IsNullOrEmpty(Slug);
 
     private static readonly string[] AllCategories =
-        ["spell", "monster", "class", "race", "feat", "condition", "equipment", "background", "rule"];
+        ["spell", "monster", "class", "race", "feat", "action", "condition", "equipment", "background", "rule"];
 
     private string _category = "rule";
     private string _title = "";
@@ -90,6 +90,7 @@ public partial class Edit
         "class" => "Класс",
         "race" => "Раса",
         "feat" => "Фит",
+        "action" => "Действие",
         "condition" => "Состояние",
         "equipment" => "Снаряжение",
         "background" => "Предыстория",

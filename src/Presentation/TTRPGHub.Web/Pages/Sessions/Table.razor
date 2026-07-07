@@ -35,17 +35,162 @@
             <!-- Левая колонка: showcase + кубики -->
             <div class="col-lg-8">
                 <div class="ta-card p-3 mb-3">
+                    @if (_state.Scenes.Count > 1 || _state.IsOrganizer)
+                    {
+                        <div class="d-flex flex-wrap gap-1 align-items-center mb-2">
+                            @foreach (var s in _state.Scenes)
+                            {
+                                <button class="btn btn-sm @(s.Id == _state.ActiveSceneId ? "btn-ta-primary" : "btn-outline-secondary")"
+                                        @onclick="() => SwitchSceneAsync(s.Id)">
+                                    @s.Name
+                                </button>
+                            }
+                            @if (_state.IsOrganizer)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showSceneManager = !_showSceneManager" title="Управление сценами">
+                                    <i class="bi bi-gear"></i>
+                                </button>
+                            }
+                        </div>
+                        @if (_showSceneManager && _state.IsOrganizer)
+                        {
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                                @foreach (var s in _state.Scenes)
+                                {
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input class="form-control form-control-sm bg-dark text-light border-secondary" style="width:140px;"
+                                               value="@s.Name" @onchange="e => RenameSceneAsync(s.Id, e.Value?.ToString() ?? s.Name)" />
+                                        @if (_state.Scenes.Count > 1)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteSceneAsync(s.Id)" title="Удалить сцену">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                                <div class="input-group input-group-sm" style="width:200px;">
+                                    <input class="form-control bg-dark text-light border-secondary" placeholder="Новая сцена..."
+                                           @bind="_newSceneName" @bind:event="oninput" />
+                                    <button class="btn btn-outline-secondary" @onclick="CreateSceneAsync" disabled="@string.IsNullOrWhiteSpace(_newSceneName)">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            @if (_sceneError is not null)
+                            {
+                                <div class="text-danger small mb-2">@_sceneError</div>
+                            }
+                        }
+                    }
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-image me-2"></i>Сцена</h6>
+                        <div class="d-flex gap-1 align-items-center">
+                            <button class="btn btn-sm @(_measureMode ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="ToggleMeasureModeAsync" title="Линейка PF2e 5-10-5-10, видна всем">
+                                <i class="bi bi-rulers me-1"></i>Линейка
+                            </button>
+                            <button class="btn btn-sm @(_pingMode ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="TogglePingModeAsync" title="Пинг на карте — клик по сцене">
+                                <i class="bi bi-bullseye me-1"></i>Пинг
+                            </button>
+                            <button class="btn btn-sm @(_templateMode ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="ToggleTemplateModeAsync" title="Шаблон зоны поражения">
+                                <i class="bi bi-triangle me-1"></i>Шаблон
+                            </button>
+                            @if (_templateMode)
+                            {
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" style="width:auto;"
+                                        @bind="_templateType" @bind:after="ApplyTemplateModeAsync">
+                                    <option value="burst">Сфера</option>
+                                    <option value="cone">Конус</option>
+                                    <option value="line">Линия</option>
+                                </select>
+                                <input type="number" min="5" step="5" class="form-control form-control-sm bg-dark text-light border-secondary" style="width:70px;"
+                                       @bind="_templateFeet" @bind:after="ApplyTemplateModeAsync" />
+                                <span class="text-muted small">фт.</span>
+                            }
+                            @if (_placedTemplate is not null)
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="ClearTemplateAsync" title="Убрать размещённый шаблон">
+                                    <i class="bi bi-eraser"></i>
+                                </button>
+                            }
+                        </div>
                         @if (_state.IsOrganizer)
                         {
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-outline-secondary btn-sm" @onclick="() => _showAddToken = !_showAddToken">
                                     <i class="bi bi-person-bounding-box me-1"></i>Жетон
                                 </button>
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="() => _showAddCombatant = !_showAddCombatant">
+                                    <i class="bi bi-shield-plus me-1"></i>Боец
+                                </button>
+                                <div class="input-group input-group-sm" style="max-width:150px;">
+                                    <span class="input-group-text bg-dark text-light border-secondary">Сетка</span>
+                                    <input type="number" class="form-control bg-dark text-light border-secondary" min="10" max="300"
+                                           value="@_gridCellSizePx" @onchange="e => SetGridCellSizeAsync(int.TryParse(e.Value?.ToString(), out var px) ? px : _gridCellSizePx)" />
+                                </div>
+                                <button class="btn btn-sm @(_fogEnabled ? "btn-ta-primary" : "btn-outline-secondary")"
+                                        @onclick="() => SetFogSettingsAsync(!_fogEnabled, _visionRadiusFeet)" title="Туман войны: радиус зрения вокруг токенов игроков">
+                                    <i class="bi bi-cloud-fog2 me-1"></i>Туман
+                                </button>
+                                @if (_fogEnabled)
+                                {
+                                    <div class="input-group input-group-sm" style="max-width:130px;">
+                                        <input type="number" min="5" step="5" class="form-control bg-dark text-light border-secondary"
+                                               value="@_visionRadiusFeet" @onchange="e => SetFogSettingsAsync(_fogEnabled, int.TryParse(e.Value?.ToString(), out var r) ? r : _visionRadiusFeet)" />
+                                        <span class="input-group-text bg-dark text-light border-secondary">фт.</span>
+                                    </div>
+                                    <button class="btn btn-sm @(_wallMode ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="ToggleWallModeAsync" title="Рисовать стены: протяните линию по карте">
+                                        <i class="bi bi-bricks me-1"></i>Стены
+                                    </button>
+                                    @if (_wallMode)
+                                    {
+                                        <label class="small text-muted d-flex align-items-center gap-1 mb-0">
+                                            <input type="checkbox" @bind="_doorDrawMode" /> Дверь
+                                        </label>
+                                    }
+                                    @if (_walls.Count > 0)
+                                    {
+                                        @for (var wi = 0; wi < _walls.Count; wi++)
+                                        {
+                                            var wall = _walls[wi];
+                                            var wallIdx = wi;
+                                            if (wall.IsDoor)
+                                            {
+                                                <button class="btn btn-sm btn-outline-info" @onclick="() => ToggleDoorAsync(wallIdx)" title="Открыть/закрыть дверь">
+                                                    @(wall.IsOpen ? "🚪 откр." : "🚪 закр.")
+                                                </button>
+                                            }
+                                        }
+                                    }
+                                    @if (_walls.Count > 0)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="ClearWallsAsync" title="Удалить все стены">
+                                            <i class="bi bi-eraser"></i>
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm @(_lightMode ? "btn-ta-primary" : "btn-outline-secondary")" @onclick="ToggleLightModeAsync" title="Разместить источник света: клик по карте">
+                                        <i class="bi bi-lightbulb me-1"></i>Свет
+                                    </button>
+                                }
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" style="width:auto; max-width:160px;"
+                                        value="@_selectedTerrainTag" title="Местность сцены (предикаты terrain:*)"
+                                        @onchange="e => SetSceneEnvironmentAsync(e.Value?.ToString() ?? string.Empty, _ambientLighting)">
+                                    <option value="">— местность —</option>
+                                    @foreach (var (slug, label) in Pf2eLookups.SceneTerrainTags)
+                                    {
+                                        <option value="@slug">@label</option>
+                                    }
+                                </select>
+                                <select class="form-select form-select-sm bg-dark text-light border-secondary" style="width:auto; max-width:140px;"
+                                        value="@_ambientLighting" title="Освещение сцены (предикаты lighting:*)"
+                                        @onchange="OnAmbientLightingChanged">
+                                    @foreach (var (slug, label) in Pf2eLookups.SceneAmbientLighting)
+                                    {
+                                        <option value="@slug">@label</option>
+                                    }
+                                </select>
                                 <InputFile OnChange="OnShowcaseFileSelected" class="d-none" id="showcaseFile" accept="image/*" />
                                 <label for="showcaseFile" class="btn btn-outline-secondary btn-sm mb-0" style="cursor:pointer;">
-                                    <i class="bi bi-upload me-1"></i>Загрузить
+                                    <i class="bi bi-upload me-1"></i>Карта
                                 </label>
                                 @if (_state.ShowcaseImageUrl is not null)
                                 {
@@ -56,6 +201,32 @@
                             </div>
                         }
                     </div>
+
+                    @if (_state.IsOrganizer && _lights.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                            @for (var i = 0; i < _lights.Count; i++)
+                            {
+                                var idx = i;
+                                var light = _lights[idx];
+                                <div class="d-flex align-items-center gap-1 small">
+                                    <i class="bi bi-lightbulb-fill" style="color:@light.Color"></i>
+                                    <input type="number" min="5" step="5" style="width:55px;" class="form-control form-control-sm bg-dark text-light border-secondary"
+                                           value="@light.DimRadiusFeet" title="Радиус (футы)"
+                                           @onchange="e => UpdateLightAsync(idx, light with { DimRadiusFeet = int.TryParse(e.Value?.ToString(), out var r) ? r : light.DimRadiusFeet })" />
+                                    <span class="text-muted">фт</span>
+                                    <select class="form-select form-select-sm bg-dark text-light border-secondary" style="width:auto;"
+                                            value="@light.Color" @onchange="e => UpdateLightAsync(idx, light with { Color = e.Value?.ToString() ?? light.Color })">
+                                        @foreach (var c in LightColors)
+                                        {
+                                            <option value="@c">@c</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveLightAsync(idx)"><i class="bi bi-x"></i></button>
+                                </div>
+                            }
+                        </div>
+                    }
 
                     @if (_showAddToken)
                     {
@@ -75,6 +246,42 @@
                         </div>
                     }
 
+                    @if (_showAddCombatant)
+                    {
+                        <div class="mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                            <div class="small text-muted mb-2">Персонажи участников (со статами)</div>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                @foreach (var c in _sessionCharacters)
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => AddCharacterTokenAsync(c)">
+                                        @c.Name <span class="text-muted">(@c.OwnerUsername)</span>
+                                    </button>
+                                }
+                                @if (_sessionCharacters.Count == 0)
+                                {
+                                    <span class="text-muted small">У участников пока нет персонажей.</span>
+                                }
+                            </div>
+
+                            <div class="small text-muted mb-2">Монстр PF2e из справочника</div>
+                            <div class="input-group input-group-sm mb-2">
+                                <input class="form-control bg-dark text-light border-secondary" placeholder="Поиск монстра..."
+                                       @bind="_monsterSearch" @bind:event="oninput" />
+                                <button class="btn btn-outline-secondary" @onclick="SearchMonstersAsync" disabled="@_searchingMonsters">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var m in _monsterResults)
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => AddMonsterTokenAsync(m)">
+                                        @MonsterDisplay(m).Name <span class="text-muted">(ур. @m.Level, HP @m.HitPoints)</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
                     <div class="ta-showcase-frame d-flex align-items-center justify-content-center" id="table-showcase-container">
                         @if (_state.ShowcaseImageUrl is not null)
                         {
@@ -88,21 +295,295 @@
                             </div>
                         }
 
+                        <div class="ta-grid-overlay" style="background-size:@(_gridCellSizePx)px @(_gridCellSizePx)px;"></div>
+
                         @foreach (var t in _tokens)
                         {
-                            <div class="ta-token" data-token-id="@t.Id" data-can-move="@(t.CanMove ? "true" : "false")"
-                                 style="left:@(Pct(t.X))%; top:@(Pct(t.Y))%; @(t.ImageUrl is not null ? $"background-image:url('{t.ImageUrl}')" : $"background-color:{t.Color}")">
-                                @if (t.ImageUrl is null)
+                            <div class="ta-token @(t.CombatantType != "None" ? "ta-token-combatant" : "") @(_templateAffectedTokenIds.Contains(t.Id) ? "ta-token-template-hit" : "") @HpFlashClass(t.Id)"
+                                 data-token-id="@t.Id" data-can-move="@(t.CanMove ? "true" : "false")"
+                                 style="left:@(TokenLeftPx(t))px; top:@(TokenTopPx(t))px; width:@(TokenWidthPx(t))px; height:@(TokenHeightPx(t))px;"
+                                 @onclick="() => SelectToken(t.Id)">
+                                <div class="ta-token-visual"
+                                     style="transform:rotate(@(t.Rotation)deg);
+                                            @(t.ImageUrl is not null ? $"background-image:url('{t.ImageUrl}')" : $"background-color:{t.Color}")">
+                                    @if (t.ImageUrl is null)
+                                    {
+                                        @t.Label.Substring(0, Math.Min(2, t.Label.Length)).ToUpperInvariant()
+                                    }
+                                </div>
+                                <span class="ta-token-label">
+                                    @t.Label
+                                    @if (IsFlanked(t.Id))
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1" title="Фланг — застигнут врасплох">Фланг</span>
+                                    }
+                                    @if (t.CurrentHp is not null)
+                                    {
+                                        <text> · @t.CurrentHp/@t.MaxHp HP</text>
+                                    }
+                                    @if (t.ArmorClass is not null)
+                                    {
+                                        <text> · КЗ @t.ArmorClass</text>
+                                    }
+                                </span>
+                                @if (t.CurrentHp is not null && t.MaxHp is > 0)
                                 {
-                                    @t.Label.Substring(0, Math.Min(2, t.Label.Length)).ToUpperInvariant()
+                                    <div class="ta-token-hpbar">
+                                        <div class="ta-token-hpbar-fill" style="width:@(Inv(100.0 * t.CurrentHp.Value / t.MaxHp.Value))%;"></div>
+                                    </div>
                                 }
-                                <span class="ta-token-label">@t.Label</span>
+                                @if (t.Conditions.Count > 0)
+                                {
+                                    <div class="ta-token-conditions">
+                                        @foreach (var c in t.Conditions)
+                                        {
+                                            <span class="ta-condition-badge">@LocalizedConditionName(c.Slug, c.Name)@(c.Value is not null ? $" {c.Value}" : "")</span>
+                                        }
+                                    </div>
+                                }
                                 @if (_state.IsOrganizer)
                                 {
                                     <span class="ta-token-remove" @onclick="() => RemoveTokenAsync(t.Id)" @onclick:stopPropagation="true">×</span>
                                 }
+                                @if (_selectedTokenId == t.Id && (t.CanMove || _state.IsOrganizer))
+                                {
+                                    <div class="ta-token-hp-controls" @onclick:stopPropagation="true">
+                                        @if (t.CombatantType == "Character" && t.CombatantId is not null && (t.CanMove || _state.IsOrganizer))
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mb-2"
+                                                    @onclick="() => OpenPf2eSheetAsync(t)">
+                                                <i class="bi bi-journal-text me-1"></i>Лист PF2e
+                                            </button>
+                                        }
+                                        @if (t.CombatantType == "Character" && t.CanMove && _selectedCharacterStats is not null)
+                                        {
+                                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1" title="Контекст проверки: цель и действие включают условные модификаторы фитов («+2 против животных при Запугивании» и т.п.)">
+                                                <span class="small text-muted">Цель:</span>
+                                                <select class="ta-condition-select" value="@(_targetTokenId?.ToString() ?? "")"
+                                                        @onchange="e => SetTargetAsync(Guid.TryParse(e.Value?.ToString(), out var id) ? id : null)">
+                                                    <option value="">— нет —</option>
+                                                    @foreach (var other in _tokens.Where(x => x.Id != t.Id))
+                                                    {
+                                                        <option value="@other.Id">@other.Label</option>
+                                                    }
+                                                </select>
+                                                <span class="small text-muted">Действие:</span>
+                                                <select class="ta-condition-select" @bind="_selectedActionSlug">
+                                                    <option value="">— обычная проверка —</option>
+                                                    @foreach (var (slug, label) in Pf2eLookups.SkillActions)
+                                                    {
+                                                        <option value="@slug">@label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="small text-muted mb-1">Проверка из листа (с учётом состояний/цели):</div>
+                                            <div class="d-flex align-items-center gap-1 mb-1">
+                                                <span class="small text-muted">DC:</span>
+                                                <input type="number" style="width:55px;" class="ta-condition-value" placeholder="DC"
+                                                       value="@_saveTargetDc"
+                                                       @onchange="e => _saveTargetDc = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                <button @onclick='() => RollPf2eSkillAsync("perception", "Внимательность", _selectedCharacterStats.PerceptionRank)' disabled="@_rolling">
+                                                    Внимательность @FormatBonus(Pf2eLookups.Bonus(_selectedCharacterStats.PerceptionRank, _selectedCharacterLevel) + CheckModifier("perception"))
+                                                </button>
+                                                @foreach (var (key, label) in Pf2eLookups.Saves)
+                                                {
+                                                    var rank = _selectedCharacterStats.SaveRanks.GetValueOrDefault(key);
+                                                    <button @onclick="() => RollPf2eSaveAsync(key, label, rank)" disabled="@_rolling">
+                                                        @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key))
+                                                    </button>
+                                                }
+                                                @foreach (var (key, label) in Pf2eLookups.Skills)
+                                                {
+                                                    var rank = _selectedCharacterStats.SkillRanks.GetValueOrDefault(key);
+                                                    @if (rank > 0)
+                                                    {
+                                                        <button @onclick="() => RollPf2eSkillAsync(key, label, rank)" disabled="@_rolling">
+                                                            @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key))
+                                                        </button>
+                                                    }
+                                                }
+                                            </div>
+                                            @if (_selectedCharacterStats.Attacks.Count > 0)
+                                            {
+                                                <div class="small text-muted mb-1">Атаки:@if (_state.CombatActive) { <text> удар @CurrentStrikeIndex(t.Id) в ходу</text> }:</div>
+                                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                                    @foreach (var atk in _selectedCharacterStats.Attacks)
+                                                    {
+                                                        var atkBonus = CharacterAttackBonus(atk, t.Id);
+                                                        <button @onclick="() => RollPf2eAttackAsync(atk)" disabled="@_rolling">
+                                                            @atk.Name @FormatBonus(atkBonus)
+                                                        </button>
+                                                        <button @onclick="() => RollPf2eDamageAsync(atk)" disabled="@_rolling">
+                                                            @atk.Name урон
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                            @if (_selectedCharacterStats.SpellcastingRank > 0 && _selectedCharacterStats.KnownSpells.Any(s => s.Prepared))
+                                            {
+                                                <div class="small text-muted mb-1">Заклинания (DC @SelectedSpellDc):</div>
+                                                @if (_selectedCharacterStats.SpellSlots.Count > 0)
+                                                {
+                                                    <div class="small text-muted mb-1">
+                                                        Слоты:
+                                                        @string.Join(", ", _selectedCharacterStats.SpellSlots
+                                                            .Where(kv => kv.Key > 0)
+                                                            .OrderBy(kv => kv.Key)
+                                                            .Select(kv => $"{kv.Key}-й {kv.Value.Max - kv.Value.Used}/{kv.Value.Max}"))
+                                                    </div>
+                                                }
+                                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                                    @foreach (var spell in _selectedCharacterStats.KnownSpells.Where(s => s.Prepared))
+                                                    {
+                                                        var spellBonus = SelectedSpellAttackBonus(t.Id);
+                                                        var slot = spell.Level > 0 ? _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level) : null;
+                                                        var noSlots = slot is not null && slot.Used >= slot.Max;
+                                                        var slotNote = spell.Level > 0 ? " (списывает слот)" : " (заговор, без слота)";
+                                                        <button @onclick="() => RollPf2eSpellAttackAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов" : $"Атака заклинанием{slotNote}")">
+                                                            @spell.Name @FormatBonus(spellBonus)
+                                                        </button>
+                                                        <button @onclick="() => AnnouncePf2eSpellDcAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов" : $"Объявить DC в чат{slotNote}")">
+                                                            DC
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                        }
+                                        @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer)
+                                        {
+                                            @if (_selectedMonsterAttacks.Count > 0)
+                                            {
+                                                <div class="small text-muted mb-1">Атаки:@if (_state.CombatActive) { <text> удар @CurrentStrikeIndex(t.Id) в ходу</text> }:</div>
+                                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                                    @foreach (var atk in _selectedMonsterAttacks)
+                                                    {
+                                                        var monBonus = MonsterAttackBonus(atk, t.Id);
+                                                        <button @onclick="() => RollMonsterAttackAsync(atk)" disabled="@_rolling">
+                                                            @atk.Name @FormatBonus(monBonus)
+                                                        </button>
+                                                        <button @onclick="() => RollMonsterDamageAsync(atk)" disabled="@_rolling">
+                                                            @atk.Name урон
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                            <div class="small text-muted mb-1">Спасброски (DC @(_selectedCharacterStats is not null ? SelectedSpellDc : _checkDc ?? _selectedMonsterAbilityDc)):</div>
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                <button @onclick='() => RollMonsterSaveAsync("Стойкость", _selectedMonsterFort)' disabled="@_rolling">Стойкость @FormatBonus(_selectedMonsterFort)</button>
+                                                <button @onclick='() => RollMonsterSaveAsync("Рефлекс", _selectedMonsterReflex)' disabled="@_rolling">Рефлекс @FormatBonus(_selectedMonsterReflex)</button>
+                                                <button @onclick='() => RollMonsterSaveAsync("Воля", _selectedMonsterWill)' disabled="@_rolling">Воля @FormatBonus(_selectedMonsterWill)</button>
+                                            </div>
+                                            <div class="small text-muted mb-2">Class DC способности: @_selectedMonsterAbilityDc</div>
+                                        }
+                                        @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer && (_selectedMonsterResistances.Count > 0 || _selectedMonsterWeaknesses.Count > 0))
+                                        {
+                                            <div class="small text-muted mb-1">
+                                                @if (_selectedMonsterResistances.Count > 0)
+                                                {
+                                                    <div>Сопротивления: @string.Join(", ", _selectedMonsterResistances.Select(r => $"{r.Type} {r.Value}{(r.Exceptions.Count > 0 ? $" (кроме {string.Join(", ", r.Exceptions)})" : "")}"))</div>
+                                                }
+                                                @if (_selectedMonsterWeaknesses.Count > 0)
+                                                {
+                                                    <div>Уязвимости: @string.Join(", ", _selectedMonsterWeaknesses.Select(w => $"{w.Type} {w.Value}"))</div>
+                                                }
+                                            </div>
+                                        }
+                                        @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer && t.CurrentHp is not null)
+                                        {
+                                            <div class="d-flex align-items-center gap-1 mb-1">
+                                                <input type="number" min="0" style="width:55px;" class="ta-condition-value" placeholder="урон"
+                                                       value="@_damageAmount" @onchange="e => _damageAmount = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
+                                                <select class="ta-condition-select" @bind="_damageType">
+                                                    <option value="">тип...</option>
+                                                    @foreach (var dt in DamageTypes)
+                                                    {
+                                                        <option value="@dt">@dt</option>
+                                                    }
+                                                </select>
+                                                <button @onclick="() => ApplyDamageAsync(t)" disabled="@(_damageAmount is null)" title="Применить урон с учётом сопротивлений/уязвимостей">Урон</button>
+                                            </div>
+                                        }
+                                        @if (t.CurrentHp is not null)
+                                        {
+                                            <div class="d-flex gap-1 mb-1">
+                                                <button @onclick="() => AdjustHpAsync(t, -1)">−1</button>
+                                                <button @onclick="() => AdjustHpAsync(t, -5)">−5</button>
+                                                <button @onclick="() => AdjustHpAsync(t, 5)">+5</button>
+                                                <button @onclick="() => AdjustHpAsync(t, 1)">+1</button>
+                                            </div>
+                                        }
+                                        <div class="d-flex align-items-center gap-1 mb-1">
+                                            <span class="small text-muted">Иниц.</span>
+                                            <input type="number" style="width:55px;" class="ta-condition-value" value="@t.Initiative"
+                                                   @onchange="e => SetInitiativeAsync(t, int.TryParse(e.Value?.ToString(), out var v) ? v : null)" />
+                                            <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;" title="Видит в темноте без источника света">
+                                                <input type="checkbox" checked="@t.HasDarkvision" @onchange="() => ToggleDarkvisionAsync(t)" />
+                                                Тёмное зрение
+                                            </label>
+                                            <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;" title="В тусклом свете сцены видит без маски источников">
+                                                <input type="checkbox" checked="@t.HasLowLightVision" @onchange="() => ToggleLowLightVisionAsync(t)" />
+                                                Сумеречное
+                                            </label>
+                                        </div>
+                                        @if (t.Conditions.Count > 0)
+                                        {
+                                            <div class="d-flex flex-wrap gap-1 mb-1">
+                                                @foreach (var c in t.Conditions)
+                                                {
+                                                    <span class="ta-condition-badge">
+                                                        @LocalizedConditionName(c.Slug, c.Name)@(c.Value is not null ? $" {c.Value}" : "")
+                                                        <span class="ta-condition-remove" @onclick="() => RemoveConditionAsync(t, c.Slug)">×</span>
+                                                    </span>
+                                                }
+                                            </div>
+                                        }
+                                        @if (_state.IsOrganizer)
+                                        {
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;" title="Скрыть жетон от всех игроков (виден только ГМ)">
+                                                    <input type="checkbox" checked="@(t.VisibleToUserIds is not null && t.VisibleToUserIds.Count == 0)" @onchange="() => ToggleTokenHiddenAsync(t)" />
+                                                    Скрыт от игроков
+                                                </label>
+                                                @if (t.VisibleToUserIds is null || t.VisibleToUserIds.Count > 0)
+                                                {
+                                                    <span class="small text-muted">Видят:</span>
+                                                    @foreach (var p in _state.Participants.Where(p => !p.IsDungeonMaster))
+                                                    {
+                                                        var visible = t.VisibleToUserIds is null || t.VisibleToUserIds.Contains(p.UserId);
+                                                        <label class="small d-flex align-items-center gap-1 mb-0" style="cursor:pointer;">
+                                                            <input type="checkbox" checked="@visible" @onchange="() => ToggleTokenVisibleToAsync(t, p.UserId)" />
+                                                            @p.Username
+                                                        </label>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <button @onclick="() => RotateTokenAsync(t, -45)" title="Повернуть влево">↺</button>
+                                            <button @onclick="() => RotateTokenAsync(t, 45)" title="Повернуть вправо">↻</button>
+                                            <InputFile OnChange="e => UploadTokenImageAsync(t, e)" class="d-none" id="@($"token-image-{t.Id}")" accept="image/*" />
+                                            <label for="@($"token-image-{t.Id}")" class="mb-0" style="cursor:pointer;" title="Загрузить картинку токена">🖼</label>
+                                        </div>
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <select class="ta-condition-select" @bind="_newConditionSlug">
+                                                <option value="">Состояние...</option>
+                                                @foreach (var c in _pf2eConditions)
+                                                {
+                                                    <option value="@c.Slug">@LocalizedConditionTitle(c)</option>
+                                                }
+                                            </select>
+                                            <input type="number" class="ta-condition-value" placeholder="знач."
+                                                   value="@_newConditionValue"
+                                                   @onchange="e => _newConditionValue = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
+                                            <button @onclick="() => ApplyConditionAsync(t)" disabled="@string.IsNullOrWhiteSpace(_newConditionSlug)">+</button>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
+
                     </div>
                     @if (_uploadError is not null)
                     {
@@ -119,13 +600,32 @@
                             <button class="btn btn-outline-secondary btn-sm" @onclick="() => RollAsync(die)" disabled="@_rolling">@die</button>
                         }
                     </div>
-                    <div class="input-group input-group-sm">
-                        <input class="form-control bg-dark text-light border-secondary" placeholder="напр. 2d6+3"
+                    <div class="input-group input-group-sm mb-2">
+                        <input class="form-control bg-dark text-light border-secondary" placeholder="напр. 1d20+7"
                                @bind="_customExpression" @bind:event="oninput" @onkeydown="OnCustomDiceKeyDown" />
                         <button class="btn btn-ta-primary" @onclick="() => RollAsync(_customExpression)" disabled="@(_rolling || string.IsNullOrWhiteSpace(_customExpression))">
                             <i class="bi bi-dice-3"></i> Бросить
                         </button>
                     </div>
+
+                    <div class="small text-muted mb-1">Проверка PF2e (со Сложностью — покажет степень успеха)</div>
+                    <div class="row g-1">
+                        <div class="col-5">
+                            <input class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="Название"
+                                   @bind="_checkLabel" />
+                        </div>
+                        <div class="col-3">
+                            <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="DC"
+                                   value="@_checkDc" @onchange="e => _checkDc = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-outline-secondary btn-sm w-100" @onclick="RollCheckAsync"
+                                    disabled="@(_rolling || string.IsNullOrWhiteSpace(_customExpression) || _checkDc is null)">
+                                Проверка
+                            </button>
+                        </div>
+                    </div>
+
                     @if (_rollError is not null)
                     {
                         <div class="text-danger small mt-2">@_rollError</div>
@@ -206,6 +706,63 @@
             <!-- Правая колонка: участники + чат -->
             <div class="col-lg-4">
                 <div class="ta-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-clock-history me-2"></i>Бой</h6>
+                        @if (_state.IsOrganizer)
+                        {
+                            @if (!_state.CombatActive)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="StartCombatAsync">Начать бой</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="EndCombatAsync">Закончить бой</button>
+                            }
+                        }
+                    </div>
+                    @if (_state.CombatActive)
+                    {
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="small text-muted">Раунд @_state.CombatRound</span>
+                            @if (_state.IsOrganizer)
+                            {
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="PreviousTurnAsync" title="Предыдущий ход">←</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="NextTurnAsync" title="Следующий ход">→</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (InitiativeOrder.Count == 0)
+                    {
+                        <p class="small text-muted fst-italic mb-0">Ни у одного жетона не задана инициатива.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-0 small">
+                            @foreach (var t in InitiativeOrder)
+                            {
+                                var isCurrentTurn = _state.CombatActive && _state.CombatTurnTokenId == t.Id;
+                                <li class="d-flex align-items-center justify-content-between gap-2 mb-1 p-1 rounded @(isCurrentTurn ? "ta-combat-active-turn" : "")">
+                                    <span class="d-flex align-items-center gap-2 flex-grow-1">
+                                        @if (isCurrentTurn)
+                                        {
+                                            <i class="bi bi-play-fill" style="color:var(--ta-gold)"></i>
+                                        }
+                                        <span>@t.Label</span>
+                                        @if (t.CurrentHp is not null)
+                                        {
+                                            <span class="text-muted">@t.CurrentHp/@t.MaxHp</span>
+                                        }
+                                    </span>
+                                    <span class="fw-semibold">@t.Initiative</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+
+                <div class="ta-card p-3 mb-3">
                     <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-people me-2"></i>За столом</h6>
                     <ul class="list-unstyled mb-0 small">
                         @foreach (var p in _state.Participants)
@@ -248,6 +805,100 @@
                     </ul>
                 </div>
 
+                <div class="ta-card p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-journal-text me-2"></i>Журнал</h6>
+                        @if (_state.IsOrganizer)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="StartNewJournalEntry">
+                                <i class="bi bi-plus-lg"></i>
+                            </button>
+                        }
+                    </div>
+                    @if (_journalError is not null)
+                    {
+                        <div class="text-danger small mb-2">@_journalError</div>
+                    }
+                    @if (_editingJournalEntryId is not null)
+                    {
+                        <div class="mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                            <input class="form-control form-control-sm bg-dark text-light border-secondary mb-1" placeholder="Заголовок" @bind="_journalTitleInput" @bind:event="oninput" />
+                            <textarea class="form-control form-control-sm bg-dark text-light border-secondary mb-2" rows="4" placeholder="Текст (markdown)" @bind="_journalContentInput" @bind:event="oninput"></textarea>
+                            @if (_state.IsOrganizer)
+                            {
+                                <div class="mb-2">
+                                    <label class="small text-muted">Папка (родитель)</label>
+                                    <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                                            value="@(_journalParentId?.ToString() ?? "")"
+                                            @onchange="e => _journalParentId = Guid.TryParse(e.Value?.ToString(), out var pid) ? pid : null">
+                                        <option value="">— корень —</option>
+                                        @foreach (var folder in _journalEntries.Where(e => e.Id != _editingJournalEntryId))
+                                        {
+                                            <option value="@folder.Id">@folder.Title</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small text-muted">Кампания (опционально)</label>
+                                    <input class="form-control form-control-sm bg-dark text-light border-secondary" placeholder="GUID кампании"
+                                           value="@(_journalCampaignId?.ToString() ?? "")"
+                                           @onchange="e => _journalCampaignId = Guid.TryParse(e.Value?.ToString(), out var cid) ? cid : null" />
+                                </div>
+                            }
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-ta-primary" @onclick="SaveJournalEntryAsync" disabled="@string.IsNullOrWhiteSpace(_journalTitleInput)">Сохранить</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelJournalEdit">Отмена</button>
+                            </div>
+                        </div>
+                    }
+                    @if (_journalEntries.Count == 0)
+                    {
+                        <p class="small text-muted fst-italic mb-0">@(_state.IsOrganizer ? "Записей пока нет." : "ГМ ещё не опубликовал записи.")</p>
+                    }
+                    else
+                    {
+                        <div style="max-height:260px; overflow-y:auto;">
+                            @foreach (var (entry, depth) in JournalFlatList())
+                            {
+                                <div class="mb-2 pb-2" style="border-bottom:1px solid var(--ta-border); margin-left:@(depth * 12)px;">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <strong class="small">@(depth > 0 ? "↳ " : "")@entry.Title</strong>
+                                        @if (_state.IsOrganizer)
+                                        {
+                                            <div class="d-flex gap-1 flex-wrap justify-content-end">
+                                                <span class="badge @(entry.IsPublished ? "bg-success" : "bg-secondary")" style="cursor:pointer;" @onclick="() => TogglePublishJournalEntryAsync(entry)">
+                                                    @(entry.IsPublished ? "Опубликовано" : "Черновик")
+                                                </span>
+                                                @if (entry.VisibleToUserIds is not null)
+                                                {
+                                                    <span class="badge bg-info" title="Видимость per-player">выборочно</span>
+                                                }
+                                                <i class="bi bi-folder-plus" style="cursor:pointer;" title="Подзапись" @onclick="() => StartNewJournalChildEntry(entry.Id)"></i>
+                                                <i class="bi bi-pencil" style="cursor:pointer;" @onclick="() => StartEditJournalEntry(entry)"></i>
+                                                <i class="bi bi-trash text-danger" style="cursor:pointer;" @onclick="() => DeleteJournalEntryAsync(entry.Id)"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                    @if (_state.IsOrganizer && entry.IsPublished)
+                                    {
+                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                            @foreach (var p in _state.Participants.Where(p => !p.IsDungeonMaster))
+                                            {
+                                                var visible = entry.VisibleToUserIds is null || entry.VisibleToUserIds.Contains(p.UserId);
+                                                <label class="small d-flex align-items-center gap-1 mb-0" style="cursor:pointer;">
+                                                    <input type="checkbox" checked="@visible" @onchange="() => ToggleJournalPlayerVisibilityAsync(entry, p.UserId)" />
+                                                    @p.Username
+                                                </label>
+                                            }
+                                        </div>
+                                    }
+                                    <div class="small text-muted" style="white-space:pre-wrap;">@entry.ContentMarkdown</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
                 <div class="ta-card p-3 d-flex flex-column" style="height:520px;">
                     <h6 class="mb-2" style="color:var(--ta-gold)"><i class="bi bi-chat-dots me-2"></i>Чат стола</h6>
                     <div class="flex-grow-1 overflow-auto mb-2" style="min-height:0;" @ref="_chatLogRef">
@@ -256,7 +907,7 @@
                             <div class="mb-2 small @(m.Kind == TableMessageKind.System ? "text-muted fst-italic" : "")">
                                 @if (m.Kind == TableMessageKind.Roll)
                                 {
-                                    <div class="ta-roll-line">
+                                    <div class="ta-roll-line" style="@DegreeStyle(m.Content)">
                                         <i class="bi bi-dice-5 me-1" style="color:var(--ta-gold)"></i>
                                         <strong>@m.SenderUsername</strong> бросил: @m.Content
                                     </div>
@@ -289,5 +940,32 @@
                 </div>
             </div>
         </div>
+
+        @if (_showPf2eSheet && _sheetCharacter is not null)
+        {
+            <div class="ta-sheet-overlay" @onclick="ClosePf2eSheet">
+                <div class="ta-sheet-panel" @onclick:stopPropagation="true">
+                    <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+                        <div>
+                            <h6 class="mb-0" style="color:var(--ta-gold); font-family:'Cinzel',serif;">@_sheetCharacter.Name</h6>
+                            <div class="small text-muted">@_sheetCharacter.Race · @_sheetCharacter.Class · @_sheetCharacter.Level ур.</div>
+                        </div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                            <a href="/characters/@_sheetCharacter.Id" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Полный лист
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClosePf2eSheet" aria-label="Закрыть">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <Pf2eStatsSheet Character="_sheetCharacter"
+                                    CharacterChanged="OnSheetCharacterUpdatedAsync"
+                                    AllowCreate="@(_sheetCharacter.OwnerId == _currentUserId)"
+                                    ReadOnly="@(_sheetCharacter.OwnerId != _currentUserId)"
+                                    Compact="true" />
+                </div>
+            </div>
+        }
     }
 </div>

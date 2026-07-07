@@ -1,0 +1,20 @@
+{
+  "goblin-warrior": {
+    "name": "Гоблин-воин"
+  },
+  "skeleton-guard": {
+    "name": "Скелет-страж"
+  },
+  "zombie-shambler": {
+    "name": "Шаркающий зомби"
+  },
+  "wolf": {
+    "name": "Волк"
+  },
+  "ogre-warrior": {
+    "name": "Огр-воин"
+  },
+  "troll": {
+    "name": "Тролль"
+  }
+}

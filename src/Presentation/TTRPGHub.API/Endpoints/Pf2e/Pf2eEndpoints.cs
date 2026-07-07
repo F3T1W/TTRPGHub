@@ -40,6 +40,21 @@ public static class Pf2eEndpoints
             var result = await sender.Send(new GetPf2eMonsterDetailQuery(id), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
         });
+
+        // K.3 — уникальный токен-арт: SVG детерминирован по данным монстра, поэтому кешируется
+        // навечно (immutable). Без авторизации намеренно: картинка грузится через
+        // background-image/<img>, куда Authorization-заголовок не подставить.
+        group.MapGet("/monsters/{id:guid}/token.svg", async (Guid id, HttpContext http, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetPf2eMonsterDetailQuery(id), ct);
+            if (!result.IsSuccess)
+                return result.ToResponse();
+
+            http.Response.Headers.CacheControl = "public,max-age=31536000,immutable";
+            var monster = result.Value!;
+            var svg = Services.Pf2eTokenArtGenerator.GenerateSvg(monster.Slug, monster.Name, monster.Traits);
+            return Results.Content(svg, "image/svg+xml");
+        });
     }
 }
 

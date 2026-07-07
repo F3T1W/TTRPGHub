@@ -24,6 +24,8 @@ builder.Services
     .ConfigureHttpClient(c => c.BaseAddress = apiBase)
     .AddHttpMessageHandler<AuthHeaderHandler>();
 
-builder.Services.AddBlazorBootstrap();
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped<ContentLanguageService>();
+builder.Services.AddScoped<Pf2eLocaleService>();
 
 await builder.Build().RunAsync();

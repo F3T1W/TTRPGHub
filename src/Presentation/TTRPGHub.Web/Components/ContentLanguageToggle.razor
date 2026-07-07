@@ -1,0 +1,15 @@
+@namespace TTRPGHub.Components
+@inject ContentLanguageService Lang
+
+<div class="btn-group btn-group-sm" role="group" aria-label="Язык контента PF2e">
+    <button type="button"
+            class="btn @(Lang.Current == Pf2eContentLanguage.Ru ? "btn-ta-primary" : "btn-outline-secondary")"
+            @onclick="() => SetLang(Pf2eContentLanguage.Ru)">
+        RU
+    </button>
+    <button type="button"
+            class="btn @(Lang.Current == Pf2eContentLanguage.En ? "btn-ta-primary" : "btn-outline-secondary")"
+            @onclick="() => SetLang(Pf2eContentLanguage.En)">
+        EN
+    </button>
+</div>

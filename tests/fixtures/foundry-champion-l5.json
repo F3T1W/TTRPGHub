@@ -1,0 +1,110 @@
+{
+  "name": "E2E Foundry Champion",
+  "type": "character",
+  "system": {
+    "details": {
+      "level": { "value": 5 },
+      "keyability": { "value": "str" },
+      "alignment": { "value": "LG" }
+    },
+    "abilities": {
+      "str": { "mod": 4, "value": 18 },
+      "dex": { "mod": 1, "value": 12 },
+      "con": { "mod": 2, "value": 14 },
+      "int": { "mod": 0, "value": 10 },
+      "wis": { "mod": 1, "value": 12 },
+      "cha": { "mod": 2, "value": 14 }
+    },
+    "attributes": {
+      "hp": { "value": 68, "max": 68, "temp": 0 },
+      "ac": { "value": 23 },
+      "speed": { "value": 20 }
+    },
+    "perception": { "rank": 2 },
+    "saves": {
+      "fortitude": { "rank": 2 },
+      "reflex": { "rank": 1 },
+      "will": { "rank": 2 }
+    },
+    "skills": {
+      "athletics": { "rank": 2 },
+      "religion": { "rank": 1 }
+    },
+    "proficiencies": {
+      "attacks": {
+        "martial": { "rank": 2 },
+        "simple": { "rank": 2 }
+      },
+      "classDCs": {
+        "champion": { "rank": 2, "primary": true }
+      }
+    },
+    "resources": {
+      "heroPoints": { "value": 1, "max": 3 },
+      "focus": { "value": 1, "max": 1 }
+    }
+  },
+  "items": [
+    {
+      "name": "Human",
+      "type": "ancestry",
+      "system": { "slug": "human" }
+    },
+    {
+      "name": "Champion",
+      "type": "class",
+      "system": { "slug": "champion", "hp": 10 }
+    },
+    {
+      "name": "Warrior",
+      "type": "background",
+      "system": { "slug": "warrior" }
+    },
+    {
+      "name": "Versatile Heritage",
+      "type": "heritage",
+      "system": { "slug": "versatile-heritage" }
+    },
+    {
+      "name": "Power Attack",
+      "type": "feat",
+      "system": { "slug": "power-attack", "level": { "value": 1 } }
+    },
+    {
+      "name": "Longsword",
+      "type": "weapon",
+      "system": {
+        "slug": "longsword",
+        "category": "martial",
+        "equipped": { "carryType": "held", "handsHeld": 1 },
+        "damage": { "dice": 1, "die": "d8", "modifier": 0, "damageType": "slashing" },
+        "runes": { "potency": 1, "striking": 1 }
+      }
+    },
+    {
+      "name": "Half Plate",
+      "type": "armor",
+      "system": {
+        "slug": "half-plate",
+        "equipped": { "carryType": "worn" }
+      }
+    },
+    {
+      "name": "Divine Casting",
+      "type": "spellcastingEntry",
+      "system": {
+        "tradition": { "value": "divine" },
+        "proficiency": { "value": 2 },
+        "slots": {
+          "slot0": { "max": 5, "value": 5 },
+          "slot1": { "max": 2, "value": 2 }
+        }
+      }
+    },
+    {
+      "name": "Lay on Hands",
+      "type": "spell",
+      "system": { "level": { "value": 1 } }
+    }
+  ]
+}

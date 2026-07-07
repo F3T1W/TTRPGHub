@@ -60,4 +60,4 @@ public sealed class RuleEntry : Entity<RuleEntryId>
     }
 }
 
-public enum RuleCategory { Spell, Monster, Class, Race, Feat, Condition, Equipment, Background, Rule }
+public enum RuleCategory { Spell, Monster, Class, Race, Feat, Condition, Equipment, Background, Rule, Action }

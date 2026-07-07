@@ -46,5 +46,6 @@ public sealed record CharacterDetailDto(
     string? Equipment,
     string? AvatarUrl,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string? Pf2eStatsJson
 );

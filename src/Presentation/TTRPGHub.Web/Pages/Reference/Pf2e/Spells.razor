@@ -11,9 +11,10 @@
         </ol>
     </nav>
 
-    <div class="d-flex align-items-center gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
         <h2 class="text-white mb-0">⚔️ Pathfinder 2e — Заклинания</h2>
-        <a href="/reference/pf2e/monsters" class="btn btn-outline-secondary btn-sm">Бестиарий →</a>
+        <ContentLanguageToggle />
+        <a href="/reference/pf2e/monsters" class="btn btn-outline-secondary btn-sm ms-auto">Бестиарий →</a>
     </div>
 
     <!-- Фильтры -->
@@ -90,14 +91,15 @@
                 <tbody>
                     @foreach (var spell in _result.Items)
                     {
+                        var row = Display(spell);
                         <tr style="border-color:var(--ta-border);cursor:pointer;" @onclick="@(() => Nav.NavigateTo($"/reference/pf2e/spells/{spell.Id}"))">
-                            <td class="fw-semibold text-white">@spell.Name</td>
+                            <td class="fw-semibold text-white">@row.Name</td>
                             <td class="text-center"><span class="badge @LevelBadge(spell.Level)">@(spell.Level == 0 ? "З" : spell.Level.ToString())</span></td>
-                            <td class="text-muted small">@spell.Traditions</td>
-                            <td class="text-muted small">@spell.Cast</td>
-                            <td class="text-muted small">@spell.Range</td>
-                            <td class="text-muted small">@spell.Duration</td>
-                            <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@spell.Traits</td>
+                            <td class="text-muted small">@row.Traditions</td>
+                            <td class="text-muted small">@row.Cast</td>
+                            <td class="text-muted small">@row.Range</td>
+                            <td class="text-muted small">@row.Duration</td>
+                            <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@row.Traits</td>
                         </tr>
                     }
                 </tbody>
