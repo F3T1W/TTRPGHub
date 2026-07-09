@@ -1,0 +1,73 @@
+@page "/tickets/{TicketId:guid}"
+@attribute [Authorize]
+<PageTitle>Тикет — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:760px;">
+    @if (_loading)
+    {
+        <div class="text-muted small">Загрузка...</div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else if (_ticket is not null)
+    {
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/tickets">Поддержка</a></li>
+                <li class="breadcrumb-item active">@_ticket.Title</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h4 class="mb-0">@_ticket.Title</h4>
+                <span class="badge @StatusBadgeClass(_ticket.Status)">@StatusLabel(_ticket.Status)</span>
+            </div>
+            <div class="small text-muted mb-3">@_ticket.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+            <p style="white-space:pre-wrap">@_ticket.Description</p>
+            @if (_ticket.Attachments.Count > 0)
+            {
+                <div class="mt-2 d-flex gap-2 flex-wrap">
+                    @foreach (var a in _ticket.Attachments)
+                    {
+                        <a href="@a.Url" target="_blank" class="small">📎 @a.FileName</a>
+                    }
+                </div>
+            }
+        </div>
+
+        <h6 class="mb-2" style="color:var(--ta-gold)">Переписка</h6>
+
+        @if (_comments.Count == 0)
+        {
+            <div class="text-muted small mb-3">Комментариев пока нет.</div>
+        }
+        else
+        {
+            @foreach (var c in _comments)
+            {
+                <div class="ta-card p-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="fw-semibold small">@c.AuthorUsername</span>
+                        <span class="text-muted small">@c.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    </div>
+                    <div style="white-space:pre-wrap">@c.Body</div>
+                </div>
+            }
+        }
+
+        <div class="ta-card p-3 mt-3">
+            <textarea class="form-control mb-2" rows="3" placeholder="Ваш ответ..." @bind="_newComment"></textarea>
+            <button class="btn btn-ta-primary btn-sm" @onclick="SubmitCommentAsync" disabled="@(_submitting || string.IsNullOrWhiteSpace(_newComment))">
+                @if (_submitting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Отправить
+            </button>
+            @if (_commentError is not null)
+            {
+                <div class="text-danger small mt-2">@_commentError</div>
+            }
+        </div>
+    }
+</div>

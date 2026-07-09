@@ -1,0 +1,128 @@
+@page "/reference/pf2e/hazards/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_hazard?.NameRu ?? "Опасность") — Pathfinder 2e</PageTitle>
+
+<div class="container-fluid py-4" style="max-width:900px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_hazard is null)
+    {
+        <div class="alert alert-danger">Опасность не найдена.</div>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="/reference" class="text-decoration-none" style="color:var(--ta-accent-light);">Справочник</a></li>
+                <li class="breadcrumb-item"><a href="/reference/pf2e/hazards" class="text-decoration-none" style="color:var(--ta-accent-light);">Опасности</a></li>
+                <li class="breadcrumb-item active text-muted">@_hazard.NameRu</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="text-white mb-1">@_hazard.NameRu</h2>
+                    <p class="text-muted mb-0 small">@_hazard.Name</p>
+                </div>
+                <span class="badge @LevelBadge(_hazard.Level)" style="font-size:.9rem;padding:.4em .8em;">Опасность @_hazard.Level</span>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.Traits))
+            {
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    @foreach (var trait in _hazard.Traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        <span class="badge" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">@trait</span>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.Description))
+            {
+                <p class="text-muted fst-italic mb-3">@_hazard.Description</p>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="small text-muted mb-1">Скрытность</div>
+                    <div class="text-white">КС @_hazard.StealthDc @_hazard.StealthNote</div>
+                </div>
+                @if (_hazard.ArmorClass is { } ac)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">КБ</div>
+                        <div class="text-white">@ac</div>
+                    </div>
+                }
+                @if (_hazard.Fortitude is { } fort)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Стойкость</div>
+                        <div class="text-white">+@fort</div>
+                    </div>
+                }
+                @if (_hazard.Reflex is { } refl)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Рефлекс</div>
+                        <div class="text-white">+@refl</div>
+                    </div>
+                }
+                @if (_hazard.Hardness is { } hard)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Твёрдость</div>
+                        <div class="text-white">@hard</div>
+                    </div>
+                }
+                @if (_hazard.HitPoints is { } hp)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">ОЗ</div>
+                        <div class="text-white">@hp</div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.DisableText))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1" style="color:var(--ta-gold)!important;">ОТКЛЮЧЕНИЕ</div>
+                    <div class="text-white" style="white-space:pre-line;">@_hazard.DisableText</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.Immunities))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Иммунитеты</div>
+                    <div class="text-white">@_hazard.Immunities</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.AbilitiesText))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1" style="color:var(--ta-gold)!important;">РЕАКЦИИ И СПОСОБНОСТИ</div>
+                    <div class="text-white" style="white-space:pre-line;">@_hazard.AbilitiesText</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_hazard.ResetText))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Сброс</div>
+                    <div class="text-white">@_hazard.ResetText</div>
+                </div>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+            <div class="small text-muted">Источник: @_hazard.Source</div>
+        </div>
+    }
+</div>

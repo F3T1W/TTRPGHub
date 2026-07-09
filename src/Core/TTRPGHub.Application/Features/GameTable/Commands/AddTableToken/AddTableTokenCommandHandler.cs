@@ -16,7 +16,10 @@ internal sealed class AddTableTokenCommandHandler(
     ITableTokenRepository tokenRepository,
     ICharacterRepository characterRepository,
     IPf2eMonsterRepository pf2eMonsterRepository,
+    IPf2eHazardRepository pf2eHazardRepository,
     IDnd5eMonsterRepository dnd5eMonsterRepository,
+    ICompanionRepository companionRepository,
+    IPf2eVehicleRepository pf2eVehicleRepository,
     IUnitOfWork unitOfWork,
     ITableNotifier notifier,
     ICurrentUser currentUser
@@ -77,6 +80,38 @@ internal sealed class AddTableTokenCommandHandler(
                 label = dnd5eMonster.Name;
                 maxHp = currentHp = dnd5eMonster.HitPoints;
                 armorClass = dnd5eMonster.ArmorClass;
+                break;
+
+            // N.1 — у хазарда нет HP/AC в привычном смысле (может не быть вообще, см.
+            // Pf2eHazard.HitPoints/ArmorClass nullable — часть опасностей чисто "социальные"/
+            // окружающие без брони и живучести), заполняем только если реально есть в статблоке.
+            case TokenCombatantType.Pf2eHazard:
+                var hazard = await pf2eHazardRepository.GetByIdAsync(new Pf2eHazardId(command.CombatantId!.Value), ct);
+                if (hazard is null) return Error.NotFound(nameof(Pf2eHazard));
+                label = hazard.NameRu;
+                if (hazard.HitPoints is { } hazardHp) maxHp = currentHp = hazardHp;
+                armorClass = hazard.ArmorClass;
+                break;
+
+            // N.8 — компаньон/фамильяр персонажа: HP/AC копируются с текущего листа компаньона
+            // на момент постановки токена, дальше живут независимо (как у Pf2eMonster/Character).
+            case TokenCombatantType.Companion:
+                var companion = await companionRepository.GetByIdAsync(new CompanionId(command.CombatantId!.Value), ct);
+                if (companion is null) return Error.NotFound(nameof(Companion));
+                label = companion.Name;
+                currentHp = companion.CurrentHitPoints;
+                maxHp = companion.MaxHitPoints;
+                armorClass = companion.ArmorClass;
+                break;
+
+            // N.9 — транспорт: как и у хазарда, HP может отсутствовать в статблоке в принципе
+            // (Pf2eVehicle.HitPoints nullable), заполняем только если реально есть.
+            case TokenCombatantType.Pf2eVehicle:
+                var vehicle = await pf2eVehicleRepository.GetByIdAsync(new Pf2eVehicleId(command.CombatantId!.Value), ct);
+                if (vehicle is null) return Error.NotFound(nameof(Pf2eVehicle));
+                label = vehicle.NameRu;
+                if (vehicle.HitPoints is { } vehicleHp) maxHp = currentHp = vehicleHp;
+                armorClass = vehicle.ArmorClass;
                 break;
         }
 

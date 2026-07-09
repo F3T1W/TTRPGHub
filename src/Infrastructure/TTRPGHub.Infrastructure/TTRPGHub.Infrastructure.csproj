@@ -13,6 +13,8 @@
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Minio" />
     <PackageReference Include="QuestPDF" />
+    <PackageReference Include="UglyToad.PdfPig" />
+    <PackageReference Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
     <PackageReference Include="WebPush" />
   </ItemGroup>
 

@@ -15,6 +15,7 @@ public partial class Detail
     private bool _loading = true;
     private bool _isOwner;
     private int _likeCount;
+    private string? _actionMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -32,6 +33,19 @@ public partial class Detail
         var result = await Api.ToggleHomebrewLikeAsync(Id);
         _likeCount = result.LikeCount;
         _item = _item! with { LikedByMe = result.Liked };
+    }
+
+    private async Task ReportAsync()
+    {
+        try
+        {
+            await Api.CreateReportAsync(new CreateReportRequest("HomebrewItem", Id, "Жалоба на homebrew-материал"));
+            _actionMessage = "Жалоба отправлена, модераторы её рассмотрят.";
+        }
+        catch
+        {
+            _actionMessage = "Не удалось отправить жалобу.";
+        }
     }
 
     private async Task DeleteAsync()

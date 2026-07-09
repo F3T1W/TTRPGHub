@@ -26,9 +26,67 @@
                     @(_connectionStatus == "connected" ? "В сети" : _connectionStatus == "reconnecting" ? "Переподключение…" : "Не в сети")
                 </span>
             </div>
-            <a href="/sessions/@Id" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-box-arrow-left me-1"></i>Выйти из-за стола
-            </a>
+            <div class="d-flex align-items-center gap-2">
+                @if (_state.IsOrganizer)
+                {
+                    <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;"
+                           title="Вариативное правило PF2e: бонус владения не включает уровень персонажа">
+                        <input type="checkbox" checked="@_proficiencyWithoutLevel"
+                               @onchange="e => SetProficiencyWithoutLevelAsync((bool)(e.Value ?? false))" />
+                        Proficiency Without Level
+                    </label>
+                    <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;"
+                           title="Вариативное правило PF2e: числовые бонусы к атаке/спасброскам/Внимательности от уровня вместо рун">
+                        <input type="checkbox" checked="@_automaticBonusProgression"
+                               @onchange="e => SetAutomaticBonusProgressionAsync((bool)(e.Value ?? false))" />
+                        Automatic Bonus Progression
+                    </label>
+                    <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;"
+                           title="Вариативное правило PF2e: дополнительный фит архетипа на каждом чётном уровне">
+                        <input type="checkbox" checked="@_freeArchetype"
+                               @onchange="e => SetFreeArchetypeAsync((bool)(e.Value ?? false))" />
+                        Free Archetype
+                    </label>
+                    <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;"
+                           title="Вариативное правило PF2e: +1 к характеристике на каждом уровне вместо +2 разом на 5/10/15/20">
+                        <input type="checkbox" checked="@_gradualAbilityBoosts"
+                               @onchange="e => SetGradualAbilityBoostsAsync((bool)(e.Value ?? false))" />
+                        Gradual Ability Boosts
+                    </label>
+                    <label class="small text-muted d-flex align-items-center gap-1 mb-0" style="cursor:pointer;"
+                           title="Вариативное правило PF2e: отдельный пул очков (Stamina) поверх HP — урон бьёт по нему первым">
+                        <input type="checkbox" checked="@_staminaVariant"
+                               @onchange="e => SetStaminaVariantAsync((bool)(e.Value ?? false))" />
+                        Stamina
+                    </label>
+                }
+                else
+                {
+                    @if (_proficiencyWithoutLevel)
+                    {
+                        <span class="small text-muted">Proficiency Without Level</span>
+                    }
+                    @if (_automaticBonusProgression)
+                    {
+                        <span class="small text-muted">Automatic Bonus Progression</span>
+                    }
+                    @if (_freeArchetype)
+                    {
+                        <span class="small text-muted">Free Archetype</span>
+                    }
+                    @if (_gradualAbilityBoosts)
+                    {
+                        <span class="small text-muted">Gradual Ability Boosts</span>
+                    }
+                    @if (_staminaVariant)
+                    {
+                        <span class="small text-muted">Stamina</span>
+                    }
+                }
+                <a href="/sessions/@Id" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-box-arrow-left me-1"></i>Выйти из-за стола
+                </a>
+            </div>
         </div>
 
         <div class="row g-3">
@@ -271,11 +329,47 @@
                                     <i class="bi bi-search"></i>
                                 </button>
                             </div>
-                            <div class="d-flex flex-wrap gap-2">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
                                 @foreach (var m in _monsterResults)
                                 {
                                     <button class="btn btn-outline-secondary btn-sm" @onclick="() => AddMonsterTokenAsync(m)">
                                         @MonsterDisplay(m).Name <span class="text-muted">(ур. @m.Level, HP @m.HitPoints)</span>
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="small text-muted mb-2" title="N.1 — новый жетон добавляется скрытым от игроков (Скрытность вместо видимости на глаз); откройте видимость конкретному игроку на панели жетона, когда он пройдёт проверку обнаружения">
+                                Опасность PF2e из справочника
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <input class="form-control bg-dark text-light border-secondary" placeholder="Поиск опасности..."
+                                       @bind="_hazardSearch" @bind:event="oninput" />
+                                <button class="btn btn-outline-secondary" @onclick="SearchHazardsAsync" disabled="@_searchingHazards">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                @foreach (var h in _hazardResults)
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => AddHazardTokenAsync(h)" title="@h.Traits">
+                                        ⚠️ @h.NameRu <span class="text-muted">(ур. @h.Level, Скрытность КС @h.StealthDc)</span>
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="small text-muted mb-2">Транспорт PF2e из справочника</div>
+                            <div class="input-group input-group-sm mb-2">
+                                <input class="form-control bg-dark text-light border-secondary" placeholder="Поиск транспорта..."
+                                       @bind="_vehicleSearch" @bind:event="oninput" />
+                                <button class="btn btn-outline-secondary" @onclick="SearchVehiclesAsync" disabled="@_searchingVehicles">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var v in _vehicleResults)
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => AddVehicleTokenAsync(v)">
+                                        🚗 @v.NameRu <span class="text-muted">(ур. @v.Level, КБ @v.ArmorClass, ОЗ @v.HitPoints)</span>
                                     </button>
                                 }
                             </div>
@@ -332,6 +426,12 @@
                                         <div class="ta-token-hpbar-fill" style="width:@(Inv(100.0 * t.CurrentHp.Value / t.MaxHp.Value))%;"></div>
                                     </div>
                                 }
+                                @if (_staminaVariant && t.CurrentStamina is not null && t.MaxStamina is > 0)
+                                {
+                                    <div class="ta-token-staminabar" title="Stamina">
+                                        <div class="ta-token-staminabar-fill" style="width:@(Inv(100.0 * t.CurrentStamina.Value / t.MaxStamina.Value))%;"></div>
+                                    </div>
+                                }
                                 @if (t.Conditions.Count > 0)
                                 {
                                     <div class="ta-token-conditions">
@@ -355,8 +455,51 @@
                                                 <i class="bi bi-journal-text me-1"></i>Лист PF2e
                                             </button>
                                         }
+                                        @if (t.CombatantType == "Character" && t.CanMove && _selectedCharacterCompanions.Count > 0)
+                                        {
+                                            <div class="small text-muted mb-1">Компаньоны:</div>
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                @foreach (var companion in _selectedCharacterCompanions)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => AddCompanionTokenAsync(companion)"
+                                                            title="Добавить жетон компаньона на стол">
+                                                        <i class="bi bi-plus-lg me-1"></i>@companion.Name
+                                                    </button>
+                                                }
+                                            </div>
+                                        }
                                         @if (t.CombatantType == "Character" && t.CanMove && _selectedCharacterStats is not null)
                                         {
+                                            @if (SelectedCharacterArmorClass is { } computedAc && computedAc != t.ArmorClass)
+                                            {
+                                                <div class="small text-muted mb-1" title="Расчёт по формуле (Pf2eLookups.ComputeArmorClass) — жетон хранит своё значение отдельно, не обновляется автоматически">
+                                                    КЗ по формуле: <span class="text-success">@computedAc</span>
+                                                    @if (t.ArmorClass is not null) { <span>(на жетоне: @t.ArmorClass)</span> }
+                                                </div>
+                                            }
+                                            @if (_freeArchetype)
+                                            {
+                                                var archetypeFeatCount = _selectedCharacterStats.Feats.Count(f => f.Source == "archetype");
+                                                var expected = Pf2eLookups.ExpectedFreeArchetypeFeats(_selectedCharacterLevel);
+                                                <div class="small text-muted mb-1" title="Free Archetype: фиты с пометкой «Архетипный слот» против ожидаемого числа на этот уровень">
+                                                    Архетипные фиты: <span class="@(archetypeFeatCount < expected ? "text-warning" : "text-success")">@archetypeFeatCount / @expected</span>
+                                                </div>
+                                            }
+                                            @if (_gradualAbilityBoosts && t.CombatantId is Guid gabCharacterId)
+                                            {
+                                                var pending = Pf2eLookups.PendingGradualAbilityBoosts(_selectedCharacterLevel, _selectedCharacterStats.AbilityBoostLevels);
+                                                @if (pending.Count > 0)
+                                                {
+                                                    <div class="small text-muted mb-1" title="Gradual Ability Boosts: уровни, за которые повышение характеристики ещё не отмечено учтённым">
+                                                        Не отмечены повышения за ур.:
+                                                        @foreach (var lvl in pending)
+                                                        {
+                                                            <button class="btn btn-sm btn-outline-warning py-0 px-1 me-1" style="font-size:.7rem;"
+                                                                    @onclick="() => MarkAbilityBoostLevelAsync(gabCharacterId, lvl)">@lvl</button>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
                                             <div class="d-flex flex-wrap align-items-center gap-1 mb-1" title="Контекст проверки: цель и действие включают условные модификаторы фитов («+2 против животных при Запугивании» и т.п.)">
                                                 <span class="small text-muted">Цель:</span>
                                                 <select class="ta-condition-select" value="@(_targetTokenId?.ToString() ?? "")"
@@ -385,13 +528,13 @@
                                             </div>
                                             <div class="d-flex flex-wrap gap-1 mb-2">
                                                 <button @onclick='() => RollPf2eSkillAsync("perception", "Внимательность", _selectedCharacterStats.PerceptionRank)' disabled="@_rolling">
-                                                    Внимательность @FormatBonus(Pf2eLookups.Bonus(_selectedCharacterStats.PerceptionRank, _selectedCharacterLevel) + CheckModifier("perception"))
+                                                    Внимательность @FormatBonus(Pf2eLookups.Bonus(_selectedCharacterStats.PerceptionRank, _selectedCharacterLevel, _proficiencyWithoutLevel) + CheckModifier("perception") + AbpPerceptionBonus)
                                                 </button>
                                                 @foreach (var (key, label) in Pf2eLookups.Saves)
                                                 {
                                                     var rank = _selectedCharacterStats.SaveRanks.GetValueOrDefault(key);
                                                     <button @onclick="() => RollPf2eSaveAsync(key, label, rank)" disabled="@_rolling">
-                                                        @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key))
+                                                        @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel, _proficiencyWithoutLevel) + CheckModifier(key) + AbpSaveBonus)
                                                     </button>
                                                 }
                                                 @foreach (var (key, label) in Pf2eLookups.Skills)
@@ -400,7 +543,7 @@
                                                     @if (rank > 0)
                                                     {
                                                         <button @onclick="() => RollPf2eSkillAsync(key, label, rank)" disabled="@_rolling">
-                                                            @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key))
+                                                            @label @FormatBonus(Pf2eLookups.Bonus(rank, _selectedCharacterLevel, _proficiencyWithoutLevel) + CheckModifier(key))
                                                         </button>
                                                     }
                                                 }
@@ -449,6 +592,10 @@
                                                         </button>
                                                     }
                                                 </div>
+                                                @if (_rangeWarning is not null)
+                                                {
+                                                    <div class="small mb-2" style="color:var(--ta-gold);">⚠ @_rangeWarning</div>
+                                                }
                                             }
                                         }
                                         @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer)
@@ -477,7 +624,8 @@
                                             </div>
                                             <div class="small text-muted mb-2">Class DC способности: @_selectedMonsterAbilityDc</div>
                                         }
-                                        @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer && (_selectedMonsterResistances.Count > 0 || _selectedMonsterWeaknesses.Count > 0))
+                                        @{ var selectedMonsterAuras = t.CombatantId is { } selMonsterId ? _monsterAuraCache.GetValueOrDefault(selMonsterId, []) : []; }
+                                        @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer && (_selectedMonsterResistances.Count > 0 || _selectedMonsterWeaknesses.Count > 0 || _selectedMonsterImmunities.Count > 0 || selectedMonsterAuras.Count > 0))
                                         {
                                             <div class="small text-muted mb-1">
                                                 @if (_selectedMonsterResistances.Count > 0)
@@ -487,6 +635,82 @@
                                                 @if (_selectedMonsterWeaknesses.Count > 0)
                                                 {
                                                     <div>Уязвимости: @string.Join(", ", _selectedMonsterWeaknesses.Select(w => $"{w.Type} {w.Value}"))</div>
+                                                }
+                                                @if (_selectedMonsterImmunities.Count > 0)
+                                                {
+                                                    <div>Иммунитеты: @string.Join(", ", _selectedMonsterImmunities.Select(i => $"{i.Type}{(i.Exceptions.Count > 0 ? $" (кроме {string.Join(", ", i.Exceptions)})" : "")}"))</div>
+                                                }
+                                                @if (selectedMonsterAuras.Count > 0)
+                                                {
+                                                    <div>Ауры: @string.Join(", ", selectedMonsterAuras.Select(a => $"{a.EffectName} {a.RadiusFeet} фт"))</div>
+                                                }
+                                            </div>
+                                        }
+                                        @if (t.CombatantType == "Pf2eHazard" && _state.IsOrganizer && _selectedHazard is not null)
+                                        {
+                                            <div class="small mb-1" style="background:var(--ta-bg);border-radius:6px;padding:.5rem;">
+                                                <div class="text-white mb-1">
+                                                    Скрытность КС @_selectedHazard.StealthDc @_selectedHazard.StealthNote
+                                                    @if (_selectedHazard.ArmorClass is not null || _selectedHazard.Fortitude is not null || _selectedHazard.Reflex is not null)
+                                                    {
+                                                        <text> · КБ @_selectedHazard.ArmorClass, Стойк. @FormatBonus(_selectedHazard.Fortitude ?? 0), Рефл. @FormatBonus(_selectedHazard.Reflex ?? 0)</text>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(_selectedHazard.DisableText))
+                                                {
+                                                    <div class="text-muted mb-1"><strong>Отключение:</strong> @_selectedHazard.DisableText</div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(_selectedHazard.AbilitiesText))
+                                                {
+                                                    <div class="text-muted" style="white-space:pre-line;max-height:150px;overflow-y:auto;">@_selectedHazard.AbilitiesText</div>
+                                                }
+                                            </div>
+                                        }
+                                        @if (t.CombatantType == "Companion" && (t.CanMove || _state.IsOrganizer) && _selectedCompanion is not null)
+                                        {
+                                            <div class="small mb-1" style="background:var(--ta-bg);border-radius:6px;padding:.5rem;">
+                                                <div class="text-white mb-1">
+                                                    @_selectedCompanion.Kind, ур. @_selectedCompanion.Level
+                                                    @if (_selectedCompanion.ArmorClass is not null || !string.IsNullOrWhiteSpace(_selectedCompanion.Speed))
+                                                    {
+                                                        <text> · КБ @_selectedCompanion.ArmorClass @_selectedCompanion.Speed</text>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(_selectedCompanion.AttacksText))
+                                                {
+                                                    <div class="text-muted mb-1"><strong>Атаки:</strong> @_selectedCompanion.AttacksText</div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(_selectedCompanion.AbilitiesText))
+                                                {
+                                                    <div class="text-muted" style="white-space:pre-line;max-height:150px;overflow-y:auto;">@_selectedCompanion.AbilitiesText</div>
+                                                }
+                                            </div>
+                                        }
+                                        @if (t.CombatantType == "Pf2eVehicle" && _state.IsOrganizer && _selectedVehicle is not null)
+                                        {
+                                            <div class="small mb-1" style="background:var(--ta-bg);border-radius:6px;padding:.5rem;">
+                                                <div class="text-white mb-1">
+                                                    @(_selectedVehicle.Size ?? "") · КБ @_selectedVehicle.ArmorClass, Твёрд. @_selectedVehicle.Hardness
+                                                    @if (_selectedVehicle.Fortitude is not null)
+                                                    {
+                                                        <text>, Стойк. @FormatBonus(_selectedVehicle.Fortitude ?? 0)</text>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrWhiteSpace(_selectedVehicle.Crew) || !string.IsNullOrWhiteSpace(_selectedVehicle.Passengers))
+                                                {
+                                                    <div class="text-muted mb-1">Экипаж: @_selectedVehicle.Crew @(!string.IsNullOrWhiteSpace(_selectedVehicle.Passengers) ? $"· Пассажиры: {_selectedVehicle.Passengers}" : "")</div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(_selectedVehicle.Speed))
+                                                {
+                                                    <div class="text-muted mb-1"><strong>Скорость:</strong> @_selectedVehicle.Speed</div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(_selectedVehicle.Collision))
+                                                {
+                                                    <div class="text-muted mb-1"><strong>Столкновение:</strong> @_selectedVehicle.Collision</div>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(_selectedVehicle.AbilitiesText))
+                                                {
+                                                    <div class="text-muted" style="white-space:pre-line;max-height:150px;overflow-y:auto;">@_selectedVehicle.AbilitiesText</div>
                                                 }
                                             </div>
                                         }
@@ -513,6 +737,26 @@
                                                 <button @onclick="() => AdjustHpAsync(t, 5)">+5</button>
                                                 <button @onclick="() => AdjustHpAsync(t, 1)">+1</button>
                                             </div>
+                                        }
+                                        @if (_staminaVariant && t.CurrentHp is not null)
+                                        {
+                                            @if (t.MaxStamina is null)
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary mb-1" @onclick="() => InitStaminaAsync(t)"
+                                                        title="Разделить HP пополам на Stamina/HP (упрощение варианта правила)">
+                                                    <i class="bi bi-battery-half me-1"></i>Завести Stamina
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <div class="small text-muted mb-1">Stamina: <span class="fw-semibold" style="color:var(--ta-accent-light);">@t.CurrentStamina / @t.MaxStamina</span></div>
+                                                <div class="d-flex gap-1 mb-1">
+                                                    <button @onclick="() => AdjustStaminaAsync(t, -1)">−1</button>
+                                                    <button @onclick="() => AdjustStaminaAsync(t, -5)">−5</button>
+                                                    <button @onclick="() => AdjustStaminaAsync(t, 5)">+5</button>
+                                                    <button @onclick="() => AdjustStaminaAsync(t, 1)">+1</button>
+                                                </div>
+                                            }
                                         }
                                         <div class="d-flex align-items-center gap-1 mb-1">
                                             <span class="small text-muted">Иниц.</span>
@@ -579,6 +823,10 @@
                                                    @onchange="e => _newConditionValue = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
                                             <button @onclick="() => ApplyConditionAsync(t)" disabled="@string.IsNullOrWhiteSpace(_newConditionSlug)">+</button>
                                         </div>
+                                        @if (_conditionBlockedError is not null)
+                                        {
+                                            <div class="small text-danger mt-1">@_conditionBlockedError</div>
+                                        }
                                     </div>
                                 }
                             </div>
@@ -629,6 +877,194 @@
                     @if (_rollError is not null)
                     {
                         <div class="text-danger small mt-2">@_rollError</div>
+                    }
+
+                    <!-- N.6 — крит/фамбл-колоды (вариативное правило) -->
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-outline-secondary btn-sm flex-grow-1" @onclick="DrawCritCardAsync" title="Вариативное правило: карта критического попадания">
+                            <i class="bi bi-suit-spade me-1"></i>Крит-карта
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm flex-grow-1" @onclick="DrawFumbleCardAsync" title="Вариативное правило: карта провала">
+                            <i class="bi bi-suit-spade-fill me-1"></i>Карта провала
+                        </button>
+                    </div>
+                </div>
+
+                <!-- N.12 — таблица случайных встреч + генератор NPC -->
+                <div class="ta-card p-3 mt-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-shuffle me-2"></i>Случайные встречи</h6>
+                        @if (_state.IsOrganizer && !_editingEncounterTable)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="StartEditEncounterTable">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        }
+                    </div>
+
+                    @if (_editingEncounterTable)
+                    {
+                        <input class="form-control form-control-sm bg-dark text-light border-secondary mb-2" placeholder="Название таблицы"
+                               @bind="_encounterTableTitle" />
+                        @for (var i = 0; i < _encounterTableEntries.Count; i++)
+                        {
+                            var idx = i;
+                            var entry = _encounterTableEntries[idx];
+                            <div class="d-flex gap-1 align-items-center mb-1">
+                                <input type="number" min="1" class="form-control form-control-sm" style="width:55px;" value="@entry.Min"
+                                       @onchange="e => UpdateEncounterEntry(idx, entry with { Min = int.TryParse(e.Value?.ToString(), out var v) ? v : entry.Min })" />
+                                <span class="small text-muted">–</span>
+                                <input type="number" min="1" class="form-control form-control-sm" style="width:55px;" value="@entry.Max"
+                                       @onchange="e => UpdateEncounterEntry(idx, entry with { Max = int.TryParse(e.Value?.ToString(), out var v) ? v : entry.Max })" />
+                                <input class="form-control form-control-sm" placeholder="Кто/что (точное имя монстра свяжется с бестиарием)" value="@entry.Label"
+                                       @onchange="e => UpdateEncounterEntryLabelAsync(idx, e.Value?.ToString() ?? string.Empty)" />
+                                @if (entry.MonsterId is not null)
+                                {
+                                    <i class="bi bi-link-45deg text-success" title="Связан с бестиарием — после броска можно добавить жетон"></i>
+                                }
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveEncounterEntry(idx)">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        }
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="AddEncounterEntry">
+                                <i class="bi bi-plus-lg me-1"></i>Строка
+                            </button>
+                            <button class="btn btn-sm btn-ta-primary" @onclick="SaveEncounterTableAsync">Сохранить</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => _editingEncounterTable = false">Отмена</button>
+                        </div>
+                    }
+                    else if (_encounterTable is null)
+                    {
+                        <p class="small text-muted fst-italic mb-0">Таблица не задана.</p>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mb-2">«@_encounterTable.Title» · @_encounterTable.Entries.Count строк</div>
+                        <button class="btn btn-sm btn-ta-primary w-100" @onclick="RollEncounterTableAsync">
+                            <i class="bi bi-dice-5 me-1"></i>Бросить таблицу
+                        </button>
+                    }
+
+                    <hr class="my-2" style="border-color:var(--ta-border);" />
+                    <button class="btn btn-sm btn-outline-secondary w-100" @onclick="GenerateAndAnnounceNpcAsync">
+                        <i class="bi bi-person-plus me-1"></i>Сгенерировать NPC
+                    </button>
+                </div>
+
+                <!-- K.7 — макросы: личная библиотека + хотбар (10 слотов), тот же принцип UX,
+                     что у Foundry (клик по иконке в хотбаре запускает макрос), чтобы не
+                     переучивать людей. -->
+                <div class="ta-card p-3 mt-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0" style="color:var(--ta-gold)">
+                            <i class="bi bi-lightning-charge me-2"></i>Макросы
+                            <a href="/guides/foundry-macros" target="_blank" class="ms-1 text-decoration-none" title="Как адаптировать макросы из Foundry" style="color:var(--ta-accent-light)">
+                                <i class="bi bi-question-circle"></i>
+                            </a>
+                        </h6>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showMacroLibrary = !_showMacroLibrary">
+                            <i class="bi @(_showMacroLibrary ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                        </button>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        @for (var slot = 0; slot < 10; slot++)
+                        {
+                            var slotIdx = slot;
+                            var slotMacro = _macros.FirstOrDefault(m => m.HotbarSlot == slotIdx);
+                            @if (slotMacro is not null)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" style="width:36px;height:36px;padding:2px;"
+                                        title="@slotMacro.Name" disabled="@_macroRunning" @onclick="() => RunMacroAsync(slotMacro)">
+                                    @if (!string.IsNullOrWhiteSpace(slotMacro.ImageUrl))
+                                    {
+                                        <img src="@slotMacro.ImageUrl" alt="" style="width:100%;height:100%;object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="small">@slotMacro.Name[..Math.Min(2, slotMacro.Name.Length)]</span>
+                                    }
+                                </button>
+                            }
+                            else
+                            {
+                                <div class="btn btn-sm btn-outline-secondary disabled" style="width:36px;height:36px;padding:2px;opacity:.3;">@slotIdx</div>
+                            }
+                        }
+                    </div>
+
+                    @if (_showMacroLibrary)
+                    {
+                        @if (_macros.Count == 0)
+                        {
+                            <p class="small text-muted fst-italic mb-2">Пусто.</p>
+                        }
+                        else
+                        {
+                            @foreach (var macro in _macros)
+                            {
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                    <button class="btn btn-sm btn-outline-secondary flex-grow-1 text-start" disabled="@_macroRunning"
+                                            @onclick="() => RunMacroAsync(macro)">
+                                        <span class="badge bg-secondary me-1" style="font-size:.6rem;">@(macro.Type == "Script" ? "JS" : "чат")</span>
+                                        @macro.Name
+                                    </button>
+                                    <select class="ta-condition-select" style="width:56px;" value="@macro.HotbarSlot"
+                                            @onchange="e => SetHotbarSlotAsync(macro.Id, int.Parse(e.Value!.ToString()!))">
+                                        <option value="-1">—</option>
+                                        @for (var s = 0; s < 10; s++)
+                                        {
+                                            <option value="@s">@s</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEditMacro(macro)"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteMacroAsync(macro.Id)"><i class="bi bi-x"></i></button>
+                                </div>
+                            }
+                        }
+
+                        @if (_editingMacro)
+                        {
+                            <div class="mt-2 p-2" style="border:1px solid var(--ta-border);border-radius:6px;">
+                                <input class="form-control form-control-sm mb-1" placeholder="Название" value="@_macroName"
+                                       @onchange="e => _macroName = e.Value?.ToString() ?? string.Empty" />
+                                <input class="form-control form-control-sm mb-1" placeholder="URL иконки (необязательно)" value="@_macroImageUrl"
+                                       @onchange="e => _macroImageUrl = e.Value?.ToString() ?? string.Empty" />
+                                <select class="form-select form-select-sm mb-1" value="@_macroType"
+                                        @onchange='e => _macroType = e.Value?.ToString() ?? "Chat"'>
+                                    <option value="Chat">Chat — текст/бросок в чат ("/r 1d20+5")</option>
+                                    <option value="Script">Script — JS-код в песочнице (game.*)</option>
+                                </select>
+                                <textarea class="form-control form-control-sm mb-1" rows="4" placeholder="Команда"
+                                          @onchange="e => _macroCommand = e.Value?.ToString() ?? string.Empty">@_macroCommand</textarea>
+                                @if (_macroError is not null)
+                                {
+                                    <div class="text-danger small mb-1">@_macroError</div>
+                                }
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-ta-primary" @onclick="SaveMacroAsync">Сохранить</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEditMacro">Отмена</button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex gap-2 mt-2 align-items-center flex-wrap">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEditMacro(null)">
+                                    <i class="bi bi-plus-lg me-1"></i>Новый макрос
+                                </button>
+                                <label class="btn btn-sm btn-outline-secondary mb-0" title="Импортировать JSON-экспорт макроса(ов) из Foundry VTT">
+                                    <i class="bi bi-upload me-1"></i>Импорт из Foundry
+                                    <InputFile OnChange="ImportFoundryMacrosAsync" style="display:none;" accept=".json" />
+                                </label>
+                            </div>
+                            @if (_macroImportError is not null)
+                            {
+                                <div class="text-danger small mt-1">@_macroImportError</div>
+                            }
+                        }
                     }
                 </div>
 
@@ -754,6 +1190,14 @@
                                         {
                                             <span class="text-muted">@t.CurrentHp/@t.MaxHp</span>
                                         }
+                                        @if (t.Conditions.Any(c => c.Slug == "dying"))
+                                        {
+                                            <i class="bi bi-skull text-danger" title="Dying"></i>
+                                        }
+                                        else if (t.Conditions.Any(c => c.Slug == "unconscious"))
+                                        {
+                                            <i class="bi bi-moon-stars text-muted" title="Unconscious"></i>
+                                        }
                                     </span>
                                     <span class="fw-semibold">@t.Initiative</span>
                                 </li>
@@ -810,14 +1254,49 @@
                         <h6 class="mb-0" style="color:var(--ta-gold)"><i class="bi bi-journal-text me-2"></i>Журнал</h6>
                         @if (_state.IsOrganizer)
                         {
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="StartNewJournalEntry">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
+                            <div class="d-flex gap-1">
+                                <label class="btn btn-sm btn-outline-secondary mb-0" title="Импортировать своё купленное приключение (PDF) — приватно, видно только этой сессии">
+                                    @if (_importingAdventure)
+                                    {
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    }
+                                    <InputFile OnChange="ImportAdventurePdfAsync" accept=".pdf" style="display:none;" disabled="@_importingAdventure" />
+                                </label>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="StartNewJournalEntry">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
                         }
                     </div>
                     @if (_journalError is not null)
                     {
                         <div class="text-danger small mb-2">@_journalError</div>
+                    }
+                    @if (_lastAdventureImport is not null)
+                    {
+                        <div class="small mb-2 p-2" style="background:var(--ta-bg); border-radius:6px;">
+                            <div class="text-success mb-1">
+                                Импортировано: @_lastAdventureImport.PagesImported стр. текста в журнал, найдено карт: @_lastAdventureImport.Images.Count
+                            </div>
+                            @if (_lastAdventureImport.Images.Count > 0)
+                            {
+                                <div class="text-muted mb-1">Карты (создать как отдельную сцену):</div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var img in _lastAdventureImport.Images)
+                                    {
+                                        <div class="text-center" style="width:90px;">
+                                            <img src="@img.Url" style="width:90px;height:60px;object-fit:cover;border-radius:4px;cursor:pointer;" title="Стр. @img.PageNumber"
+                                                 @onclick="() => CreateSceneFromImportedImageAsync(img)" />
+                                            <div style="font-size:.65rem;">стр. @img.PageNumber</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                     @if (_editingJournalEntryId is not null)
                     {
@@ -909,8 +1388,39 @@
                                 {
                                     <div class="ta-roll-line" style="@DegreeStyle(m.Content)">
                                         <i class="bi bi-dice-5 me-1" style="color:var(--ta-gold)"></i>
-                                        <strong>@m.SenderUsername</strong> бросил: @m.Content
+                                        <strong>@m.SenderUsername</strong> бросил: @Pf2eLookups.StripEncounterMonsterMarker(m.Content)
                                     </div>
+                                    @if (Pf2eLookups.TryParseEncounterMonsterMarker(m.Content) is { } encounterMonsterId)
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 mt-1" style="font-size:.7rem;"
+                                                @onclick="() => AddEncounterMonsterTokenAsync(encounterMonsterId)">
+                                            <i class="bi bi-plus-lg me-1"></i>Добавить жетон
+                                        </button>
+                                    }
+                                    @if (Pf2eLookups.TryParseCheckResult(m.Content, out _, out _, out _) && TargetToken is not null)
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1 mt-1" style="font-size:.7rem;"
+                                                @onclick="() => ToggleApplyRollForm(m.Id)">
+                                            Применить → @TargetToken.Label
+                                        </button>
+                                        @if (_applyRollMessageId == m.Id)
+                                        {
+                                            <div class="d-flex align-items-center gap-1 mt-1">
+                                                <input type="number" min="0" class="form-control form-control-sm" style="width:70px;" placeholder="урон"
+                                                       value="@_applyRollDamage" @onchange="e => _applyRollDamage = int.TryParse(e.Value?.ToString(), out var v) ? v : null" />
+                                                <select class="form-select form-select-sm" style="width:auto;" @bind="_applyRollDamageType">
+                                                    <option value="">тип —</option>
+                                                    @foreach (var dt in DamageTypes)
+                                                    {
+                                                        <option value="@dt">@dt</option>
+                                                    }
+                                                </select>
+                                                <button class="btn btn-sm btn-ta-primary py-0 px-2" @onclick="() => ApplyRollResultAsync(m)">
+                                                    <i class="bi bi-check-lg"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    }
                                 }
                                 else if (m.Kind == TableMessageKind.System)
                                 {

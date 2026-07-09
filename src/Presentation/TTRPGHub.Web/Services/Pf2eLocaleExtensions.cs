@@ -36,5 +36,5 @@ public static class Pf2eLocaleExtensions
             spell.Range, spell.Area, spell.Targets,
             await locale.LocalizeCsvAsync(spell.Duration),
             await locale.DescriptionAsync("spell", spell.Slug, spell.Description),
-            spell.Heightened is null ? null : await locale.DescriptionAsync("spell", spell.Slug, spell.Heightened));
+            spell.Heightened is null ? null : await locale.HeightenedAsync("spell", spell.Slug, spell.Heightened));
 }

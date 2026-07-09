@@ -22,9 +22,17 @@
             </h1>
             <AuthorizeView Roles="Moderator,Admin">
                 <Authorized>
-                    <button class="btn btn-sm btn-outline-danger" @onclick="DeleteTopicAsync">
-                        <i class="bi bi-trash me-1"></i>Удалить тему
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="TogglePinAsync">
+                            <i class="bi bi-pin-angle me-1"></i>@(_data.IsPinned ? "Открепить" : "Закрепить")
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleLockAsync">
+                            <i class="bi bi-lock me-1"></i>@(_data.IsLocked ? "Разблокировать" : "Заблокировать")
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="DeleteTopicAsync">
+                            <i class="bi bi-trash me-1"></i>Удалить тему
+                        </button>
+                    </div>
                 </Authorized>
             </AuthorizeView>
         </div>

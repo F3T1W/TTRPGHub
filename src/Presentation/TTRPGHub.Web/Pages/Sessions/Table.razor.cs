@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.JSInterop;
+using Refit;
 using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Sessions;
@@ -52,15 +53,46 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private bool _dragInitialized;
     private Guid? _currentUserId;
 
+    // K.7 — личная библиотека макросов пользователя (не привязана к этой сессии, см. Macro.cs).
+    private List<MacroDto> _macros = [];
+    private bool _showMacroLibrary;
+    private bool _editingMacro;
+    private Guid? _editingMacroId;
+    private string _macroName = string.Empty;
+    private string _macroImageUrl = string.Empty;
+    private string _macroType = "Chat";
+    private string _macroCommand = string.Empty;
+    private string? _macroError;
+    private bool _macroRunning;
+    private string? _macroImportError;
+
     private List<SessionCharacterDto> _sessionCharacters = [];
     private bool _showAddCombatant;
     private string _monsterSearch = string.Empty;
     private List<Pf2eMonsterSummaryDto> _monsterResults = [];
     private Dictionary<Guid, Pf2eLocalizedMonsterRow> _monsterLocalized = [];
     private bool _searchingMonsters;
+    private string _hazardSearch = string.Empty;
+    private List<Pf2eHazardSummaryDto> _hazardResults = [];
+    private bool _searchingHazards;
+    private string _vehicleSearch = string.Empty;
+    private List<Pf2eVehicleSummaryDto> _vehicleResults = [];
+    private bool _searchingVehicles;
     private int _gridCellSizePx = 50;
     private bool _fogEnabled;
     private int _visionRadiusFeet = 30;
+    private bool _proficiencyWithoutLevel;
+    private bool _automaticBonusProgression;
+    private bool _freeArchetype;
+    private bool _gradualAbilityBoosts;
+    private bool _staminaVariant;
+
+    // N.12 — таблица случайных встреч: GM редактирует, все за столом видят и могут бросить.
+    private Pf2eLookups.Pf2eEncounterTable? _encounterTable;
+    private string _encounterTableTitle = string.Empty;
+    private List<Pf2eLookups.Pf2eEncounterEntry> _encounterTableEntries = [];
+    private bool _editingEncounterTable;
+
     private bool _wallMode;
     private List<WallDto> _walls = [];
     private static readonly JsonSerializerOptions WallsJsonOptions = new(JsonSerializerDefaults.Web);
@@ -119,6 +151,12 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private Guid? _journalParentId;
     private Guid? _journalCampaignId;
 
+    // M.1 — импорт купленного PDF-приключения (текст в журнал, карты — превью для точечного
+    // создания сцен). Держим последний результат импорта на клиенте, а не в _state — это
+    // одноразовый "итог операции", а не часть постоянного состояния стола.
+    private bool _importingAdventure;
+    private ImportAdventurePdfResponse? _lastAdventureImport;
+
     // L.3 — встроенный PF2e-лист (slide-over), без ухода со страницы стола.
     private bool _showPf2eSheet;
     private CharacterDetailDto? _sheetCharacter;
@@ -176,6 +214,9 @@ public partial class Table : ComponentBase, IAsyncDisposable
             }
             catch { /* ignore */ }
 
+            try { _macros = await Api.GetMyMacrosAsync(); }
+            catch { /* ignore */ }
+
             try { _journalEntries = await Api.GetJournalEntriesAsync(Id); }
             catch { /* ignore */ }
         }
@@ -206,9 +247,16 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _state = await Api.GetTableStateAsync(Id);
         _tokens.Clear();
         _tokens.AddRange(_state.Tokens);
+        _auraAppliedSlugsByToken.Clear();
         _gridCellSizePx = _state.GridCellSizePx;
         _fogEnabled = _state.FogEnabled;
         _visionRadiusFeet = _state.VisionRadiusFeet;
+        _proficiencyWithoutLevel = _state.ProficiencyWithoutLevel;
+        _automaticBonusProgression = _state.AutomaticBonusProgression;
+        _freeArchetype = _state.FreeArchetype;
+        _gradualAbilityBoosts = _state.GradualAbilityBoosts;
+        _staminaVariant = _state.StaminaVariant;
+        SetEncounterTableLocal(Pf2eLookups.ParseEncounterTable(_state.EncounterTableJson));
         _walls = ParseWalls(_state.WallsJson);
         _lights = ParseLights(_state.LightsJson);
         _terrainTags = Pf2eLookups.ParseTerrainTags(_state.TerrainTagsJson);
@@ -224,6 +272,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _messages.AddRange(_state.RecentMessages);
 
         RecomputeFlanking();
+        await RecomputeAuraEffectsAsync();
     }
 
     private static List<WallDto> ParseWalls(string? json)
@@ -310,6 +359,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         {
             var canMove = _state?.IsOrganizer == true || dto.OwnerId == _currentUserId;
             _tokens.Add(dto with { CanMove = canMove });
+            await RecomputeAuraEffectsAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -318,6 +368,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             var idx = _tokens.FindIndex(t => t.Id == tokenId);
             if (idx >= 0) _tokens[idx] = _tokens[idx] with { X = x, Y = y };
             if (_placedTemplate is not null) RecomputeTemplateAffectedTokens();
+            await RecomputeAuraEffectsAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -340,6 +391,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _hub.On<Guid>("TokenRemoved", async tokenId =>
         {
             _tokens.RemoveAll(t => t.Id == tokenId);
+            _auraAppliedSlugsByToken.Remove(tokenId);
+            await RecomputeAuraEffectsAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -374,6 +427,22 @@ public partial class Table : ComponentBase, IAsyncDisposable
         {
             _fogEnabled = enabled;
             _visionRadiusFeet = radiusFeet;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hub.On<bool, bool, bool, bool, bool>("VariantRulesChanged", async (proficiencyWithoutLevel, automaticBonusProgression, freeArchetype, gradualAbilityBoosts, staminaVariant) =>
+        {
+            _proficiencyWithoutLevel = proficiencyWithoutLevel;
+            _automaticBonusProgression = automaticBonusProgression;
+            _freeArchetype = freeArchetype;
+            _gradualAbilityBoosts = gradualAbilityBoosts;
+            _staminaVariant = staminaVariant;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hub.On<string?>("EncounterTableChanged", async encounterTableJson =>
+        {
+            SetEncounterTableLocal(Pf2eLookups.ParseEncounterTable(encounterTableJson));
             await InvokeAsync(StateHasChanged);
         });
 
@@ -741,6 +810,63 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* ignore */ }
     }
 
+    // N.1 — хазарды по умолчанию скрыты от игроков (пустой VisibleToUserIds, J.7): ловушка,
+    // которую все видят на карте с первого клика ГМа, не имеет смысла — обнаружение должно
+    // идти через проверку Скрытности, а не просто "жетон появился". ГМ вручную открывает
+    // видимость конкретному игроку через уже существующий переключатель "Видят: ..." на панели
+    // жетона, когда персонаж проходит проверку обнаружения.
+    private async Task SearchHazardsAsync()
+    {
+        _searchingHazards = true;
+        try
+        {
+            var page = await Api.GetPf2eHazardsAsync(search: _hazardSearch, pageSize: 15);
+            _hazardResults = page.Items;
+        }
+        catch { _hazardResults = []; }
+        finally { _searchingHazards = false; }
+    }
+
+    private async Task AddHazardTokenAsync(Pf2eHazardSummaryDto h)
+    {
+        var color = "#f59e0b";
+        try
+        {
+            var response = await Api.AddTableTokenAsync(Id, new AddTokenRequest(
+                h.NameRu, null, color, 5, 5, null,
+                Width: 1, Height: 1,
+                CombatantType: "Pf2eHazard", CombatantId: h.Id));
+            await Api.SetTableTokenVisibilityAsync(Id, response.Id, new SetTokenVisibilityRequest([]));
+        }
+        catch { /* ignore */ }
+    }
+
+    // N.9 — в отличие от хазардов, транспорт не прячется по умолчанию: телега на дороге —
+    // не скрытая угроза, видимый игровой объект с самого начала.
+    private async Task SearchVehiclesAsync()
+    {
+        _searchingVehicles = true;
+        try
+        {
+            var page = await Api.GetPf2eVehiclesAsync(search: _vehicleSearch, pageSize: 15);
+            _vehicleResults = page.Items;
+        }
+        catch { _vehicleResults = []; }
+        finally { _searchingVehicles = false; }
+    }
+
+    private async Task AddVehicleTokenAsync(Pf2eVehicleSummaryDto v)
+    {
+        try
+        {
+            await Api.AddTableTokenAsync(Id, new AddTokenRequest(
+                v.NameRu, null, "#7c9cf5", 5, 5, null,
+                Width: 2, Height: 2,
+                CombatantType: "Pf2eVehicle", CombatantId: v.Id));
+        }
+        catch { /* ignore */ }
+    }
+
     private static int SizeToCells(string? size) => size?.ToLowerInvariant() switch
     {
         "large" or "большой" => 2,
@@ -754,23 +880,84 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _selectedTokenId = _selectedTokenId == tokenId ? null : tokenId;
         _newConditionSlug = string.Empty;
         _newConditionValue = null;
+        _conditionBlockedError = null;
         _selectedCharacterStats = null;
         _selectedMonsterAttacks = [];
         _selectedMonsterResistances = [];
         _selectedMonsterWeaknesses = [];
+        _selectedMonsterImmunities = [];
         _damageAmount = null;
         _damageType = string.Empty;
         _targetTokenId = null;
         _selectedActionSlug = string.Empty;
         _selectedFeatModifiers = [];
+        _selectedHazard = null;
+        _rangeWarning = null;
+        _selectedCharacterCompanions = [];
+        _selectedCompanion = null;
+        _selectedVehicle = null;
 
         var token = _tokens.FirstOrDefault(t => t.Id == tokenId);
         if (_selectedTokenId is null) return;
 
         if (token is { CombatantType: "Character", CombatantId: { } characterId })
+        {
             _ = LoadSelectedCharacterStatsAsync(characterId);
+            _ = LoadSelectedCharacterCompanionsAsync(characterId);
+        }
         else if (token is { CombatantType: "Pf2eMonster", CombatantId: { } monsterId })
             _ = LoadSelectedMonsterAttacksAsync(monsterId);
+        else if (token is { CombatantType: "Pf2eHazard", CombatantId: { } hazardId })
+            _ = LoadSelectedHazardAsync(hazardId);
+        else if (token is { CombatantType: "Companion", CombatantId: { } companionId })
+            _ = LoadSelectedCompanionAsync(companionId);
+        else if (token is { CombatantType: "Pf2eVehicle", CombatantId: { } vehicleId })
+            _ = LoadSelectedVehicleAsync(vehicleId);
+    }
+
+    private Pf2eHazardDetailDto? _selectedHazard;
+
+    private async Task LoadSelectedHazardAsync(Guid hazardId)
+    {
+        try { _selectedHazard = await Api.GetPf2eHazardAsync(hazardId); StateHasChanged(); }
+        catch { _selectedHazard = null; }
+    }
+
+    private Pf2eVehicleDetailDto? _selectedVehicle;
+
+    private async Task LoadSelectedVehicleAsync(Guid vehicleId)
+    {
+        try { _selectedVehicle = await Api.GetPf2eVehicleAsync(vehicleId); StateHasChanged(); }
+        catch { _selectedVehicle = null; }
+    }
+
+    // N.8 — компаньоны выбранного персонажа (для быстрого добавления жетона компаньона на стол)
+    // и отдельно детали выбранного токена-компаньона (для GM-панели, по аналогии с хазардом).
+    private List<CompanionDto> _selectedCharacterCompanions = [];
+    private CompanionDto? _selectedCompanion;
+
+    private async Task LoadSelectedCharacterCompanionsAsync(Guid characterId)
+    {
+        try { _selectedCharacterCompanions = await Api.GetCompanionsAsync(characterId); StateHasChanged(); }
+        catch { _selectedCharacterCompanions = []; }
+    }
+
+    private async Task LoadSelectedCompanionAsync(Guid companionId)
+    {
+        try { _selectedCompanion = await Api.GetCompanionByIdAsync(companionId); StateHasChanged(); }
+        catch { _selectedCompanion = null; }
+    }
+
+    private async Task AddCompanionTokenAsync(CompanionDto companion)
+    {
+        try
+        {
+            await Api.AddTableTokenAsync(Id, new AddTokenRequest(
+                companion.Name, null, "#7c3aed", 5, 5, null,
+                Width: 1, Height: 1,
+                CombatantType: "Companion", CombatantId: companion.Id));
+        }
+        catch { /* ignore */ }
     }
 
     private async Task LoadSelectedMonsterAttacksAsync(Guid monsterId)
@@ -781,6 +968,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _selectedMonsterAttacks = Pf2eLookups.ParseMonsterAttacks(monster.AttacksJson);
             _selectedMonsterResistances = Pf2eLookups.ParseDamageAdjustments(monster.ResistancesJson);
             _selectedMonsterWeaknesses = Pf2eLookups.ParseDamageAdjustments(monster.WeaknessesJson);
+            _selectedMonsterImmunities = Pf2eLookups.ParseImmunities(monster.ImmunitiesJson);
+            _monsterAuraCache[monsterId] = Pf2eLookups.ParseAuras(monster.AurasJson);
             _selectedMonsterLevel = monster.Level;
             _selectedMonsterFort = monster.Fortitude;
             _selectedMonsterReflex = monster.Reflex;
@@ -802,6 +991,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private string _damageType = string.Empty;
     private List<Pf2eLookups.Pf2eDamageAdjustment> _selectedMonsterResistances = [];
     private List<Pf2eLookups.Pf2eDamageAdjustment> _selectedMonsterWeaknesses = [];
+    private List<Pf2eLookups.Pf2eImmunity> _selectedMonsterImmunities = [];
 
     private static readonly string[] DamageTypes =
     [
@@ -813,12 +1003,73 @@ public partial class Table : ComponentBase, IAsyncDisposable
     {
         if (_damageAmount is not { } raw || raw <= 0) return;
 
-        var resistance = _selectedMonsterResistances.FirstOrDefault(r => r.Type == _damageType)?.Value;
-        var weakness = _selectedMonsterWeaknesses.FirstOrDefault(w => w.Type == _damageType)?.Value;
-        var effective = Pf2eLookups.ApplyDamageAdjustment(raw, resistance, weakness);
+        // N.4 — иммунитет блокирует урон полностью (0), сопротивление/уязвимость не участвуют
+        // в расчёте при совпадении типа — урон типа, к которому есть иммунитет, больше не проходит.
+        var immune = _selectedMonsterImmunities.Any(i => i.Type == _damageType);
+        int effective;
+        if (immune)
+        {
+            effective = 0;
+        }
+        else
+        {
+            var resistance = _selectedMonsterResistances.FirstOrDefault(r => r.Type == _damageType)?.Value;
+            var weakness = _selectedMonsterWeaknesses.FirstOrDefault(w => w.Type == _damageType)?.Value;
+            effective = Pf2eLookups.ApplyDamageAdjustment(raw, resistance, weakness);
+        }
 
-        await AdjustHpAsync(token, -effective);
+        await DealDamageAsync(token, effective);
         _damageAmount = null;
+    }
+
+    // N.11 — автоприменение результата броска: сообщение с известной степенью успеха
+    // (RollDiceCommandHandler пишет "vs DC {dc} → {degree}" — распознаём тем же способом, что
+    // и подсветка строки DegreeStyle) получает кнопку "Применить", открывающую мини-форму:
+    // GM/игрок вводит сырой урон (или применяет только состояние), множитель по степени
+    // считается сам (крит на атаке — x2, промах — x0; крит.успех спасброска — x0, успех — x0.5,
+    // провал — x1, крит.провал — x2), дальше урон идёт тем же путём, что и ApplyDamageAsync
+    // (иммунитет/сопротивление/уязвимость выбранного токена-цели → AdjustHpAsync).
+    private Guid? _applyRollMessageId;
+    private int? _applyRollDamage;
+    private string _applyRollDamageType = string.Empty;
+
+    private void ToggleApplyRollForm(Guid messageId)
+    {
+        _applyRollMessageId = _applyRollMessageId == messageId ? null : messageId;
+        _applyRollDamage = null;
+        _applyRollDamageType = string.Empty;
+    }
+
+    private async Task ApplyRollResultAsync(TableMessageDto message)
+    {
+        if (TargetToken is not { } target) return;
+        if (!Pf2eLookups.TryParseCheckResult(message.Content, out _, out var degree, out var isAttack)) return;
+
+        if (_applyRollDamage is { } raw && raw > 0)
+        {
+            var multiplier = Pf2eLookups.DamageMultiplierForDegree(degree, isAttack);
+            var scaled = (int)Math.Round(raw * multiplier, MidpointRounding.AwayFromZero);
+
+            var immune = _selectedMonsterImmunities.Any(i => i.Type == _applyRollDamageType);
+            int effective;
+            if (immune)
+            {
+                effective = 0;
+            }
+            else
+            {
+                var resistance = _selectedMonsterResistances.FirstOrDefault(r => r.Type == _applyRollDamageType)?.Value;
+                var weakness = _selectedMonsterWeaknesses.FirstOrDefault(w => w.Type == _applyRollDamageType)?.Value;
+                effective = Pf2eLookups.ApplyDamageAdjustment(scaled, resistance, weakness);
+            }
+
+            if (effective > 0)
+                await DealDamageAsync(target, effective);
+        }
+
+        _applyRollMessageId = null;
+        _applyRollDamage = null;
+        _applyRollDamageType = string.Empty;
     }
 
     private async Task LoadSelectedCharacterStatsAsync(Guid characterId)
@@ -900,6 +1151,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private string _selectedActionSlug = string.Empty;
     private string? _selectedCharacterRace;
     private List<Pf2eLookups.Pf2eFlatModifier> _selectedFeatModifiers = [];
+    private Dictionary<string, string> _selectedFeatStatsJsonBySlug = [];
     private List<Pf2eLookups.Pf2eFlatModifier> _selectedItemModifiers = [];
     private List<Pf2eLookups.EquippedItemContext> _equippedItemContexts = [];
     private Pf2eLookups.AncestryRollContext _ancestryRollContext = new(null, [], null);
@@ -909,18 +1161,131 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private readonly Dictionary<string, List<Pf2eLookups.Pf2eConditionModifier>> _conditionModsBySlug = [];
     private readonly Dictionary<Guid, List<string>> _monsterTraitsCache = [];
 
+    // N.7 — ауры: кеш аур по monsterId (в отличие от _selectedMonsterImmunities, который грузится
+    // только для выбранного/наведённого токена, здесь нужны ауры ВСЕХ токенов-монстров на сцене
+    // сразу — пересчёт идёт по всем парам токенов при каждом движении). _auraAppliedSlugsByToken —
+    // какие слаги состояний на каком токене-цели сейчас поддерживаются аурой (не просто "условие
+    // есть", а "именно аура его добавила") — чтобы при выходе из радиуса снять только то, что сама
+    // же аура наложила, не трогая состояния, наложенные ГМ вручную с тем же слагом.
+    private readonly Dictionary<Guid, List<Pf2eLookups.Pf2eAura>> _monsterAuraCache = [];
+    private readonly Dictionary<Guid, HashSet<string>> _auraAppliedSlugsByToken = [];
+
+    private async Task EnsureMonsterAurasCachedAsync(Guid monsterId)
+    {
+        if (_monsterAuraCache.ContainsKey(monsterId)) return;
+        try
+        {
+            var monster = await Api.GetPf2eMonsterAsync(monsterId);
+            _monsterAuraCache[monsterId] = Pf2eLookups.ParseAuras(monster.AurasJson);
+        }
+        catch { _monsterAuraCache[monsterId] = []; }
+    }
+
+    private async Task RecomputeAuraEffectsAsync()
+    {
+        var sources = _tokens.Where(t => t is { CombatantType: "Pf2eMonster", CombatantId: not null }).ToList();
+        if (sources.Count == 0) return;
+
+        foreach (var source in sources)
+            await EnsureMonsterAurasCachedAsync(source.CombatantId!.Value);
+
+        // targetId -> slug -> (name, value): состояния, которые ДОЛЖНЫ действовать сейчас
+        // по текущим позициям токенов (пересчитывается с нуля на каждый вызов, не инкрементально).
+        var desired = new Dictionary<Guid, Dictionary<string, (string Name, int? Value)>>();
+        foreach (var source in sources)
+        {
+            var auras = _monsterAuraCache.GetValueOrDefault(source.CombatantId!.Value, []);
+            if (auras.Count == 0) continue;
+
+            foreach (var target in _tokens)
+            {
+                if (target.Id == source.Id) continue;
+                var distance = Pf2eLookups.TokenDistanceFeet(
+                    source.X, source.Y, source.Width, source.Height,
+                    target.X, target.Y, target.Width, target.Height);
+
+                foreach (var aura in auras.Where(a => distance <= a.RadiusFeet))
+                {
+                    if (!desired.TryGetValue(target.Id, out var slugs))
+                        desired[target.Id] = slugs = [];
+                    slugs[aura.EffectSlug] = (aura.EffectName, aura.Value);
+                }
+            }
+        }
+
+        foreach (var target in _tokens)
+        {
+            var previous = _auraAppliedSlugsByToken.GetValueOrDefault(target.Id, []);
+            var current = desired.GetValueOrDefault(target.Id, []);
+
+            foreach (var slug in previous.Where(s => !current.ContainsKey(s)))
+                await RemoveAuraConditionAsync(target.Id, slug);
+
+            foreach (var (slug, effect) in current.Where(kv => !previous.Contains(kv.Key)))
+                await ApplyAuraConditionAsync(target.Id, slug, effect.Name, effect.Value);
+
+            if (current.Count > 0) _auraAppliedSlugsByToken[target.Id] = [.. current.Keys];
+            else _auraAppliedSlugsByToken.Remove(target.Id);
+        }
+    }
+
+    private async Task ApplyAuraConditionAsync(Guid targetTokenId, string slug, string name, int? value)
+    {
+        try
+        {
+            await Api.ApplyTokenConditionAsync(Id, targetTokenId, new ApplyConditionRequest(slug, name, value));
+            var idx = _tokens.FindIndex(t => t.Id == targetTokenId);
+            if (idx >= 0)
+            {
+                var conditions = _tokens[idx].Conditions.Where(c => c.Slug != slug).ToList();
+                conditions.Add(new TokenConditionDto(Guid.NewGuid(), slug, name, value));
+                _tokens[idx] = _tokens[idx] with { Conditions = conditions };
+            }
+        }
+        catch { /* монстр иммунен к состоянию (N.4) или временная ошибка сети — просто не наложили */ }
+    }
+
+    private async Task RemoveAuraConditionAsync(Guid targetTokenId, string slug)
+    {
+        var idx = _tokens.FindIndex(t => t.Id == targetTokenId);
+        if (idx >= 0)
+            _tokens[idx] = _tokens[idx] with { Conditions = _tokens[idx].Conditions.Where(c => c.Slug != slug).ToList() };
+        try { await Api.RemoveTokenConditionAsync(Id, targetTokenId, slug); }
+        catch { /* ignore */ }
+    }
+
     private static string FormatBonus(int bonus) => bonus >= 0 ? $"+{bonus}" : bonus.ToString();
 
     private int CurrentStrikeIndex(Guid tokenId) => _strikesThisTurn.GetValueOrDefault(tokenId, 0);
 
     private void IncrementStrike(Guid tokenId) => _strikesThisTurn[tokenId] = CurrentStrikeIndex(tokenId) + 1;
 
+    private int AbpAttackBonus => _automaticBonusProgression ? Pf2eLookups.AbpBonus(Pf2eLookups.AbpPotency.Attack, _selectedCharacterLevel) : 0;
+    private int AbpSaveBonus => _automaticBonusProgression ? Pf2eLookups.AbpBonus(Pf2eLookups.AbpPotency.Save, _selectedCharacterLevel) : 0;
+    private int AbpPerceptionBonus => _automaticBonusProgression ? Pf2eLookups.AbpBonus(Pf2eLookups.AbpPotency.Perception, _selectedCharacterLevel) : 0;
+
+    // N.6 — расчётное КЗ выбранного персонажа за столом, в отличие от Pf2eStatsSheet здесь есть
+    // сессия — учитывает Defense Potency (ABP), если ГМ включил вариативное правило. Жетон
+    // хранит своё собственное ArmorClass как есть (снимок на момент добавления на стол) — это
+    // отдельное расчётное значение для сверки, не переписывает жетон автоматически.
+    private int? SelectedCharacterArmorClass
+    {
+        get
+        {
+            if (_selectedCharacterStats is null) return null;
+            var armor = _equippedItemContexts.FirstOrDefault(c => c.ItemKind is "armor" or "shield");
+            return Pf2eLookups.ComputeArmorClass(
+                _selectedCharacterAbilityMods.GetValueOrDefault("dex"), _selectedCharacterStats.ArmorProficiencyRanks,
+                _selectedCharacterLevel, _proficiencyWithoutLevel, armor, _automaticBonusProgression);
+        }
+    }
+
     private int CharacterAttackBonus(Pf2eLookups.Pf2eAttack attack, Guid tokenId, bool agile = false)
     {
         var map = _state?.CombatActive == true ? Pf2eLookups.MapPenalty(CurrentStrikeIndex(tokenId), agile) : 0;
-        return Pf2eLookups.Bonus(attack.Rank, _selectedCharacterLevel)
+        return Pf2eLookups.Bonus(attack.Rank, _selectedCharacterLevel, _proficiencyWithoutLevel)
                + _selectedCharacterAbilityMods.GetValueOrDefault(attack.AbilityKey)
-               + CheckModifier("attack") + map;
+               + CheckModifier("attack") + map + AbpAttackBonus;
     }
 
     private int MonsterAttackBonus(Pf2eLookups.Pf2eMonsterAttack attack, Guid tokenId)
@@ -934,9 +1299,51 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private TableTokenDto? SelectedToken => _tokens.FirstOrDefault(t => t.Id == _selectedTokenId);
     private TableTokenDto? TargetToken => _tokens.FirstOrDefault(t => t.Id == _targetTokenId);
 
+    // N.5 — предупреждение о дальности при касте заклинания на выбранную цель: не блокирует
+    // бросок (GM может допустить эффект/иначе трактовать укрытие/особые условия), только
+    // предупреждает. Кеш дальности по имени заклинания — Pf2eKnownSpell не хранит Slug (в
+    // отличие от Pf2eFeat/Pf2eKnownFormula), поэтому дальность каждый раз ищется по точному
+    // совпадению имени в каталоге, как и подтягивание Slug у фитов в Pf2eStatsSheet.
+    private string? _rangeWarning;
+    private readonly Dictionary<string, int?> _spellRangeFeetCache = [];
+
+    private async Task<int?> GetSpellRangeFeetAsync(string spellName)
+    {
+        if (_spellRangeFeetCache.TryGetValue(spellName, out var cached)) return cached;
+
+        int? feet = null;
+        try
+        {
+            var page = await Api.GetPf2eSpellsAsync(search: spellName, pageSize: 5);
+            var match = page.Items.FirstOrDefault(i => string.Equals(i.Name, spellName, StringComparison.OrdinalIgnoreCase));
+            feet = Pf2eLookups.ParseRangeFeet(match?.Range);
+        }
+        catch { /* без предупреждения о дальности на этот каст */ }
+
+        _spellRangeFeetCache[spellName] = feet;
+        return feet;
+    }
+
+    private async Task CheckSpellRangeAsync(string spellName)
+    {
+        _rangeWarning = null;
+        if (SelectedToken is not { } attacker || TargetToken is not { } target) return;
+
+        var rangeFeet = await GetSpellRangeFeetAsync(spellName);
+        if (rangeFeet is null) return;
+
+        var distance = Pf2eLookups.TokenDistanceFeet(
+            attacker.X, attacker.Y, attacker.Width, attacker.Height,
+            target.X, target.Y, target.Width, target.Height);
+
+        if (distance > rangeFeet)
+            _rangeWarning = $"Цель вне дальности: {distance:0} фт при дальности {rangeFeet} фт («{spellName}»).";
+    }
+
     private async Task LoadCombatModifierDataAsync()
     {
         _selectedFeatModifiers = [];
+        _selectedFeatStatsJsonBySlug = [];
         _selectedItemModifiers = [];
         _equippedItemContexts = [];
         _ancestryRollContext = Pf2eLookups.BuildAncestryRollContext(_selectedCharacterRace);
@@ -961,6 +1368,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             {
                 var entries = await Api.GetRuleEntriesBySlugsAsync("pf2e", "feat", new BatchSlugsRequest(slugs));
                 _selectedFeatModifiers = entries.SelectMany(e => Pf2eLookups.ParseFeatModifiers(e.StatsJson)).ToList();
+                _selectedFeatStatsJsonBySlug = entries.ToDictionary(e => e.Slug, e => e.StatsJson ?? "");
             }
             catch { /* без модификаторов фитов на этот рендер */ }
         }
@@ -1007,6 +1415,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private async Task SetTargetAsync(Guid? tokenId)
     {
         _targetTokenId = tokenId;
+        _rangeWarning = null;
         var target = TargetToken;
         if (target is { CombatantType: "Pf2eMonster", CombatantId: { } monsterId }
             && !_monsterTraitsCache.ContainsKey(monsterId))
@@ -1029,6 +1438,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
     {
         var options = _selectedCharacterStats?.Feats
             .Where(f => f.Slug is not null).Select(f => $"feat:{f.Slug}").ToHashSet() ?? [];
+        if (_selectedCharacterStats is not null)
+            Pf2eLookups.AddFeatChoiceRollOptions(options, _selectedCharacterStats.Feats, _selectedFeatStatsJsonBySlug);
 
         if (_state?.CombatActive == true) options.Add("encounter");
         if (!string.IsNullOrEmpty(_selectedActionSlug)) options.Add($"action:{_selectedActionSlug}");
@@ -1050,6 +1461,12 @@ public partial class Table : ComponentBase, IAsyncDisposable
         Pf2eLookups.AddEquippedItemRollOptions(options, _selectedCharacterStats?.Inventory ?? [], _equippedItemContexts);
         Pf2eLookups.AddAncestryRollOptions(options, _ancestryRollContext);
         Pf2eLookups.AddSceneEnvironmentRollOptions(options, _terrainTags, _ambientLighting);
+
+        // Полировка "экзотические предикаты" — ручной эскейп-хэтч (Pf2eStatsModel.CustomRollOptions,
+        // см. комментарий там), покрывает любой предикат, для которого нет автоматического билдера.
+        if (_selectedCharacterStats is not null)
+            foreach (var option in _selectedCharacterStats.CustomRollOptions)
+                options.Add(option);
 
         return options;
     }
@@ -1111,7 +1528,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
     // как в обычной форме «Проверка PF2e» ниже (та осталась для монстров и D&D5e-столов).
     private async Task RollPf2eSkillAsync(string key, string label, int rank)
     {
-        var bonus = Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key);
+        var abp = key == "perception" ? AbpPerceptionBonus : 0;
+        var bonus = Pf2eLookups.Bonus(rank, _selectedCharacterLevel, _proficiencyWithoutLevel) + CheckModifier(key) + abp;
         var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
         _rolling = true;
         try { await Api.RollTableDiceAsync(Id, new RollDiceRequest(expression, null, label)); }
@@ -1162,18 +1580,19 @@ public partial class Table : ComponentBase, IAsyncDisposable
     {
         if (_selectedCharacterStats is null) return 0;
         var baseBonus = Pf2eLookups.SpellAttackBonus(
-            _selectedCharacterStats.SpellcastingRank, _selectedCharacterLevel, SelectedSpellAbilityMod);
+            _selectedCharacterStats.SpellcastingRank, _selectedCharacterLevel, SelectedSpellAbilityMod, _proficiencyWithoutLevel);
         var map = _state?.CombatActive == true ? Pf2eLookups.MapPenalty(CurrentStrikeIndex(tokenId)) : 0;
-        return baseBonus + map;
+        return baseBonus + map + AbpAttackBonus;
     }
 
     private int SelectedSpellDc =>
         _selectedCharacterStats is null ? 0
-        : Pf2eLookups.SpellDc(_selectedCharacterStats.SpellcastingRank, _selectedCharacterLevel, SelectedSpellAbilityMod);
+        : Pf2eLookups.SpellDc(_selectedCharacterStats.SpellcastingRank, _selectedCharacterLevel, SelectedSpellAbilityMod, _proficiencyWithoutLevel);
 
     private async Task RollPf2eSpellAttackAsync(Pf2eLookups.Pf2eKnownSpell spell)
     {
         if (SelectedToken is not { } token || _selectedCharacterStats is null) return;
+        await CheckSpellRangeAsync(spell.Name);
         if (!await TryConsumeSpellSlotAsync(token, spell)) return;
 
         var bonus = SelectedSpellAttackBonus(token.Id);
@@ -1196,6 +1615,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private async Task AnnouncePf2eSpellDcAsync(Pf2eLookups.Pf2eKnownSpell spell)
     {
         if (SelectedToken is not { } token) return;
+        await CheckSpellRangeAsync(spell.Name);
         if (!await TryConsumeSpellSlotAsync(token, spell)) return;
 
         try { await Api.SendTableChatAsync(Id, new SendChatRequest($"{spell.Name} — DC {SelectedSpellDc}")); }
@@ -1269,9 +1689,21 @@ public partial class Table : ComponentBase, IAsyncDisposable
         finally { _rolling = false; }
     }
 
+    private string? _conditionBlockedError;
+
     private async Task ApplyConditionAsync(TableTokenDto token)
     {
         if (string.IsNullOrWhiteSpace(_newConditionSlug)) return;
+        _conditionBlockedError = null;
+
+        // N.4 — иммунитет к состоянию (не только к типу урона) блокирует наложение целиком.
+        // Клиентская проверка — быстрая обратная связь; авторитетная проверка та же самая на
+        // сервере в ApplyTokenConditionCommandHandler (GM может дёргать API напрямую).
+        if (token.CombatantType == "Pf2eMonster" && _selectedMonsterImmunities.Any(i => i.Type == _newConditionSlug))
+        {
+            _conditionBlockedError = "У существа иммунитет к этому состоянию.";
+            return;
+        }
 
         var condition = _pf2eConditions.FirstOrDefault(c => c.Slug == _newConditionSlug);
         var name = condition is not null ? LocalizedConditionTitle(condition) : _newConditionSlug;
@@ -1289,7 +1721,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _newConditionSlug = string.Empty;
             _newConditionValue = null;
         }
-        catch { /* ignore */ }
+        catch { _conditionBlockedError = "Не удалось наложить состояние."; }
     }
 
     private async Task RemoveConditionAsync(TableTokenDto token, string slug)
@@ -1326,23 +1758,74 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* ignore */ }
     }
 
-    // L.1 — при 0 HP в активном бою автоматически наложить Dying 1 (если ещё нет).
+    // N.6 — Stamina: упрощение варианта правила (не разбиваем существующий MaxHp — та цифра
+    // синхронизируется с листом персонажа отдельно, см. SyncFromCharacter — а заводим Stamina
+    // как дополнительный буфер поверх HP). MaxStamina = MaxHp/2, GM может поправить вручную
+    // теми же кнопками ±, что и HP.
+    private async Task InitStaminaAsync(TableTokenDto token)
+    {
+        var max = Math.Max(1, (token.MaxHp ?? 0) / 2);
+        var idx = _tokens.FindIndex(t => t.Id == token.Id);
+        if (idx >= 0) _tokens[idx] = token with { CurrentStamina = max, MaxStamina = max };
+        StateHasChanged();
+        try { await Api.UpdateTableTokenStatsAsync(Id, token.Id, new UpdateTokenStatsRequest(null, null, null, null, CurrentStamina: max, MaxStamina: max)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task AdjustStaminaAsync(TableTokenDto token, int delta)
+    {
+        if (token.CurrentStamina is not { } current || token.MaxStamina is not { } max) return;
+        var newStamina = Math.Clamp(current + delta, 0, max);
+
+        var idx = _tokens.FindIndex(t => t.Id == token.Id);
+        if (idx >= 0) _tokens[idx] = token with { CurrentStamina = newStamina };
+        StateHasChanged();
+
+        try { await Api.UpdateTableTokenStatsAsync(Id, token.Id, new UpdateTokenStatsRequest(null, null, null, null, CurrentStamina: newStamina)); }
+        catch { /* ignore */ }
+    }
+
+    // N.6 — под правилом Stamina урон бьёт по Stamina первым (до нуля), остаток идёт в HP как
+    // обычно — центральная точка, через которую должны идти все "нанести урон токену" пути
+    // (ApplyDamageAsync/ApplyRollResultAsync), чтобы не дублировать эту логику в каждом.
+    private async Task DealDamageAsync(TableTokenDto token, int amount)
+    {
+        if (amount <= 0) return;
+
+        if (_staminaVariant && token.CurrentStamina is { } stamina && stamina > 0)
+        {
+            var fromStamina = Math.Min(stamina, amount);
+            await AdjustStaminaAsync(token, -fromStamina);
+            amount -= fromStamina;
+            var idx = _tokens.FindIndex(t => t.Id == token.Id);
+            if (idx >= 0) token = _tokens[idx];
+        }
+
+        if (amount > 0)
+            await AdjustHpAsync(token, -amount);
+    }
+
+    // L.1 — при 0 HP в активном бою автоматически наложить Dying 1 (если ещё нет). По правилу
+    // PF2e падение до 0 HP накладывает Dying И Unconscious одновременно ("you fall unconscious
+    // and start dying") — раньше накладывался только Dying. Взаимодействие с Wounded (dying
+    // растёт быстрее при повторных провалах, если уже был Wounded) осознанно не смоделировано —
+    // это отдельная, более тонкая механика, не входит в "починить очевидный пробел".
     private async Task TryApplyDyingAsync(TableTokenDto token)
     {
         if (_state?.CombatActive != true || token.CurrentHp is not 0) return;
         if (token.Conditions.Any(c => c.Slug == "dying")) return;
 
-        const string slug = "dying";
-        const string name = "Dying";
-
         try
         {
-            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest(slug, name, 1));
+            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("dying", "Dying", 1));
+            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("unconscious", "Unconscious", null));
             var idx = _tokens.FindIndex(t => t.Id == token.Id);
             if (idx >= 0)
             {
-                var conditions = _tokens[idx].Conditions.ToList();
-                conditions.Add(new TokenConditionDto(Guid.NewGuid(), slug, name, 1));
+                var conditions = _tokens[idx].Conditions
+                    .Where(c => c.Slug is not ("dying" or "unconscious")).ToList();
+                conditions.Add(new TokenConditionDto(Guid.NewGuid(), "dying", "Dying", 1));
+                conditions.Add(new TokenConditionDto(Guid.NewGuid(), "unconscious", "Unconscious", null));
                 _tokens[idx] = _tokens[idx] with { Conditions = conditions };
                 StateHasChanged();
             }
@@ -1507,6 +1990,163 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _fogEnabled = enabled;
         _visionRadiusFeet = radiusFeet;
         try { await Api.SetTableFogSettingsAsync(Id, new SetFogSettingsRequest(enabled, radiusFeet)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetProficiencyWithoutLevelAsync(bool enabled)
+    {
+        _proficiencyWithoutLevel = enabled;
+        try { await Api.SetTableVariantRulesAsync(Id, new SetVariantRulesRequest(enabled, _automaticBonusProgression, _freeArchetype, _gradualAbilityBoosts, _staminaVariant)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetAutomaticBonusProgressionAsync(bool enabled)
+    {
+        _automaticBonusProgression = enabled;
+        try { await Api.SetTableVariantRulesAsync(Id, new SetVariantRulesRequest(_proficiencyWithoutLevel, enabled, _freeArchetype, _gradualAbilityBoosts, _staminaVariant)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetFreeArchetypeAsync(bool enabled)
+    {
+        _freeArchetype = enabled;
+        try { await Api.SetTableVariantRulesAsync(Id, new SetVariantRulesRequest(_proficiencyWithoutLevel, _automaticBonusProgression, enabled, _gradualAbilityBoosts, _staminaVariant)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetGradualAbilityBoostsAsync(bool enabled)
+    {
+        _gradualAbilityBoosts = enabled;
+        try { await Api.SetTableVariantRulesAsync(Id, new SetVariantRulesRequest(_proficiencyWithoutLevel, _automaticBonusProgression, _freeArchetype, enabled, _staminaVariant)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetStaminaVariantAsync(bool enabled)
+    {
+        _staminaVariant = enabled;
+        try { await Api.SetTableVariantRulesAsync(Id, new SetVariantRulesRequest(_proficiencyWithoutLevel, _automaticBonusProgression, _freeArchetype, _gradualAbilityBoosts, enabled)); }
+        catch { /* ignore */ }
+    }
+
+    // N.6 — отметить уровень учтённым в чек-листе Gradual Ability Boosts; сохраняется сразу
+    // (тот же приём, что и ChoiceSet/RollOption в N.10) — это разовая пометка за столом, не
+    // правка сути листа через общий флоу _editingPf2e/SavePf2eAsync.
+    private async Task MarkAbilityBoostLevelAsync(Guid characterId, int level)
+    {
+        if (_selectedCharacterStats is null) return;
+        var levels = new List<int>(_selectedCharacterStats.AbilityBoostLevels) { level };
+        _selectedCharacterStats = _selectedCharacterStats with { AbilityBoostLevels = levels };
+        StateHasChanged();
+        try { await Api.UpdatePf2eStatsAsync(characterId, new UpdatePf2eStatsRequest(_selectedCharacterStats.ToJson())); }
+        catch { /* локально отмечено, переживёт до следующей перезагрузки */ }
+    }
+
+    // N.6 — крит/фамбл-колоды: разовое действие без сохранённого состояния, тот же приём,
+    // что и GenerateAndAnnounceNpcAsync (N.12) — клиентский случайный выбор, публикация в чат.
+    private async Task DrawCritCardAsync()
+    {
+        var card = Pf2eLookups.DrawCritCard();
+        try { await Api.SendTableChatAsync(Id, new SendChatRequest($"🎴 Крит-карта: {card}")); }
+        catch { /* ignore */ }
+    }
+
+    private async Task DrawFumbleCardAsync()
+    {
+        var card = Pf2eLookups.DrawFumbleCard();
+        try { await Api.SendTableChatAsync(Id, new SendChatRequest($"🎴 Карта провала: {card}")); }
+        catch { /* ignore */ }
+    }
+
+    // N.12 — таблица случайных встреч. Локальное представление держится развёрнутым (заголовок +
+    // список строк) для формы редактирования; при сохранении/приходе SignalR сворачивается в
+    // Pf2eEncounterTable и наоборот — избегаем двух источников правды для одних и тех же данных.
+    private void SetEncounterTableLocal(Pf2eLookups.Pf2eEncounterTable? table)
+    {
+        _encounterTable = table;
+        _encounterTableTitle = table?.Title ?? "";
+        _encounterTableEntries = table?.Entries.ToList() ?? [];
+    }
+
+    private void StartEditEncounterTable()
+    {
+        if (_encounterTableEntries.Count == 0)
+            _encounterTableEntries = [new Pf2eLookups.Pf2eEncounterEntry(1, 20, "", null)];
+        _editingEncounterTable = true;
+    }
+
+    private void AddEncounterEntry() =>
+        _encounterTableEntries = [.. _encounterTableEntries, new Pf2eLookups.Pf2eEncounterEntry(1, 20, "", null)];
+
+    private void RemoveEncounterEntry(int index) =>
+        _encounterTableEntries = [.. _encounterTableEntries.Where((_, i) => i != index)];
+
+    private void UpdateEncounterEntry(int index, Pf2eLookups.Pf2eEncounterEntry entry)
+    {
+        var list = _encounterTableEntries.ToList();
+        list[index] = entry;
+        _encounterTableEntries = list;
+    }
+
+    // N.12 — тот же приём, что и у UpdateFeat/UpdateKnownFormula: точное совпадение имени
+    // с бестиарием привязывает MonsterId автоматически, свободный текст без совпадения
+    // остаётся просто описанием строки (без кнопки "Добавить жетон" после броска).
+    private async Task UpdateEncounterEntryLabelAsync(int index, string label)
+    {
+        var entry = _encounterTableEntries[index] with { Label = label };
+        try
+        {
+            var page = await Api.GetPf2eMonstersAsync(search: label, pageSize: 5);
+            var match = page.Items.FirstOrDefault(m => string.Equals(m.Name, label, StringComparison.OrdinalIgnoreCase));
+            entry = entry with { MonsterId = match?.Id };
+        }
+        catch { entry = entry with { MonsterId = null }; }
+        UpdateEncounterEntry(index, entry);
+    }
+
+    private async Task SaveEncounterTableAsync()
+    {
+        var entries = _encounterTableEntries.Where(e => !string.IsNullOrWhiteSpace(e.Label)).ToList();
+        var table = entries.Count == 0 || string.IsNullOrWhiteSpace(_encounterTableTitle)
+            ? null
+            : new Pf2eLookups.Pf2eEncounterTable(_encounterTableTitle, entries);
+        var json = table is null ? null : Pf2eLookups.SerializeEncounterTable(table);
+
+        SetEncounterTableLocal(table);
+        _editingEncounterTable = false;
+        try { await Api.SetTableEncounterTableAsync(Id, new SetEncounterTableRequest(json)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task RollEncounterTableAsync()
+    {
+        try { await Api.RollTableEncounterTableAsync(Id); }
+        catch { _rollError = "Не удалось бросить таблицу встреч."; }
+    }
+
+    // N.12 — кнопка "Добавить жетон" на результате броска таблицы встреч: тот же путь, что и
+    // AddMonsterTokenAsync (поиск в бестиарии), только цель уже известна по Guid из маркера
+    // в тексте сообщения (Pf2eLookups.TryParseEncounterMonsterMarker), поиск не нужен.
+    private async Task AddEncounterMonsterTokenAsync(Guid monsterId)
+    {
+        try
+        {
+            var monster = await Api.GetPf2eMonsterAsync(monsterId);
+            var color = TokenColors[_tokens.Count % TokenColors.Length];
+            var apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5014";
+            await Api.AddTableTokenAsync(Id, new AddTokenRequest(
+                monster.Name, $"{apiBase}/api/v1/pf2e/monsters/{monsterId}/token.svg", color, 5, 5, null,
+                Width: SizeToCells(monster.Size), Height: SizeToCells(monster.Size),
+                CombatantType: "Pf2eMonster", CombatantId: monsterId));
+        }
+        catch { /* ignore */ }
+    }
+
+    // N.12 — генератор NPC: разовая подсказка ГМу, публикуется в чат как обычное сообщение —
+    // не требует отдельного хранилища или структуры данных, это не полноценный персонаж.
+    private async Task GenerateAndAnnounceNpcAsync()
+    {
+        var npc = Pf2eLookups.GenerateNpc();
+        try { await Api.SendTableChatAsync(Id, new SendChatRequest($"Случайный NPC: {npc.Name} — {npc.Trait}")); }
         catch { /* ignore */ }
     }
 
@@ -1781,6 +2421,50 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* ignore */ }
     }
 
+    // M.1 — импорт своего купленного приключения (PDF) в приватный контент этой сессии: текст
+    // по страницам уходит в Journal (папка с дочерними записями-страницами, черновиками — ГМ сам
+    // решает, что публиковать игрокам), извлечённые карты не становятся сценами автоматически —
+    // GM кликает по превью, чтобы создать сцену конкретно из выбранной карты (иначе декоративные
+    // повторяющиеся иллюстрации из PDF завалили бы список сцен мусором).
+    private async Task ImportAdventurePdfAsync(InputFileChangeEventArgs e)
+    {
+        _journalError = null;
+        _lastAdventureImport = null;
+        var file = e.File;
+        if (!file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            _journalError = "Выберите файл в формате .pdf";
+            return;
+        }
+
+        _importingAdventure = true;
+        StateHasChanged();
+        try
+        {
+            await using var stream = file.OpenReadStream(maxAllowedSize: 80 * 1024 * 1024);
+            var streamPart = new Refit.StreamPart(stream, file.Name, file.ContentType);
+            _lastAdventureImport = await Api.ImportAdventurePdfAsync(Id, streamPart);
+            _journalEntries = await Api.GetJournalEntriesAsync(Id);
+        }
+        catch { _journalError = "Не удалось импортировать PDF."; }
+        finally
+        {
+            _importingAdventure = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CreateSceneFromImportedImageAsync(ImportedMapImageDto image)
+    {
+        try
+        {
+            var scene = await Api.CreateSceneAsync(Id, new CreateSceneRequest($"Карта: стр. {image.PageNumber}"));
+            await Api.ActivateSceneAsync(Id, scene.Id);
+            await Api.SetTableShowcaseAsync(Id, new SetShowcaseRequest(image.Url));
+        }
+        catch { _journalError = "Не удалось создать сцену из карты."; }
+    }
+
     // Журнал мастера — упрощённая версия Foundry Journal: одна общая видимость на запись
     // ("опубликовано игрокам да/нет"), не список конкретных получателей на каждую запись.
     private void StartNewJournalEntry()
@@ -1883,6 +2567,9 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
         try { await Api.MoveTableTokenAsync(Id, id, new TokenPositionRequest(x, y)); }
         catch { /* ignore */ }
+
+        await RecomputeAuraEffectsAsync();
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -1935,7 +2622,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
     private async Task RollPf2eSaveAsync(string key, string label, int rank)
     {
-        var bonus = Pf2eLookups.Bonus(rank, _selectedCharacterLevel) + CheckModifier(key);
+        var bonus = Pf2eLookups.Bonus(rank, _selectedCharacterLevel, _proficiencyWithoutLevel) + CheckModifier(key) + AbpSaveBonus;
         var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
         _rolling = true;
         try { await Api.RollTableDiceAsync(Id, new RollDiceRequest(expression, _saveTargetDc, label)); }
@@ -2032,6 +2719,170 @@ public partial class Table : ComponentBase, IAsyncDisposable
                 await LocalizeMonsterResultsAsync();
             StateHasChanged();
         });
+    }
+
+    // K.7 — макросы. Chat-макрос — просто текст в чат (в т.ч. "/r 1d20+5" — тот же слэш-синтаксис,
+    // что у Foundry chat-макросов, чтобы не переучивать людей). Script-макрос выполняется в
+    // песочнице (wwwroot/js/macro-sandbox.js, iframe без allow-same-origin) — сам JS-код макроса
+    // никогда не получает доступа к DOM/куки этой страницы, только к API-шиму game.*, реализация
+    // которого — методы ниже, вызываемые из песочницы через InvokeMacroApi.
+
+    private void StartEditMacro(MacroDto? macro)
+    {
+        _editingMacroId = macro?.Id;
+        _macroName = macro?.Name ?? string.Empty;
+        _macroImageUrl = macro?.ImageUrl ?? string.Empty;
+        _macroType = macro?.Type ?? "Chat";
+        _macroCommand = macro?.Command ?? string.Empty;
+        _macroError = null;
+        _editingMacro = true;
+    }
+
+    private void CancelEditMacro() => _editingMacro = false;
+
+    private async Task SaveMacroAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_macroName)) { _macroError = "Название обязательно."; return; }
+        _macroError = null;
+        var imageUrl = string.IsNullOrWhiteSpace(_macroImageUrl) ? null : _macroImageUrl;
+
+        try
+        {
+            if (_editingMacroId is { } id)
+            {
+                await Api.UpdateMacroAsync(id, new UpdateMacroRequest(_macroName, imageUrl, _macroType, _macroCommand));
+            }
+            else
+            {
+                var created = await Api.CreateMacroAsync(new CreateMacroRequest(_macroName, imageUrl, _macroType, _macroCommand));
+                _macros.Add(created);
+            }
+            _macros = await Api.GetMyMacrosAsync();
+            _editingMacro = false;
+        }
+        catch { _macroError = "Не удалось сохранить макрос."; }
+    }
+
+    private async Task DeleteMacroAsync(Guid macroId)
+    {
+        try
+        {
+            await Api.DeleteMacroAsync(macroId);
+            _macros = _macros.Where(m => m.Id != macroId).ToList();
+        }
+        catch { /* ignore */ }
+    }
+
+    private async Task SetHotbarSlotAsync(Guid macroId, int slot)
+    {
+        try
+        {
+            await Api.SetMacroHotbarSlotAsync(macroId, new SetHotbarSlotRequest(slot));
+            _macros = await Api.GetMyMacrosAsync();
+        }
+        catch { /* ignore */ }
+    }
+
+    private async Task ImportFoundryMacrosAsync(InputFileChangeEventArgs e)
+    {
+        _macroImportError = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            var streamPart = new StreamPart(stream, e.File.Name, e.File.ContentType);
+            await Api.ImportFoundryMacrosAsync(streamPart);
+            _macros = await Api.GetMyMacrosAsync();
+        }
+        catch { _macroImportError = "Не удалось импортировать файл — ожидается JSON-экспорт макроса(ов) Foundry."; }
+    }
+
+    private async Task RunMacroAsync(MacroDto macro)
+    {
+        if (_macroRunning) return;
+        _macroRunning = true;
+        StateHasChanged();
+
+        try
+        {
+            if (macro.Type == "Chat")
+            {
+                // "/r <выражение>" — тот же слэш-синтаксис, что у Foundry chat-макросов; всё
+                // остальное отправляется как обычное сообщение в чат.
+                if (macro.Command.TrimStart().StartsWith("/r ", StringComparison.OrdinalIgnoreCase))
+                    await Api.RollTableDiceAsync(Id, new RollDiceRequest(macro.Command.TrimStart()[3..].Trim()));
+                else
+                    await Api.SendTableChatAsync(Id, new SendChatRequest(macro.Command));
+            }
+            else
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await Js.InvokeVoidAsync("macroSandbox.run", macro.Command, _dotNetRef);
+            }
+        }
+        catch { _rollError = $"Ошибка выполнения макроса «{macro.Name}»."; }
+        finally
+        {
+            _macroRunning = false;
+            StateHasChanged();
+        }
+    }
+
+    // Единая точка входа для всех вызовов game.* из песочницы (см. macro-sandbox.js) — метод и
+    // аргументы приходят строками/JSON, чтобы не городить десяток отдельных [JSInvokable] на
+    // каждую функцию API. args — JSON-массив позиционных параметров.
+    [JSInvokable]
+    public async Task<string?> InvokeMacroApi(string method, string argsJson)
+    {
+        using var doc = JsonDocument.Parse(argsJson);
+        var args = doc.RootElement;
+        string? Str(int i) => args[i].ValueKind == JsonValueKind.Null ? null : args[i].GetString();
+        int? Int(int i) => args[i].ValueKind == JsonValueKind.Null ? null : args[i].GetInt32();
+
+        switch (method)
+        {
+            case "roll":
+            {
+                var message = await Api.RollTableDiceAsync(Id, new RollDiceRequest(Str(0)!, Int(1), Str(2)));
+                return JsonSerializer.Serialize(new { content = message.Content });
+            }
+            case "chat":
+                await Api.SendTableChatAsync(Id, new SendChatRequest(Str(0) ?? ""));
+                return null;
+            case "getSelectedToken":
+                return SelectedToken is { } sel ? JsonSerializer.Serialize(sel) : "null";
+            case "getTargetToken":
+                return TargetToken is { } tgt ? JsonSerializer.Serialize(tgt) : "null";
+            case "getTokens":
+                return JsonSerializer.Serialize(_tokens);
+            case "applyDamage":
+            {
+                if (!Guid.TryParse(Str(0), out var tokenId)) return null;
+                var token = _tokens.FirstOrDefault(t => t.Id == tokenId);
+                if (token is not null && Int(1) is { } amount && amount > 0)
+                    await DealDamageAsync(token, amount);
+                return null;
+            }
+            case "applyCondition":
+            {
+                if (!Guid.TryParse(Str(0), out var tokenId) || Str(1) is not { } slug) return null;
+                await Api.ApplyTokenConditionAsync(Id, tokenId, new ApplyConditionRequest(slug, slug, Int(2)));
+                var idx = _tokens.FindIndex(t => t.Id == tokenId);
+                if (idx >= 0)
+                {
+                    var conditions = _tokens[idx].Conditions.Where(c => c.Slug != slug).ToList();
+                    conditions.Add(new TokenConditionDto(Guid.NewGuid(), slug, slug, Int(2)));
+                    _tokens[idx] = _tokens[idx] with { Conditions = conditions };
+                    StateHasChanged();
+                }
+                return null;
+            }
+            case "notify":
+                _rollError = Str(0);
+                StateHasChanged();
+                return null;
+            default:
+                return null;
+        }
     }
 
     public async ValueTask DisposeAsync()

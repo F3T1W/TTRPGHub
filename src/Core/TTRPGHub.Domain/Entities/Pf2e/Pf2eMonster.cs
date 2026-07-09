@@ -45,6 +45,19 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
     public string? ResistancesJson { get; private set; }
     public string? WeaknessesJson { get; private set; }
 
+    // N.4 — иммунитеты (тот же формат {type, exceptions[]}, без value — иммунитет либо есть,
+    // либо нет, в отличие от сопротивления/уязвимости с числовой величиной). Тип может быть
+    // как типом урона ("fire", "poison"), так и состоянием ("frightened", "paralyzed") —
+    // Foundry хранит оба вида в одном списке immunities, различий по структуре нет.
+    public string? ImmunitiesJson { get; private set; }
+
+    // N.7 — ауры (эффект, автоматически применяемый ко всем токенам в радиусе — не только
+    // текст в Abilities). Формат — JSON-массив {radiusFeet, effectSlug, effectName, value}:
+    // effectSlug — тот же слаг состояния, что и у ApplyTokenCondition (N.4/L.2), value —
+    // опциональная величина состояния (например frightened 1). Одна аура = один эффект;
+    // монстр с несколькими аурами (редкость) — несколько записей в массиве.
+    public string? AurasJson { get; private set; }
+
     private Pf2eMonster() { }
 
     public static Pf2eMonster Create(
@@ -53,7 +66,8 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
         int str, int dex, int con, int intel, int wis, int cha,
         int armorClass, int fortitude, int reflex, int will, int hitPoints,
         string speed, string? attacks, string? abilities, string source,
-        string? attacksJson = null, string? resistancesJson = null, string? weaknessesJson = null)
+        string? attacksJson = null, string? resistancesJson = null, string? weaknessesJson = null,
+        string? immunitiesJson = null, string? aurasJson = null)
     {
         return new Pf2eMonster
         {
@@ -85,6 +99,8 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
             AttacksJson  = attacksJson,
             ResistancesJson = resistancesJson,
             WeaknessesJson  = weaknessesJson,
+            ImmunitiesJson  = immunitiesJson,
+            AurasJson       = aurasJson,
         };
     }
 }

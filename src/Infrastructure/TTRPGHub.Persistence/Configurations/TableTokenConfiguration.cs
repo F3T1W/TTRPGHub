@@ -49,6 +49,8 @@ internal sealed class TableTokenConfiguration : IEntityTypeConfiguration<TableTo
         builder.Property(t => t.CurrentHp).HasColumnName("current_hp");
         builder.Property(t => t.MaxHp).HasColumnName("max_hp");
         builder.Property(t => t.ArmorClass).HasColumnName("armor_class");
+        builder.Property(t => t.CurrentStamina).HasColumnName("current_stamina");
+        builder.Property(t => t.MaxStamina).HasColumnName("max_stamina");
 
         builder.Property(t => t.CreatedAt).IsRequired().HasColumnName("created_at");
         builder.Property(t => t.UpdatedAt).IsRequired().HasColumnName("updated_at");

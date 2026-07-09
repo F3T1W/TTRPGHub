@@ -1,10 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TTRPGHub.Extensions;
+using TTRPGHub.Features.Tickets.Commands.AddTicketComment;
 using TTRPGHub.Features.Tickets.Commands.ChangeTicketStatus;
 using TTRPGHub.Features.Tickets.Commands.CreateTicket;
 using TTRPGHub.Features.Tickets.Queries.GetAllTickets;
 using TTRPGHub.Features.Tickets.Queries.GetMyTickets;
+using TTRPGHub.Features.Tickets.Queries.GetTicketById;
+using TTRPGHub.Features.Tickets.Queries.GetTicketComments;
 
 namespace TTRPGHub.Endpoints.Tickets;
 
@@ -44,7 +47,22 @@ public static class TicketsEndpoints
         group.MapPatch("/{id:guid}/status", async (Guid id, ChangeTicketStatusRequest req, ISender sender, CancellationToken ct) =>
                 (await sender.Send(new ChangeTicketStatusCommand(id, req.Status), ct)).ToResponse())
             .RequireAuthorization(p => p.RequireRole("Moderator", "Admin"));
+
+        group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new GetTicketByIdQuery(id), ct)).ToResponse());
+
+        group.MapGet("/{id:guid}/comments", async (Guid id, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new GetTicketCommentsQuery(id), ct)).ToResponse());
+
+        group.MapPost("/{id:guid}/comments", async (Guid id, AddTicketCommentRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new AddTicketCommentCommand(id, req.Body), ct);
+            return result.IsSuccess
+                ? Results.Created($"/api/tickets/{id}/comments/{result.Value}", result.Value)
+                : result.ToResponse();
+        });
     }
 }
 
 public sealed record ChangeTicketStatusRequest(string Status);
+public sealed record AddTicketCommentRequest(string Body);

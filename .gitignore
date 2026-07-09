@@ -68,3 +68,6 @@ npm-debug.log*
 *.bak
 *.orig
 .fake/
+
+# M.4 — кеш скачанного архива pf2e_ru_translation (scripts/scrape-pf2e-ru-translation.py)
+.cache/

@@ -6,7 +6,7 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Веб-платформа для игроков и мастеров: листы персонажей, справочник правил, поиск группы, сообщество и виртуальный стол с realtime-синхронизацией. Основной фокус разработки — **Pathfinder 2e**.
+Веб-платформа для игроков и мастеров: листы персонажей, справочник правил, поиск группы, сообщество и виртуальный стол с realtime-синхронизацией (карты, туман войны, инициатива, макросы). Основной фокус разработки — **Pathfinder 2e**, цель — полноценная замена Foundry VTT для русскоязычных групп.
 
 ---
 
@@ -97,4 +97,4 @@ tests/              Domain, Application, Infrastructure, API
 
 ## Лицензия
 
-[MIT](LICENSE) © 2025 F3T1W
+[MIT](LICENSE) © 2025–2026 F3T1W

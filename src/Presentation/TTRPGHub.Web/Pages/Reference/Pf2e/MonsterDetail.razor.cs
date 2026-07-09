@@ -14,6 +14,7 @@ public partial class MonsterDetail : IDisposable
     private string? _displayName;
     private string? _displaySize;
     private string? _displayTraits;
+    private string? _displayFlavor;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -33,12 +34,13 @@ public partial class MonsterDetail : IDisposable
             _monster = await Api.GetPf2eMonsterAsync(Id);
             if (_monster is null)
             {
-                _displayName = _displaySize = _displayTraits = null;
+                _displayName = _displaySize = _displayTraits = _displayFlavor = null;
                 return;
             }
             _displayName = await Locale.NameAsync("monster", _monster.Slug, _monster.Name);
             _displaySize = await Locale.LocalizeCsvAsync(_monster.Size);
             _displayTraits = await Locale.LocalizeCsvAsync(_monster.Traits);
+            _displayFlavor = await Locale.FlavorAsync("monster", _monster.Slug);
         }
         catch { _monster = null; }
         finally { _loading = false; }

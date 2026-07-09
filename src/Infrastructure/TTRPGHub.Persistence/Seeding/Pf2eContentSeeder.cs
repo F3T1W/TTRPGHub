@@ -28,20 +28,30 @@ public sealed class Pf2eContentSeeder(
         await SeedCategoryAsync(system.Id, RuleCategory.Condition, BuildConditions, "состояний", ct);
         await SeedCategoryAsync(system.Id, RuleCategory.Feat, BuildFeats, "фитов", ct);
         await SeedCategoryAsync(system.Id, RuleCategory.Equipment, BuildEquipment, "предметов снаряжения", ct);
+        await SeedCategoryAsync(system.Id, RuleCategory.Equipment, BuildRunes, "фундаментальных/свойственных рун", ct);
         await SeedCategoryAsync(system.Id, RuleCategory.Background, BuildBackgrounds, "бэкграундов", ct);
     }
 
+    // Проверка по каждому slug (не AnyAsync(category) целиком) — та же идемпотентность, что и в
+    // Pf2eRulesSeeder: расширение исходных данных (например, добавление рун в pf2e-equipment.json)
+    // подхватывается на уже засеянной БД, а не требует ручного вайпа категории.
     private async Task SeedCategoryAsync(
         GameSystemId systemId, RuleCategory category, Func<GameSystemId, IEnumerable<RuleEntry>> build,
         string label, CancellationToken ct)
     {
-        if (await entryRepository.AnyAsync(systemId, category, ct))
+        var entries = build(systemId).ToList();
+        if (entries.Count == 0)
             return;
 
-        var entries = build(systemId).ToList();
-        await entryRepository.AddRangeAsync(entries, ct);
+        var existingSlugs = (await entryRepository.GetBySlugsAsync(systemId, category, entries.Select(e => e.Slug).ToList(), ct))
+            .Select(e => e.Slug).ToHashSet();
+        var missing = entries.Where(e => !existingSlugs.Contains(e.Slug)).ToList();
+        if (missing.Count == 0)
+            return;
+
+        await entryRepository.AddRangeAsync(missing, ct);
         await unitOfWork.SaveChangesAsync(ct);
-        logger.LogInformation("Добавлено {Count} {Label} PF2e", entries.Count, label);
+        logger.LogInformation("Добавлено {Count} новых {Label} PF2e", missing.Count, label);
     }
 
     // ── Универсальные действия ──────────────────────────────────────────────────
@@ -229,6 +239,81 @@ public sealed class Pf2eContentSeeder(
             }),
             tags: ["снаряжение", e.ItemType, "PF2e"], isHomebrew: false,
             source: $"{e.Source} (Foundry pf2e system data, ORC)"));
+    }
+
+    // ── Руны — вручную (не из Foundry-выгрузки: та не включает предметы типа "rune" —
+    // см. pf2e-equipment.json, только тематические руны вроде "Rune of Sin" попали в выгрузку
+    // случайно). Фундаментальные руны потенции/усиления/стойкости обязательны почти для любого
+    // PF2e-персонажа выше 1 уровня — без них справочник снаряжения был неполон принципиально,
+    // не просто "не самая приоритетная категория". Числа — официальные факты правил (уровень/
+    // цена/бонус), не копия текста книги. На английском — RU-источника нет, см. BuildFeats.
+    private sealed record SeedRune(string Slug, string Name, string RuneType, int Level, double PriceGp, string Description);
+
+    private static IEnumerable<RuleEntry> BuildRunes(GameSystemId systemId)
+    {
+        SeedRune[] data =
+        [
+            new("weapon-potency-1", "Weapon Potency (+1)", "weapon", 2, 35,
+                "Etched onto a weapon, grants a +1 item bonus to attack rolls made with it."),
+            new("weapon-potency-2", "Weapon Potency (+2)", "weapon", 10, 935,
+                "Etched onto a weapon, grants a +2 item bonus to attack rolls made with it."),
+            new("weapon-potency-3", "Weapon Potency (+3)", "weapon", 16, 8935,
+                "Etched onto a weapon, grants a +3 item bonus to attack rolls made with it."),
+            new("striking", "Striking Rune", "weapon", 4, 65,
+                "The weapon deals two damage dice instead of one whenever it deals its listed weapon damage."),
+            new("greater-striking", "Greater Striking Rune", "weapon", 12, 1065,
+                "The weapon deals three damage dice instead of one whenever it deals its listed weapon damage."),
+            new("major-striking", "Major Striking Rune", "weapon", 19, 31065,
+                "The weapon deals four damage dice instead of one whenever it deals its listed weapon damage."),
+            new("armor-potency-1", "Armor Potency (+1)", "armor", 5, 160,
+                "Etched onto armor, grants a +1 item bonus to AC."),
+            new("armor-potency-2", "Armor Potency (+2)", "armor", 11, 1060,
+                "Etched onto armor, grants a +2 item bonus to AC."),
+            new("armor-potency-3", "Armor Potency (+3)", "armor", 18, 20560,
+                "Etched onto armor, grants a +3 item bonus to AC."),
+            new("resilient", "Resilient Rune", "armor", 8, 340,
+                "Grants a +1 item bonus to saving throws while the armor is worn."),
+            new("greater-resilient", "Greater Resilient Rune", "armor", 14, 3440,
+                "Grants a +2 item bonus to saving throws while the armor is worn."),
+            new("major-resilient", "Major Resilient Rune", "armor", 20, 49440,
+                "Grants a +3 item bonus to saving throws while the armor is worn."),
+            new("flaming", "Flaming Rune", "weapon", 8, 500,
+                "The weapon deals an extra 1d6 fire damage on a hit, and 1d10 persistent fire damage on a critical hit."),
+            new("frost", "Frost Rune", "weapon", 8, 500,
+                "The weapon deals an extra 1d6 cold damage on a hit, and 1d10 persistent cold damage on a critical hit."),
+            new("shock", "Shock Rune", "weapon", 8, 500,
+                "The weapon deals an extra 1d6 electricity damage on a hit, and 1d10 additional electricity damage to the target and adjacent creatures on a critical hit."),
+            new("thundering", "Thundering Rune", "weapon", 8, 500,
+                "The weapon deals an extra 1d6 sonic damage on a hit; on a critical hit the target must succeed at a Fortitude save or be deafened."),
+            new("corrosive", "Corrosive Rune", "weapon", 8, 500,
+                "The weapon deals an extra 1d6 acid damage on a hit, and on a critical hit it also deals 1d6 persistent acid damage and can damage the target's own weapon or armor."),
+            new("keen", "Keen Rune", "weapon", 13, 3000,
+                "The weapon's threat range for a critical hit expands (crits confirm on one more roll on the die than usual)."),
+            new("returning", "Returning Rune", "weapon", 3, 55,
+                "A thrown weapon flies back to the wielder's hand after the attack, ready to be thrown again."),
+            new("ghost-touch", "Ghost Touch Rune", "weapon", 4, 75,
+                "The weapon can affect incorporeal creatures normally, ignoring their usual resistance to physical attacks."),
+            new("bane", "Bane Rune", "weapon", 4, 66,
+                "The wielder can attune the weapon to a chosen creature; it gains a status bonus to attack and damage rolls against that creature (and a lesser bonus against its kind)."),
+            new("wounding", "Wounding Rune", "weapon", 7, 340,
+                "The weapon deals an extra 1d6 persistent bleed damage on a hit."),
+            new("disrupting", "Disrupting Rune", "weapon", 5, 150,
+                "The weapon deals an extra 1d6 damage to undead, and on a critical hit the undead target must succeed at a Fortitude save or be destroyed (if it's weak) or stunned."),
+            new("fortification-rune", "Fortification Rune", "armor", 12, 2000,
+                "The armor gives its wearer a chance to avoid the extra effects of a critical hit against them, treating it as a normal hit instead on a successful flat check."),
+        ];
+
+        return data.Select(r => RuleEntry.Create(
+            systemId, RuleCategory.Equipment, r.Slug, r.Name,
+            summary: $"Руна ({r.RuneType}) · {r.PriceGp} зм · ур. {r.Level}",
+            contentMarkdown: r.Description,
+            statsJson: JsonSerializer.Serialize(new
+            {
+                item_kind = "rune", rune_type = r.RuneType, level = r.Level, price_gp = r.PriceGp,
+                traits = new[] { "rune", "magical", r.RuneType },
+            }),
+            tags: ["снаряжение", "рун", "PF2e", "untranslated"], isHomebrew: false,
+            source: "PF2e Core Rulebook (hand-authored — Foundry extract does not include fundamental rune items)"));
     }
 
     private static string ItemTypeLabel(string itemType) => itemType switch

@@ -1,0 +1,126 @@
+@using TTRPGHub.Services
+
+<div class="ta-card p-3">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="mb-0" style="font-family:'Cinzel',serif;">Хроники Pathfinder Society</h5>
+            @if (_chronicles.Count > 0)
+            {
+                <p class="small text-muted mb-0">
+                    Итого: <span style="color:var(--ta-gold);">@TotalGold зм</span>,
+                    <span style="color:var(--ta-gold);">@TotalAp AP</span>
+                    @if (ReputationByFaction.Any())
+                    {
+                        <span> · Репутация: @string.Join(", ", ReputationByFaction.Select(r => $"{r.Faction} {r.Count}"))</span>
+                    }
+                </p>
+            }
+        </div>
+        @if (!_adding)
+        {
+            <button class="btn btn-sm btn-outline-secondary" @onclick="StartAdd">
+                <i class="bi bi-plus-lg me-1"></i>Добавить сценарий
+            </button>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger py-2 small">@_error</div>
+    }
+
+    @if (_adding)
+    {
+        <div class="border rounded p-3 mb-3" style="border-color:var(--ta-border)!important;">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="small text-muted">Сценарий</label>
+                    <input class="form-control form-control-sm" @bind="_scenarioName" placeholder="Название сценария" />
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted">Дата сессии</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_sessionDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted">ГМ</label>
+                    <input class="form-control form-control-sm" @bind="_gmName" placeholder="Имя ГМ" />
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted">Фракция</label>
+                    <input class="form-control form-control-sm" @bind="_faction" placeholder="Фракция" />
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted">Золото</label>
+                    <input type="number" min="0" class="form-control form-control-sm" @bind="_goldEarned" />
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted">Achievement Points</label>
+                    <input type="number" min="0" class="form-control form-control-sm" @bind="_achievementPoints" />
+                </div>
+                <div class="col-12">
+                    <label class="small text-muted">Использованные буны</label>
+                    <input class="form-control form-control-sm" @bind="_boonsUsed" placeholder="Через запятую" />
+                </div>
+                <div class="col-12">
+                    <label class="small text-muted">Заметки ГМ</label>
+                    <textarea class="form-control form-control-sm" rows="2" @bind="_notes"></textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-sm btn-success" @onclick="SaveAsync" disabled="@_saving">
+                    @if (_saving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    Сохранить
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelAdd">Отмена</button>
+            </div>
+        </div>
+    }
+
+    @if (_loading)
+    {
+        <div class="text-center py-3"><div class="spinner-border spinner-border-sm" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_chronicles.Count == 0)
+    {
+        <p class="small text-muted fst-italic mb-0">Пока нет сыгранных сценариев PFS</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr class="small text-muted">
+                        <th>Сценарий</th>
+                        <th>Дата</th>
+                        <th>ГМ</th>
+                        <th>Фракция</th>
+                        <th>Золото</th>
+                        <th>AP</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var chronicle in _chronicles)
+                    {
+                        <tr class="small">
+                            <td>@chronicle.ScenarioName</td>
+                            <td class="text-muted">@chronicle.SessionDate.ToString("dd.MM.yyyy")</td>
+                            <td class="text-muted">@(chronicle.GmName ?? "—")</td>
+                            <td class="text-muted">@(chronicle.Faction ?? "—")</td>
+                            <td style="color:var(--ta-gold);">@chronicle.GoldEarned</td>
+                            <td style="color:var(--ta-gold);">@chronicle.AchievementPoints</td>
+                            <td class="text-end">
+                                <a href="@PdfUrl(chronicle.Id)" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Скачать PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Удалить" @onclick="() => DeleteAsync(chronicle.Id)">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

@@ -3,6 +3,7 @@ using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
 using TTRPGHub.Entities.Forum;
+using TTRPGHub.Entities.Moderation;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Forum;
 
@@ -10,6 +11,7 @@ namespace TTRPGHub.Features.Forum.Commands.DeleteTopic;
 
 internal sealed class DeleteTopicCommandHandler(
     IForumTopicRepository topics,
+    IModerationLogRepository moderationLog,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork
 ) : IRequestHandler<DeleteTopicCommand, Result>
@@ -25,6 +27,13 @@ internal sealed class DeleteTopicCommandHandler(
             return Error.Forbidden();
 
         topics.Remove(topic);
+
+        if (isModerator && topic.AuthorId != currentUser.Id)
+        {
+            await moderationLog.AddAsync(ModerationLogEntry.Create(
+                currentUser.Id, "DeleteTopic", nameof(ForumTopic), topic.Id.Value, topic.Title), ct);
+        }
+
         await unitOfWork.SaveChangesAsync(ct);
         return Result.Success();
     }

@@ -409,6 +409,24 @@ body { font-family: var(--bs-font-sans-serif); background-color: var(--ta-bg); }
     background: #22c55e;
 }
 
+/* N.6 полировка — та же полоска, что HP, но выше и синим цветом (Stamina — отдельный пул
+   поверх HP под вариативным правилом Stamina, см. Table.razor.cs DealDamageAsync). */
+.ta-token-staminabar {
+    position: absolute;
+    bottom: -9px;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    background: rgba(0,0,0,.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ta-token-staminabar-fill {
+    height: 100%;
+    background: #38bdf8;
+}
+
 .ta-token-hp-controls {
     position: absolute;
     top: 100%;

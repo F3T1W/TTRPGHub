@@ -69,6 +69,9 @@ internal sealed class UpdateTokenStatsCommandHandler(
         if (command.HasLowLightVision is { } lowLight)
             token.SetLowLightVision(lowLight);
 
+        if (command.CurrentStamina is not null || command.MaxStamina is not null)
+            token.SetStamina(command.CurrentStamina, command.MaxStamina);
+
         tokenRepository.Update(token);
         await unitOfWork.SaveChangesAsync(ct);
 

@@ -104,4 +104,30 @@ public partial class Topic
             _actionMessage = "Не удалось удалить тему.";
         }
     }
+
+    private async Task TogglePinAsync()
+    {
+        try
+        {
+            await Api.SetForumTopicPinnedAsync(TopicId, new SetPinnedRequest(!_data!.IsPinned));
+            await LoadPageAsync(_page);
+        }
+        catch
+        {
+            _actionMessage = "Не удалось изменить закрепление темы.";
+        }
+    }
+
+    private async Task ToggleLockAsync()
+    {
+        try
+        {
+            await Api.SetForumTopicLockedAsync(TopicId, new SetLockedRequest(!_data!.IsLocked));
+            await LoadPageAsync(_page);
+        }
+        catch
+        {
+            _actionMessage = "Не удалось изменить блокировку темы.";
+        }
+    }
 }

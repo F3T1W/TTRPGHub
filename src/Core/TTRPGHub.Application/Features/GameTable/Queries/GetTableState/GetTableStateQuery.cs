@@ -24,4 +24,6 @@ public sealed record TableStateDto(
     bool CombatActive, int CombatRound, Guid? CombatTurnTokenId,
     string? LightsJson,
     string? TerrainTagsJson, string AmbientLighting,
-    List<SceneSummaryDto> Scenes, Guid ActiveSceneId);
+    List<SceneSummaryDto> Scenes, Guid ActiveSceneId,
+    bool ProficiencyWithoutLevel, bool AutomaticBonusProgression, bool FreeArchetype,
+    bool GradualAbilityBoosts, bool StaminaVariant, string? EncounterTableJson);

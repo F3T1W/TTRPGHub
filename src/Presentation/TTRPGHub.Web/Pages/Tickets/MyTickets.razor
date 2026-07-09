@@ -57,7 +57,7 @@
             <div class="ta-card p-3 mb-2">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="fw-semibold">@t.Title</div>
+                        <a href="/tickets/@t.Id" class="fw-semibold text-decoration-none" style="color:var(--ta-accent-light)">@t.Title</a>
                         <div class="small text-muted">@t.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
                     </div>
                     <span class="badge @StatusBadgeClass(t.Status)">@StatusLabel(t.Status)</span>

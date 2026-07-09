@@ -80,6 +80,32 @@ else if (_showPf2e)
                                 }
                             </div>
                             <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="small" title="10 + мод. Ловкости (ограничен Dex Cap брони) + владение категорией брони + бонус доспеха/щита. Не учитывает вариативные правила стола (ABP) — это расчёт вне сессии.">КЗ (расчёт)</span>
+                                <span class="fw-semibold" style="color:var(--ta-accent-light);">@_computedArmorClass</span>
+                            </div>
+                            @if (_editingPf2e)
+                            {
+                                <div class="mb-2">
+                                    <label class="form-label small text-muted mb-1">Владение бронёй</label>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach (var (catKey, catLabel) in ArmorCategories)
+                                        {
+                                            <div class="d-flex align-items-center gap-1">
+                                                <span class="small text-muted">@catLabel</span>
+                                                <select class="form-select form-select-sm" style="width:auto;"
+                                                        value="@_pf2e.ArmorProficiencyRanks.GetValueOrDefault(catKey)"
+                                                        @onchange="e => UpdateArmorProficiencyRank(catKey, int.Parse(e.Value!.ToString()!))">
+                                                    @foreach (var (val, label) in Pf2eRanks)
+                                                    {
+                                                        <option value="@val">@label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            <div class="d-flex align-items-center justify-content-between mb-1">
                                 <span class="small">Class DC</span>
                                 @if (_editingPf2e)
                                 {
@@ -401,6 +427,46 @@ else if (_showPf2e)
 
                         <div class="@ColClass">
                             <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0" title="Ручные roll options для предикатов, которые не покрыты автоматикой (например, target:mark:hunted-prey у фитов Hunt Prey) — вписывается та же строка, что фит ожидает в своём predicate">
+                                    Свои roll options
+                                </h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddCustomRollOption">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.CustomRollOptions.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто (напр. target:mark:hunted-prey)</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.CustomRollOptions.Count; i++)
+                                {
+                                    var idx = i;
+                                    var opt = _pf2e.CustomRollOptions[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="напр. target:mark:hunted-prey" value="@opt"
+                                                   @onchange="e => UpdateCustomRollOption(idx, e.Value?.ToString() ?? string.Empty)" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveCustomRollOption(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="small mb-1"><code>@opt</code></div>
+                                    }
+                                }
+                            }
+                        </div>
+
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
                                 <h6 class="small text-muted mb-0">Фиты</h6>
                                 @if (_editingPf2e)
                                 {
@@ -426,6 +492,14 @@ else if (_showPf2e)
                                                    @onchange='e => UpdateFeat(idx, feat with { Name = e.Value?.ToString() ?? "" })' />
                                             <input type="number" min="1" max="20" class="form-control form-control-sm" style="width:55px;" placeholder="ур." value="@feat.Level"
                                                    @onchange="e => UpdateFeat(idx, feat with { Level = int.TryParse(e.Value?.ToString(), out var l) ? l : feat.Level })" />
+                                            <select class="form-select form-select-sm" style="width:auto;" value="@feat.Source" title="Из какого слота взят этот фит"
+                                                    @onchange="e => UpdateFeat(idx, feat with { Source = string.IsNullOrWhiteSpace(e.Value?.ToString()) ? null : e.Value.ToString() })">
+                                                <option value="">Слот —</option>
+                                                @foreach (var (key, label) in Pf2eLookups.FeatSources)
+                                                {
+                                                    <option value="@key">@label</option>
+                                                }
+                                            </select>
                                             <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFeat(idx)">
                                                 <i class="bi bi-x"></i>
                                             </button>
@@ -440,12 +514,42 @@ else if (_showPf2e)
                                                 {
                                                     <i class="bi bi-link-45deg text-success" title="Связан со справочником — правила применяются автоматически"></i>
                                                 }
+                                                @if (feat.Source is not null)
+                                                {
+                                                    <span class="badge bg-secondary ms-1" style="font-size:.65rem;">@Pf2eLookups.FeatSources.First(s => s.Key == feat.Source).Label</span>
+                                                }
                                             </span>
                                             <span class="text-muted">ур. @feat.Level</span>
                                         </div>
                                         @if (feat.Slug is not null && _grantsByFeatSlug.TryGetValue(feat.Slug, out var grants))
                                         {
                                             <div class="small text-muted fst-italic mb-1" style="margin-top:-4px;">Даёт: @string.Join(", ", grants)</div>
+                                        }
+                                        @if (feat.Slug is not null && _choiceSetByFeatSlug.TryGetValue(feat.Slug, out var choiceSet))
+                                        {
+                                            <div class="d-flex align-items-center gap-2 mb-1" style="margin-top:-4px;">
+                                                <span class="small text-muted">@choiceSet.Prompt:</span>
+                                                <select class="form-select form-select-sm" style="width:auto;" value="@feat.SelectedChoice"
+                                                        @onchange="e => SetFeatChoiceAsync(idx, e.Value?.ToString())">
+                                                    <option value="">—</option>
+                                                    @foreach (var opt in choiceSet.Options)
+                                                    {
+                                                        <option value="@opt.Value">@opt.Label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                        @if (feat.Slug is not null && _rollOptionsByFeatSlug.TryGetValue(feat.Slug, out var featToggles))
+                                        {
+                                            @foreach (var toggle in featToggles)
+                                            {
+                                                var isOn = feat.ToggledOptions?.Contains(toggle.Option) ?? toggle.Default;
+                                                <div class="form-check form-switch mb-1" style="margin-top:-4px;">
+                                                    <input class="form-check-input" type="checkbox" checked="@isOn"
+                                                           @onchange="e => ToggleFeatRollOptionAsync(idx, toggle.Option, (bool)(e.Value ?? false))" />
+                                                    <label class="form-check-label small text-muted">@toggle.Label</label>
+                                                </div>
+                                            }
                                         }
                                     }
                                 }
@@ -493,6 +597,64 @@ else if (_showPf2e)
                                             <span class="text-muted">ур. @spell.Level</span>
                                         </div>
                                     }
+                                }
+                            }
+                        </div>
+                        <div class="@ColClass">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h6 class="small text-muted mb-0">Известные формулы (крафт)</h6>
+                                @if (_editingPf2e)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="AddKnownFormula">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                            @if (_pf2e.KnownFormulas.Count == 0)
+                            {
+                                <p class="small text-muted fst-italic mb-0">Пусто</p>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < _pf2e.KnownFormulas.Count; i++)
+                                {
+                                    var idx = i;
+                                    var formula = _pf2e.KnownFormulas[idx];
+                                    @if (_editingPf2e)
+                                    {
+                                        <div class="d-flex gap-1 align-items-center mb-1">
+                                            <input class="form-control form-control-sm" placeholder="Название предмета (точное — свяжется со справочником)" value="@formula.Name"
+                                                   @onchange='e => UpdateKnownFormula(idx, formula with { Name = e.Value?.ToString() ?? "" })' />
+                                            <input type="number" min="0" max="25" class="form-control form-control-sm" style="width:55px;" placeholder="ур." value="@formula.Level"
+                                                   @onchange="e => UpdateKnownFormula(idx, formula with { Level = int.TryParse(e.Value?.ToString(), out var l) ? l : formula.Level })" />
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveKnownFormula(idx)">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center small mb-1">
+                                            <span>
+                                                @formula.Name
+                                                @if (formula.Slug is not null)
+                                                {
+                                                    <i class="bi bi-link-45deg text-success" title="Связан со справочником"></i>
+                                                }
+                                            </span>
+                                            <span class="d-flex align-items-center gap-2">
+                                                <span class="text-muted">ур. @formula.Level, DC @Pf2eLookups.StandardDc(formula.Level)</span>
+                                                <button class="btn btn-sm btn-outline-warning py-0 px-1" title="Скрафтить (бросок Ремесла)"
+                                                        @onclick="() => CraftFormula(formula)">
+                                                    <i class="bi bi-hammer"></i>
+                                                </button>
+                                            </span>
+                                        </div>
+                                    }
+                                }
+                                @if (_craftResultMessage is not null)
+                                {
+                                    <p class="small fst-italic mt-2 mb-0" style="color:var(--ta-gold);">@_craftResultMessage</p>
                                 }
                             }
                         </div>

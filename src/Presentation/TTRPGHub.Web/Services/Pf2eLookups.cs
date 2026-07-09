@@ -59,7 +59,10 @@ public static class Pf2eLookups
     ];
 
     // Untrained в PF2e не получает бонус уровня — только Trained и выше.
-    public static int Bonus(int rank, int level) => rank == 0 ? 0 : rank + level;
+    // N.6 — Proficiency Without Level (вариативное правило, тоггл на GameSession.
+    // ProficiencyWithoutLevel): бонус владения не включает уровень персонажа вообще, только ранг.
+    public static int Bonus(int rank, int level, bool proficiencyWithoutLevel = false) =>
+        rank == 0 ? 0 : proficiencyWithoutLevel ? rank : rank + level;
 
     // L.1 — MAP: strikeIndex 0 = первая атака в ходу, 1 = вторая, 2+ = третья и далее.
     public static int MapPenalty(int strikeIndex, bool agile = false) => strikeIndex switch
@@ -70,11 +73,57 @@ public static class Pf2eLookups
     };
 
     // L.2 — бонус атаки заклинанием и DC (классовая формула PF2e: 10 + владение + мод. хар-ки).
-    public static int SpellAttackBonus(int spellcastingRank, int level, int abilityMod) =>
-        Bonus(spellcastingRank, level) + abilityMod;
+    public static int SpellAttackBonus(int spellcastingRank, int level, int abilityMod, bool proficiencyWithoutLevel = false) =>
+        Bonus(spellcastingRank, level, proficiencyWithoutLevel) + abilityMod;
 
-    public static int SpellDc(int spellcastingRank, int level, int abilityMod) =>
-        10 + Bonus(spellcastingRank, level) + abilityMod;
+    public static int SpellDc(int spellcastingRank, int level, int abilityMod, bool proficiencyWithoutLevel = false) =>
+        10 + Bonus(spellcastingRank, level, proficiencyWithoutLevel) + abilityMod;
+
+    // N.6 — Automatic Bonus Progression (вариативное правило): персонаж получает числовые
+    // бонусы к атаке/КЗ/спасброскам/Внимательности прямо от уровня, магическое оружие/доспехи
+    // не нужны ради этих бонусов. Официальная таблица Core Rulebook: Attack Potency +1/+2/+3
+    // на 2/10/16 уровне, Defense Potency +1/+2/+3 на 5/11/18, Saving Throw Potency +1/+2/+3
+    // на 8/14/20, Perception Potency +1/+2/+3 на 7/13/19.
+    private static readonly (int Level, int Bonus)[] AbpAttackTable = [(2, 1), (10, 2), (16, 3)];
+    private static readonly (int Level, int Bonus)[] AbpDefenseTable = [(5, 1), (11, 2), (18, 3)];
+    private static readonly (int Level, int Bonus)[] AbpSaveTable = [(8, 1), (14, 2), (20, 3)];
+    private static readonly (int Level, int Bonus)[] AbpPerceptionTable = [(7, 1), (13, 2), (19, 3)];
+
+    public enum AbpPotency { Attack, Defense, Save, Perception }
+
+    public static int AbpBonus(AbpPotency potency, int level)
+    {
+        var table = potency switch
+        {
+            AbpPotency.Attack => AbpAttackTable,
+            AbpPotency.Defense => AbpDefenseTable,
+            AbpPotency.Save => AbpSaveTable,
+            AbpPotency.Perception => AbpPerceptionTable,
+            _ => AbpAttackTable,
+        };
+        var bonus = 0;
+        foreach (var (lvl, b) in table)
+            if (level >= lvl) bonus = b;
+        return bonus;
+    }
+
+    // N.6 — формула КЗ персонажа: 10 + мод. Ловкости (ограничен Dex Cap надетой брони, если
+    // есть) + бонус владения категорией брони (по рангу в ArmorProficiencyRanks, "unarmored"
+    // без брони) + предметный бонус доспеха/щита + опционально Defense Potency (ABP). Раньше
+    // КЗ существовало только как введённое вручную число на жетоне/листе персонажа — эта формула
+    // не заменяет его автоматически (жетон остаётся источником истины в бою), а даёт
+    // расчётное значение для отображения/сверки на листе персонажа.
+    public static int ComputeArmorClass(
+        int dexMod, Dictionary<string, int> armorProficiencyRanks, int level,
+        bool proficiencyWithoutLevel, EquippedItemContext? armor, bool automaticBonusProgression)
+    {
+        var category = armor?.ArmorCategory ?? "unarmored";
+        var rank = armorProficiencyRanks.GetValueOrDefault(category);
+        var dexBonus = armor?.DexCap is { } cap ? Math.Min(dexMod, cap) : dexMod;
+        var itemBonus = armor?.AcBonus ?? 0;
+        var abp = automaticBonusProgression ? AbpBonus(AbpPotency.Defense, level) : 0;
+        return 10 + dexBonus + Bonus(rank, level, proficiencyWithoutLevel) + itemBonus + abp;
+    }
 
     // L.7 — DC врождённых способностей монстра: 10 + уровень/2 + лучший ментальный мод.
     public static int MonsterAbilityDc(int level, int intelligence, int wisdom, int charisma)
@@ -130,11 +179,101 @@ public static class Pf2eLookups
         return effective;
     }
 
+    // N.4 — иммунитет монстра: {type, exceptions[]}, без числовой величины (в отличие от
+    // Pf2eDamageAdjustment) — иммунитет либо блокирует полностью, либо не применяется вовсе.
+    // Type может быть как типом урона ("fire"), так и слагом состояния ("frightened").
+    public sealed record Pf2eImmunity(string Type, List<string> Exceptions);
+
+    public static List<Pf2eImmunity> ParseImmunities(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<List<Pf2eImmunity>>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? []; }
+        catch { return []; }
+    }
+
+    // N.5 — грубый парсер Pf2eSpell.Range (свободный текст из импортированных данных, формат
+    // не нормализован: "30 feet", "60 feet (see text)", "1,000 feet", "1 mile", "touch", "self",
+    // "unlimited", "varies", "planetary", "emanation up to 40-feet" и т.д.) в дальность в футах
+    // для предупреждения при выборе цели вне дальности. Возвращает null, если дальность не
+    // ограничена конкретным числом (self/unlimited/varies/planetary) — тогда проверка дистанции
+    // просто пропускается, а не считается нарушением.
+    private static readonly System.Text.RegularExpressions.Regex RangeNumberRegex = new(@"\d+");
+
+    public static int? ParseRangeFeet(string? rangeText)
+    {
+        if (string.IsNullOrWhiteSpace(rangeText)) return null;
+        var text = rangeText.ToLowerInvariant().Replace(",", "");
+
+        if (text.Contains("self") || text.Contains("unlimited") || text.Contains("varies") || text.Contains("planetary"))
+            return null;
+
+        if (text.Contains("touch"))
+            return 5;
+
+        var match = RangeNumberRegex.Match(text);
+        if (!match.Success) return null;
+
+        var number = int.Parse(match.Value);
+        var feet = text.Contains("mile") ? number * 5280 : number;
+
+        // "0 feet"/мелейные заклинания — трактуем как дальность ближнего боя (радиус клетки),
+        // иначе любая цель на соседней клетке ложно считалась бы "вне дальности".
+        return feet == 0 ? 5 : feet;
+    }
+
+    // N.7 — аура монстра: радиус в футах + эффект-состояние, автоматически применяемый ко всем
+    // токенам в радиусе (не только текст в Abilities). EffectSlug — тот же слаг состояния, что
+    // и у ApplyTokenCondition (N.4/L.2), Value — опциональная величина (frightened 1 и т.п.).
+    public sealed record Pf2eAura(int RadiusFeet, string EffectSlug, string EffectName, int? Value);
+
+    public static List<Pf2eAura> ParseAuras(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<List<Pf2eAura>>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? []; }
+        catch { return []; }
+    }
+
+    // Дистанция между центрами двух жетонов в футах — тот же расчёт, что у AOE-шаблонов (J.5,
+    // Table.razor.cs RecomputeTemplateAffectedTokens): плоская евклидова дистанция, 1 клетка = 5 фт.
+    public static double TokenDistanceFeet(double ax, double ay, double aw, double ah, double bx, double by, double bw, double bh)
+    {
+        var dx = (bx + bw / 2.0 - ax - aw / 2.0) * 5;
+        var dy = (by + bh / 2.0 - ay - ah / 2.0) * 5;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
     // Структурированный фит: имя, уровень, и опционально Slug — связь с записью в общем
     // справочнике RuleEntry (Feat). Slug заполняется, только если фит выбран из автодополнения
     // по каталогу (см. Detail.razor "datalist"); свободный текст без совпадения по каталогу
     // остаётся с Slug = null и не участвует в автоматизации правил (J.1) — просто текст, как раньше.
-    public sealed record Pf2eFeat(string Name, int Level, string? Slug = null);
+    // N.10 — SelectedChoice: значение, выбранное игроком для ChoiceSet фита (см. Pf2eFeatChoiceSet
+    // ниже), добавляется в roll options как "{selector}:{значение}". ToggledOptions — включённые
+    // RollOption-тумблеры фита (см. Pf2eFeatRollOption), каждый добавляется в roll options как есть.
+    // N.6 — Source: из какого слота игрок взял ЭТОТ конкретный фит на листе (не путать с
+    // "category" в справочнике RuleEntry — той же классификацией у самого фита как записи
+    // каталога вообще, из какого он источника по правилам). Source — выбор игрока, не
+    // свойство фита: один и тот же классовый фит теоретически можно взять и в обычный
+    // классовый слот, и (при гомебрю) в бонусный. Значения: "class"/"ancestry"/"skill"/
+    // "general"/"archetype"/"bonus"; null — не размечено (старые записи, обратная совместимость).
+    // Нужен для Free Archetype (считать, сколько фитов взято именно из архетипных слотов) и
+    // закрывает пробел из N.10 про "система не ведёт учёт, откуда взялся фит".
+    public sealed record Pf2eFeat(string Name, int Level, string? Slug = null,
+        string? SelectedChoice = null, List<string>? ToggledOptions = null, string? Source = null);
+
+    public static readonly (string Key, string Label)[] FeatSources =
+        [("class", "Классовый слот"), ("ancestry", "Предковый слот"), ("skill", "Навыковый слот"),
+         ("general", "Общий слот"), ("archetype", "Архетипный слот (Free Archetype)"), ("bonus", "Бонусный")];
+
+    // N.6 — Free Archetype: один архетипный фит на каждый чётный уровень (2,4,6...20 = 10 фитов
+    // максимум). Только ориентир для сверки на листе/столе — не блокирует добавление фитов сверх
+    // нормы (GM решает сам, как и с прочими вручную вводимыми числами в этой системе).
+    public static int ExpectedFreeArchetypeFeats(int level) => level / 2;
+
+    // N.6 — Gradual Ability Boosts: под этим правилом повышение полагается на каждом уровне
+    // (не только на 5/10/15/20, как обычно) — возвращает уровни от 1 до текущего, за которые
+    // повышение ещё не отмечено (loggedLevels), чтобы напомнить игроку/ГМу.
+    public static List<int> PendingGradualAbilityBoosts(int level, IReadOnlyCollection<int> loggedLevels) =>
+        Enumerable.Range(1, Math.Max(level, 0)).Where(l => !loggedLevels.Contains(l)).ToList();
 
     // Числовой модификатор из данных фита (J.1) — селектор: "land-speed", ключ навыка,
     // "perception" или "ac". Predicate (может быть null = безусловный) — сырое PF2e-условие
@@ -142,7 +281,22 @@ public static class Pf2eLookups
     // lte,gt,lt} — вычисляется PredicateEvaluator против статичных фактов персонажа.
     public sealed record Pf2eFlatModifier(string Selector, int Value, string Type, JsonElement? Predicate);
 
-    public sealed record Pf2eFeatStats(List<Pf2eFlatModifier> Modifiers, List<string>? Grants);
+    // N.10 — Foundry ChoiceSet: фит предлагает выбор одного варианта (стихия, оружие, навык...),
+    // выбор персистится в Pf2eFeat.SelectedChoice и подставляется в roll options как
+    // "{Selector}:{значение варианта}", от которого дальше зависят предикаты модификаторов
+    // (в т.ч. модификаторов того же фита — например "ranger-hunters-edge:flurry" включает
+    // модификатор multiple-attack-penalty только при выборе Flurry).
+    public sealed record Pf2eFeatChoiceOption(string Value, string Label);
+    public sealed record Pf2eFeatChoiceSet(string Selector, string Prompt, List<Pf2eFeatChoiceOption> Options);
+
+    // N.10 — Foundry RollOption toggle: тумблер прямо на листе персонажа ("Раскрыта тайная
+    // техника: вкл/выкл"), включённое состояние персистится в Pf2eFeat.ToggledOptions и
+    // добавляется в roll options как есть — от него зависят предикаты модификаторов.
+    public sealed record Pf2eFeatRollOption(string Option, string Label, bool Default);
+
+    public sealed record Pf2eFeatStats(
+        List<Pf2eFlatModifier> Modifiers, List<string>? Grants,
+        Pf2eFeatChoiceSet? ChoiceSet = null, List<Pf2eFeatRollOption>? RollOptions = null);
 
     public static List<Pf2eFlatModifier> ParseFeatModifiers(string? statsJson)
     {
@@ -155,10 +309,59 @@ public static class Pf2eLookups
         catch { return []; }
     }
 
+    public static Pf2eFeatChoiceSet? ParseFeatChoiceSet(string? statsJson)
+    {
+        if (string.IsNullOrWhiteSpace(statsJson)) return null;
+        try
+        {
+            var stats = JsonSerializer.Deserialize<Pf2eFeatStats>(statsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            return stats?.ChoiceSet;
+        }
+        catch { return null; }
+    }
+
+    public static List<Pf2eFeatRollOption> ParseFeatRollOptions(string? statsJson)
+    {
+        if (string.IsNullOrWhiteSpace(statsJson)) return [];
+        try
+        {
+            var stats = JsonSerializer.Deserialize<Pf2eFeatStats>(statsJson, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            return stats?.RollOptions ?? [];
+        }
+        catch { return []; }
+    }
+
+    // N.10 — собирает roll options из выбора игрока (ChoiceSet) и включённых тумблеров
+    // (RollOption) по всем фитам персонажа — общий helper для листа персонажа и стола (Table.razor).
+    public static void AddFeatChoiceRollOptions(
+        HashSet<string> options, IEnumerable<Pf2eFeat> feats, IReadOnlyDictionary<string, string> statsJsonBySlug)
+    {
+        foreach (var feat in feats)
+        {
+            if (feat.Slug is null || !statsJsonBySlug.TryGetValue(feat.Slug, out var statsJson))
+                continue;
+
+            if (feat.SelectedChoice is { Length: > 0 } choice)
+            {
+                var choiceSet = ParseFeatChoiceSet(statsJson);
+                if (choiceSet is not null)
+                    options.Add($"{choiceSet.Selector}:{choice}");
+            }
+
+            if (feat.ToggledOptions is { Count: > 0 } toggled)
+                foreach (var option in toggled)
+                    options.Add(option);
+        }
+    }
+
     // L.4 — контекст экипировки для roll options item:* / armor:* и модификаторов из stats_json.
+    // N.6 — DexCap/AcBonus добавлены для формулы КЗ (ComputeArmorClass): ограничение бонуса
+    // Ловкости и сам предметный бонус доспеха/щита, взятые из тех же extra.dex_cap/extra.ac_bonus,
+    // что уже парсит ParseItemModifiers для отдельного модификатора — здесь нужны сырыми для формулы.
     public sealed record EquippedItemContext(
         string Slug, string? ItemKind, string? ArmorCategory,
-        IReadOnlyList<string> Traits, bool IsRanged, string? DamageCategory);
+        IReadOnlyList<string> Traits, bool IsRanged, string? DamageCategory,
+        int? DexCap = null, int AcBonus = 0);
 
     public sealed record AncestryRollContext(string? Slug, IReadOnlyList<string> Traits, int? Size);
 
@@ -278,6 +481,8 @@ public static class Pf2eLookups
             string? armorCat = null;
             bool isRanged = false;
             string? damageCategory = null;
+            int? dexCap = null;
+            var acBonus = 0;
             if (root.TryGetProperty("extra", out var extra))
             {
                 if (extra.TryGetProperty("category", out var cat))
@@ -289,12 +494,16 @@ public static class Pf2eLookups
                 }
                 if (extra.TryGetProperty("damage_type", out var dt))
                     damageCategory = MapDamageCategory(dt.GetString());
+                if (extra.TryGetProperty("dex_cap", out var dc) && dc.TryGetInt32(out var dcVal))
+                    dexCap = dcVal;
+                if (extra.TryGetProperty("ac_bonus", out var ab) && ab.TryGetInt32(out var abVal))
+                    acBonus = abVal;
             }
 
             var traits = ParseEquipmentTraits(root);
             if (traits.Contains("ranged") || traits.Contains("thrown")) isRanged = true;
 
-            return new EquippedItemContext(slug, kind, armorCat, traits, isRanged, damageCategory);
+            return new EquippedItemContext(slug, kind, armorCat, traits, isRanged, damageCategory, dexCap, acBonus);
         }
         catch { return new EquippedItemContext(slug, null, null, [], false, null); }
     }
@@ -576,11 +785,206 @@ public static class Pf2eLookups
     public sealed record Pf2eSpellSlotLevel(int Max, int Used);
     public sealed record Pf2eKnownSpell(string Name, int Level, bool Prepared);
 
+    // N.2 — известная формула создания предмета (Formula Book). Slug — связь со справочником
+    // (RuleCategory.Equipment), заполняется по тому же принципу, что и у Pf2eFeat: подтягивается
+    // при точном совпадении имени, свободный текст без совпадения остаётся Slug = null.
+    public sealed record Pf2eKnownFormula(string Name, int Level, string? Slug = null);
+
+    // Стандартная таблица DC по уровню (Core Rulebook table 10-5) — используется и для Craft,
+    // и в принципе для любой "проверки против уровня предмета/угрозы", а не только крафта.
+    private static readonly int[] StandardDcByLevel =
+    [
+        14, 15, 16, 18, 19, 20, 22, 23, 24, 26, 27, 28, 30, 31, 32, 34, 35, 36, 38, 39, 40, 42, 44, 46, 48, 50
+    ];
+
+    public static int StandardDc(int level) =>
+        StandardDcByLevel[Math.Clamp(level, 0, StandardDcByLevel.Length - 1)];
+
+    public enum DegreeOfSuccess { CriticalFailure, Failure, Success, CriticalSuccess }
+
+    // Общее правило степеней успеха PF2e: натуральная 20/1 сдвигает степень на одну ступень
+    // в соответствующую сторону, превышение/провал DC на 10+ — критический результат.
+    public static DegreeOfSuccess RollDegree(int naturalRoll, int total, int dc)
+    {
+        var degree = total >= dc + 10 ? DegreeOfSuccess.CriticalSuccess
+            : total >= dc ? DegreeOfSuccess.Success
+            : total <= dc - 10 ? DegreeOfSuccess.CriticalFailure
+            : DegreeOfSuccess.Failure;
+
+        if (naturalRoll == 20 && degree < DegreeOfSuccess.CriticalSuccess) degree++;
+        if (naturalRoll == 1 && degree > DegreeOfSuccess.CriticalFailure) degree--;
+        return degree;
+    }
+
+    // N.11 — степень успеха уже вшита текстом в сообщение чата (RollDiceCommandHandler:
+    // "... vs DC {dc} → {DegreeLabel}"), клиент не дублирует бросок/сравнение — просто
+    // распознаёт готовый результат тем же способом, что и подсветка строки (DegreeStyle
+    // в Table.razor.cs), чтобы повесить на сообщение кнопку "Применить".
+    private static readonly System.Text.RegularExpressions.Regex CheckResultRegex =
+        new(@"vs DC (\d+) → (.+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    public static bool TryParseCheckResult(string content, out int dc, out DegreeOfSuccess degree, out bool isAttack)
+    {
+        dc = 0;
+        degree = DegreeOfSuccess.Failure;
+        isAttack = false;
+
+        var match = CheckResultRegex.Match(content);
+        if (!match.Success || !int.TryParse(match.Groups[1].Value, out dc))
+            return false;
+
+        var label = match.Groups[2].Value.Trim();
+        switch (label)
+        {
+            case "Критический успех!": degree = DegreeOfSuccess.CriticalSuccess; break;
+            case "Успех": degree = DegreeOfSuccess.Success; break;
+            case "Провал": degree = DegreeOfSuccess.Failure; break;
+            case "Критический провал!": degree = DegreeOfSuccess.CriticalFailure; break;
+            default: return false;
+        }
+
+        isAttack = content.Contains("(атака", StringComparison.OrdinalIgnoreCase);
+        return true;
+    }
+
+    // Стандартное правило PF2e применения урона по степени успеха: атака (сравнение с КЗ) —
+    // крит удваивает, провал/крит.провал = промах (0); спасбросок против эффекта (сравнение
+    // с DC) — крит.успех без эффекта (0), успех = половина урона, провал = полный, крит.провал
+    // = удвоенный.
+    public static double DamageMultiplierForDegree(DegreeOfSuccess degree, bool isAttack) =>
+        isAttack
+            ? degree switch
+            {
+                DegreeOfSuccess.CriticalSuccess => 2.0,
+                DegreeOfSuccess.Success => 1.0,
+                _ => 0.0,
+            }
+            : degree switch
+            {
+                DegreeOfSuccess.CriticalSuccess => 0.0,
+                DegreeOfSuccess.Success => 0.5,
+                DegreeOfSuccess.Failure => 1.0,
+                DegreeOfSuccess.CriticalFailure => 2.0,
+                _ => 1.0,
+            };
+
+    // N.12 — таблица случайных встреч ГМа: одна таблица на сессию, роняется в
+    // GameSession.EncounterTableJson как есть, сервер разбирает тот же формат только для
+    // самого броска (RollEncounterTableCommandHandler). MonsterId — тот же Guid, что и
+    // Pf2eMonster.Id, чтобы кнопка "Добавить жетон" переиспользовала обычный AddTableTokenAsync.
+    public sealed record Pf2eEncounterEntry(int Min, int Max, string Label, Guid? MonsterId);
+    public sealed record Pf2eEncounterTable(string Title, List<Pf2eEncounterEntry> Entries);
+
+    public static Pf2eEncounterTable? ParseEncounterTable(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<Pf2eEncounterTable>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web)); }
+        catch { return null; }
+    }
+
+    public static string SerializeEncounterTable(Pf2eEncounterTable table) =>
+        JsonSerializer.Serialize(table, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+    // Результат броска таблицы встреч приходит текстом в чат (RollEncounterTableCommandHandler:
+    // "... → {label} [[monster:{id}]]") — тот же приём, что и у N.11 (структурные данные
+    // зашиты в готовый текст, клиент их достаёт регэкспом, не пересчитывая бросок заново).
+    private static readonly System.Text.RegularExpressions.Regex EncounterMonsterMarkerRegex =
+        new(@"\[\[monster:([0-9a-fA-F-]{36})\]\]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    public static Guid? TryParseEncounterMonsterMarker(string content)
+    {
+        var match = EncounterMonsterMarkerRegex.Match(content);
+        return match.Success && Guid.TryParse(match.Groups[1].Value, out var id) ? id : null;
+    }
+
+    public static string StripEncounterMonsterMarker(string content) =>
+        EncounterMonsterMarkerRegex.Replace(content, "").TrimEnd();
+
+    // N.12 — генератор NPC: чисто клиентская случайная комбинация имени и черты/причуды, без
+    // сохранения — разовая подсказка ГМу для безымянного персонажа на лету, не полноценный
+    // "лист персонажа" (для этого есть Character/Pf2eStatsSheet).
+    private static readonly string[] NpcFirstNamesMale =
+        ["Гаррет", "Донован", "Кассий", "Эдрик", "Финнеган", "Ивар", "Магнус", "Освальд", "Родерик", "Тобиас", "Уилфред", "Ярек"];
+    private static readonly string[] NpcFirstNamesFemale =
+        ["Аделина", "Брианна", "Кассандра", "Далия", "Эления", "Фиона", "Изольда", "Мирабель", "Ровена", "Сильвия", "Тесса", "Ярина"];
+    private static readonly string[] NpcSurnames =
+        ["Чернолесье", "Крутогор", "Быстрый Клинок", "Тихий Шаг", "Огнегрив", "Дубощит", "Серебряная Река", "Полынь", "Ветродуй", "Каменный Кулак"];
+    private static readonly string[] NpcTraits =
+        [
+            "постоянно грызёт кончик пера, даже когда не пишет",
+            "никогда не смотрит собеседнику в глаза дольше пары секунд",
+            "коллекционирует пуговицы от чужой одежды «на память»",
+            "говорит о себе в третьем лице, когда нервничает",
+            "держит при себе засушенный цветок и не объясняет почему",
+            "разговаривает с животными как с равными",
+            "запоминает любую услышанную мелодию с одного раза",
+            "боится закрытых дверей — всегда оставляет щель",
+            "торгуется даже там, где торг неуместен",
+            "точит нож каждый раз, когда думает",
+            "носит слишком много колец не по размеру",
+            "цитирует старинные пословицы, часто невпопад",
+        ];
+
+    public sealed record Pf2eGeneratedNpc(string Name, string Trait);
+
+    public static Pf2eGeneratedNpc GenerateNpc(Random? random = null)
+    {
+        random ??= Random.Shared;
+        var isFemale = random.Next(2) == 0;
+        var first = (isFemale ? NpcFirstNamesFemale : NpcFirstNamesMale)[random.Next(isFemale ? NpcFirstNamesFemale.Length : NpcFirstNamesMale.Length)];
+        var surname = NpcSurnames[random.Next(NpcSurnames.Length)];
+        var trait = NpcTraits[random.Next(NpcTraits.Length)];
+        return new Pf2eGeneratedNpc($"{first} {surname}", trait);
+    }
+
+    // N.6 — Критические/провальные колоды (вариативное правило): вместо "просто x2 урона"/
+    // "просто провал" GM тянет случайную карту с дополнительным эффектом. Официальные колоды
+    // Paizo ("Critical Hit Deck"/"Critical Fumble Deck") — платный физический продукт, поэтому
+    // здесь курируемый набор эффектов в духе официальных карт (не дословный текст), тот же
+    // принцип "разовая подсказка ГМу, без сохранения", что и GenerateNpc.
+    private static readonly string[] CritCards =
+        [
+            "Отбросить — цель отброшена на 10 футов от вас и падает (Лежащий), если врезается в преграду.",
+            "Оглушить — цель Ошеломлена 1.",
+            "Кровотечение — цель получает состояние Кровотечение с уроном, равным половине урона от этого удара.",
+            "Ослепить — цель Ослеплена до конца своего следующего хода.",
+            "Обезоружить — если у цели есть оружие в руках, оно вылетает и падает в 10 футах.",
+            "Двойной укол — нанесите дополнительно урон, равный вашей характеристике силы/ловкости к этому удару.",
+            "Смертельная рана — цель получает состояние Ослабленный 1 до конца схватки.",
+            "Пробить защиту — щит цели (если есть) теряет прочность, равную нанесённому урону.",
+            "Оступиться — цель Лежащая и должна потратить действие, чтобы встать.",
+            "Идеальное попадание — эффект не срабатывает, просто эффектное описание удара по вкусу GM.",
+        ];
+
+    private static readonly string[] FumbleCards =
+        [
+            "Потеря равновесия — вы становитесь Лежащим.",
+            "Уронили оружие — ваше оружие падает у ваших ног.",
+            "Задели союзника — ближайший союзник в пределах досягаемости получает половину вашего урона от промаха.",
+            "Открылись — вы Ошеломлены 1 на свой следующий ход.",
+            "Испортили позицию — вы отступаете на 5 футов не по своей воле (если есть куда).",
+            "Сломали оружие — ваше оружие получает состояние Повреждено (пока не почините).",
+            "Потратили время впустую — ваше действие потрачено без эффекта, ничего худшего не происходит.",
+            "Растерялись — следующая ваша проверка до конца хода получает штраф −2.",
+        ];
+
+    public static string DrawCritCard(Random? random = null) => CritCards[(random ?? Random.Shared).Next(CritCards.Length)];
+    public static string DrawFumbleCard(Random? random = null) => FumbleCards[(random ?? Random.Shared).Next(FumbleCards.Length)];
+
     public sealed record Pf2eStatsModel
     {
         public string KeyAbility { get; set; } = "str";
         public int PerceptionRank { get; set; }
         public int ClassDcRank { get; set; }
+        // N.6 — владение категориями брони для формулы КЗ (ComputeArmorClass): ключи
+        // "unarmored"/"light"/"medium"/"heavy", те же значения ранга, что у SkillRanks
+        // (0/2/4/6/8 = untrained/trained/expert/master/legendary).
+        public Dictionary<string, int> ArmorProficiencyRanks { get; set; } = new() { ["unarmored"] = 0, ["light"] = 0, ["medium"] = 0, ["heavy"] = 0 };
+        // N.6 — Gradual Ability Boosts: сами значения характеристик (Str/Dex/...) редактируются
+        // на Character/Detail.razor вне PF2e-листа, эта система их не пересчитывает — только
+        // отмечает, за какие уровни повышение уже учтено (чтобы не забыть/не задвоить при +1
+        // за каждый уровень вместо +2 разом на 5/10/15/20).
+        public List<int> AbilityBoostLevels { get; set; } = [];
         public Dictionary<string, int> SaveRanks { get; set; } = new() { ["fortitude"] = 0, ["reflex"] = 0, ["will"] = 0 };
         public Dictionary<string, int> SkillRanks { get; set; } = [];
         public string? SpellcastingTradition { get; set; }
@@ -592,6 +996,17 @@ public static class Pf2eLookups
         public List<Pf2eFeat> Feats { get; set; } = [];
         public Dictionary<int, Pf2eSpellSlotLevel> SpellSlots { get; set; } = [];
         public List<Pf2eKnownSpell> KnownSpells { get; set; } = [];
+        public List<Pf2eKnownFormula> KnownFormulas { get; set; } = [];
+
+        // Полировка "экзотические предикаты" — PF2e-фиты используют сотни узких одноразовых
+        // предикатных флагов, привязанных к конкретным способностям/ритуалам/боевым формам
+        // (target:mark:*, spell-effect:*, battle-form:*, origin:*, disguise:* и десятки других
+        // уникальных для одного фита — их невозможно разумно перечислить в коде по одному).
+        // Вместо этого — ручной эскейп-хэтч: GM/игрок сам вписывает roll option строкой (то же
+        // самое, что предикат фита ожидает увидеть), она добавляется в BuildCombatRollOptions/
+        // RefreshFeatModifiersAsync наравне со всеми автоматическими — покрывает любой предикат,
+        // включая те, что появятся в будущем контенте, без правки кода под каждый новый случай.
+        public List<string> CustomRollOptions { get; set; } = [];
 
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 

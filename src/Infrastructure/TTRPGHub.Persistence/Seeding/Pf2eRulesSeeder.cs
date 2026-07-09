@@ -26,19 +26,28 @@ public sealed class Pf2eRulesSeeder(
             return;
         }
 
-        if (!await entryRepository.AnyAsync(system.Id, RuleCategory.Class, ct))
-        {
-            await entryRepository.AddRangeAsync(BuildClasses(system.Id), ct);
-            await unitOfWork.SaveChangesAsync(ct);
-            logger.LogInformation("Добавлены классы Pathfinder 2e");
-        }
+        await SeedMissingAsync(system.Id, RuleCategory.Class, BuildClasses(system.Id), "классов", ct);
+        await SeedMissingAsync(system.Id, RuleCategory.Race, BuildAncestries(system.Id), "предков (рас)", ct);
+    }
 
-        if (!await entryRepository.AnyAsync(system.Id, RuleCategory.Race, ct))
-        {
-            await entryRepository.AddRangeAsync(BuildAncestries(system.Id), ct);
-            await unitOfWork.SaveChangesAsync(ct);
-            logger.LogInformation("Добавлены предки (расы) Pathfinder 2e");
-        }
+    // Раньше здесь была проверка AnyAsync(category) — "если хоть одна запись есть, пропустить
+    // весь посев целиком". Это блокировало добавление новых классов/предков в список: на уже
+    // засеянной БД массив можно было расширять сколько угодно, ничего не попадало в базу.
+    // Проверка по каждому slug отдельно (много ли их — десятки, не тысячи) даёт настоящую
+    // идемпотентность: новые записи добавляются, существующие не трогаются и не дублируются.
+    private async Task SeedMissingAsync(
+        GameSystemId systemId, RuleCategory category, IEnumerable<RuleEntry> candidates, string label, CancellationToken ct)
+    {
+        var list = candidates.ToList();
+        var existingSlugs = (await entryRepository.GetBySlugsAsync(systemId, category, list.Select(e => e.Slug).ToList(), ct))
+            .Select(e => e.Slug).ToHashSet();
+        var missing = list.Where(e => !existingSlugs.Contains(e.Slug)).ToList();
+        if (missing.Count == 0)
+            return;
+
+        await entryRepository.AddRangeAsync(missing, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+        logger.LogInformation("Добавлено {Count} новых {Label} Pathfinder 2e", missing.Count, label);
     }
 
     private static IEnumerable<RuleEntry> BuildClasses(GameSystemId systemId)
@@ -85,6 +94,50 @@ public sealed class Pf2eRulesSeeder(
             ("alchemist", "Алхимик", "Интеллект", ["INT"], 8,
                 "Изобретатель, создающий на лету алхимические предметы — бомбы, эликсиры и мутагены — из пропитанных магией реагентов.",
                 "Пропитанные реагенты (создаваемые ежедневно алхимические предметы), исследование алхимика (бомбы/мутагены/эликсиры/поле хирурга), быстрая алхимия."),
+
+            // Ниже — классы, добавленные без RU-источника (по прямому запросу пользователя:
+            // "если чего-то нет на русском, добавляй на английском, переводами займусь позже").
+            // Текст написан своими словами (не дословная цитата книги правил), как и остальные
+            // записи в этом массиве — только факты (ключевая характеристика, HP, суть механики).
+            ("investigator", "Investigator", "Intelligence", ["INT"], 8,
+                "A methodical detective who studies a situation before acting, using Devise a Stratagem to line up a precise attack based on careful observation.",
+                "Devise a Stratagem (bonus to a planned attack after analyzing the situation), methodology (forensic medicine/empiricism/etc. shapes investigative style), keen recollection."),
+            ("magus", "Magus", "Intelligence", ["INT"], 8,
+                "A spellcaster-warrior who fuses weapon strikes and arcane spells into a single devastating action via Spellstrike.",
+                "Spellstrike (channel a spell through a weapon strike), arcane cantrips, spell combat, hybrid study specialization."),
+            ("oracle", "Oracle", "Charisma", ["CHA"], 8,
+                "A spontaneous divine spellcaster bound to a mystery granting unique revelations, balanced by a curse that worsens over time.",
+                "Mystery (defines bonus spells and revelations), oracular curse (escalating drawback with growing benefits), spontaneous divine spellcasting."),
+            ("swashbuckler", "Swashbuckler", "Dexterity", ["DEX"], 8,
+                "A flashy duelist who builds Panache through daring deeds and spends it to fuel finishing blows.",
+                "Panache (resource gained from stylish combat actions), finisher techniques, swashbuckler style (defines how Panache is earned)."),
+            ("thaumaturge", "Thaumaturge", "Charisma", ["CHA"], 8,
+                "An occult investigator who channels a bonded implement to exploit the weaknesses of monsters and spirits.",
+                "Esoteric lore (broad knowledge check for supernatural threats), implements (tome/lantern/mirror/etc. each grant unique exploits), first implement bond."),
+            ("witch", "Witch", "Intelligence", ["INT"], 6,
+                "A spellcaster granted arcane secrets by a mysterious patron, embodied in a familiar that carries the patron's will.",
+                "Patron theme (defines granted hex spells and lessons), familiar (required, carries patron abilities), prepared spellcasting."),
+            ("gunslinger", "Gunslinger", "Dexterity", ["DEX"], 10,
+                "A firearms and crossbow specialist who relies on a signature way of fighting (a way of the gun) to land precise, powerful shots.",
+                "Way of the gun (defines fighting style and reload bonus), singular expertise (deadly aim with one chosen weapon), reloading actions."),
+            ("inventor", "Inventor", "Intelligence", ["INT"], 8,
+                "A tinkerer who builds a signature innovation — an armor, weapon, or construct companion — and improvises breakthroughs mid-combat.",
+                "Innovation (the constructed device that defines the class), overdrive (risk a malfunction for a burst of power), unstable actions."),
+            ("summoner", "Summoner", "Charisma", ["CHA"], 10,
+                "Bonded permanently to an eidolon — a semi-independent creature that fights alongside (and shares actions with) the summoner.",
+                "Eidolon (linked creature sharing the summoner's turn), shared HP pool with the eidolon, tandem spellcasting."),
+            ("psychic", "Psychic", "Intelligence, Wisdom, or Charisma", ["INT", "WIS", "CHA"], 8,
+                "A spontaneous occult spellcaster whose mind can overflow into an Unleash Psyche state, boosting cantrips at the cost of exposing the psyche to attack.",
+                "Unleash Psyche (empowered cantrip once per turn while active, but weakens mental defenses), subconscious mind (defines bonus spells), amped cantrips."),
+            ("kineticist", "Kineticist", "Constitution", ["CON"], 8,
+                "Channels raw elemental power (air/earth/fire/water/wood/metal) directly through the body instead of casting traditional spells.",
+                "Elemental gates (chosen elements determine available impulses), impulses (at-will elemental abilities, no spell slots), kinetic aura."),
+            ("guardian", "Guardian", "Strength", ["STR"], 10,
+                "A frontline protector who plants a defensive stance and punishes enemies who ignore the ally standing behind them.",
+                "Guardian's stance (defensive posture with reactive punishment), block, taunt-style aggro mechanics protecting allies."),
+            ("exemplar", "Exemplar", "Strength or Dexterity", ["STR", "DEX"], 10,
+                "A mortal touched by divine spark, channeling legendary feats of heroism through personal relics called ikons.",
+                "Ikons (personal legendary items that grow in power), transcendence (surge of divine might), spark (fuels ikon abilities)."),
         ];
 
         return data.Select(c => RuleEntry.Create(
@@ -98,8 +151,15 @@ public sealed class Pf2eRulesSeeder(
                 hp_per_level = c.hpPerLevel,
                 class_features = c.features
             }),
-            tags: ["класс", "PF2e"], isHomebrew: false, source: "PF2e SRD"));
+            tags: UntranslatedClassSlugs.Contains(c.slug) ? ["класс", "PF2e", "untranslated"] : ["класс", "PF2e"],
+            isHomebrew: false, source: "PF2e SRD"));
     }
+
+    // Классы, добавленные без RU-перевода (см. комментарий в BuildClasses) — помечены тегом
+    // "untranslated", чтобы будущий перевод мог найти их без ручного перебора.
+    private static readonly HashSet<string> UntranslatedClassSlugs =
+        ["investigator", "magus", "oracle", "swashbuckler", "thaumaturge", "witch",
+         "gunslinger", "inventor", "summoner", "psychic", "kineticist", "guardian", "exemplar"];
 
     private static IEnumerable<RuleEntry> BuildAncestries(GameSystemId systemId)
     {
@@ -132,6 +192,30 @@ public sealed class Pf2eRulesSeeder(
                 "Народ гиеноподобных гуманоидов, объединённый стайными узами и почитанием силы. Изгнанники часто находят новый дом среди других рас."),
             ("hobgoblin", "Хобгоблин", 8, "Среднее", 25, "Телосложение, Интеллект", ["CON", "INT"], "Харизма", "CHA",
                 "Дисциплинированный и организованный народ, ценящий порядок и мастерство ремесла выше всего — включая военное дело."),
+
+            // Ниже — предки, добавленные без RU-перевода (см. комментарий в BuildClasses про
+            // "англ. пока нет RU-источника"). Size/speed указаны на английском ("Small"/"Medium")
+            // — маппинг size→числовой код в конце файла учитывает оба варианта написания.
+            ("catfolk", "Catfolk", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Wisdom", "WIS",
+                "A curious, agile people with feline features and a taste for adventure — quick reflexes and an even quicker wit."),
+            ("kobold", "Kobold", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Constitution", "CON",
+                "Small dragon-kin with a talent for traps and tunnels, blessed with darkvision and a fierce sense of clan loyalty."),
+            ("lizardfolk", "Lizardfolk", 8, "Medium", 25, "Strength, Wisdom", ["STR", "WIS"], "Intelligence", "INT",
+                "A reptilian people at home in swamp and jungle alike, strong swimmers who value pragmatism and the natural order."),
+            ("ratfolk", "Ratfolk", 6, "Small", 25, "Dexterity, Intelligence", ["DEX", "INT"], "Strength", "STR",
+                "A resourceful, communal people with keen senses and a knack for tinkering, thriving wherever they settle."),
+            ("leshy", "Leshy", 8, "Small", 25, "Constitution, Wisdom", ["CON", "WIS"], "Charisma", "CHA",
+                "A plant creature grown from a magic seed, needing regular watering to stay healthy — tied closely to the natural world that made it."),
+            ("fetchling", "Fetchling", 8, "Medium", 25, "Dexterity, Intelligence", ["DEX", "INT"], "Charisma", "CHA",
+                "Humanoids touched by the Shadow Plane, comfortable in darkness and possessing low-light vision inherited from their ancestry."),
+            ("automaton", "Automaton", 8, "Medium", 25, "Any two (free)", ["ANY", "ANY"], "Нет", null,
+                "A living construct animated by a soul bound into a mechanical body, immune to many conditions that trouble living creatures."),
+            ("kitsune", "Kitsune", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Constitution", "CON",
+                "A shapechanging people descended from fox spirits, able to take a human-like form while retaining fox-like features and instincts."),
+            ("grippli", "Grippli", 6, "Small", 25, "Dexterity, Wisdom", ["DEX", "WIS"], "Strength", "STR",
+                "A frog-like people at home in swamps and jungle canopies, natural climbers and jumpers with a talent for camouflage."),
+            ("azarketi", "Azarketi", 8, "Medium", 25, "Constitution, Wisdom", ["CON", "WIS"], "Intelligence", "INT",
+                "An amphibious coastal people equally at home on land or underwater, with a swim speed and a deep connection to the sea."),
         ];
 
         return data.Select(a => RuleEntry.Create(
@@ -141,7 +225,7 @@ public sealed class Pf2eRulesSeeder(
             statsJson: JsonSerializer.Serialize(new
             {
                 hp = a.hp,
-                size = a.size.StartsWith("Мал", StringComparison.Ordinal) ? 1 : 2,
+                size = a.size.StartsWith("Мал", StringComparison.Ordinal) || a.size.Equals("Small", StringComparison.OrdinalIgnoreCase) ? 1 : 2,
                 speed = a.speed,
                 boosts = a.boosts,
                 boost_codes = a.boostCodes,
@@ -149,6 +233,12 @@ public sealed class Pf2eRulesSeeder(
                 flaw_code = a.flawCode,
                 traits = new[] { a.slug, "humanoid" },
             }),
-            tags: ["раса", "PF2e"], isHomebrew: false, source: "PF2e SRD"));
+            tags: UntranslatedAncestrySlugs.Contains(a.slug) ? ["раса", "PF2e", "untranslated"] : ["раса", "PF2e"],
+            isHomebrew: false, source: "PF2e SRD"));
     }
+
+    // Предки, добавленные без RU-перевода (см. UntranslatedClassSlugs выше — тот же принцип).
+    private static readonly HashSet<string> UntranslatedAncestrySlugs =
+        ["catfolk", "kobold", "lizardfolk", "ratfolk", "leshy", "fetchling",
+         "automaton", "kitsune", "grippli", "azarketi"];
 }

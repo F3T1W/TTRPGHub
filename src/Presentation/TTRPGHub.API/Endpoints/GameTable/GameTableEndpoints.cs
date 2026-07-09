@@ -22,6 +22,8 @@ using TTRPGHub.Features.GameTable.Commands.PauseTableAudio;
 using TTRPGHub.Features.GameTable.Commands.PlayTableAudio;
 using TTRPGHub.Features.GameTable.Commands.RemoveTableToken;
 using TTRPGHub.Features.GameTable.Commands.RollDice;
+using TTRPGHub.Features.GameTable.Commands.RollEncounterTable;
+using TTRPGHub.Features.GameTable.Commands.SetEncounterTable;
 using TTRPGHub.Features.GameTable.Commands.SeekTableAudio;
 using TTRPGHub.Features.GameTable.Commands.SendChatMessage;
 using TTRPGHub.Features.GameTable.Commands.SendWhisper;
@@ -32,11 +34,13 @@ using TTRPGHub.Features.GameTable.Commands.SetLights;
 using TTRPGHub.Features.GameTable.Commands.SetGridCellSize;
 using TTRPGHub.Features.GameTable.Commands.SetShowcaseImage;
 using TTRPGHub.Features.GameTable.Commands.SetTableTrack;
+using TTRPGHub.Features.GameTable.Commands.SetVariantRules;
 using TTRPGHub.Features.GameTable.Commands.SetTokenVisibility;
 using TTRPGHub.Features.GameTable.Commands.UpdateTokenStats;
 using TTRPGHub.Features.GameTable.Commands.UploadShowcaseImage;
 using TTRPGHub.Features.GameTable.Commands.UploadTableTrack;
 using TTRPGHub.Features.GameTable.Commands.UploadTokenImage;
+using TTRPGHub.Features.GameTable.Commands.ImportAdventurePdf;
 using TTRPGHub.Features.GameTable.Queries.GetSessionCharacters;
 using TTRPGHub.Features.GameTable.Queries.GetTableState;
 
@@ -163,7 +167,8 @@ internal static class GameTableEndpoints
         {
             var result = await sender.Send(new UpdateTokenStatsCommand(
                 sessionId, tokenId, request.CurrentHp, request.Width, request.Height, request.Rotation,
-                request.SetInitiative, request.Initiative, request.HasDarkvision, request.HasLowLightVision), ct);
+                request.SetInitiative, request.Initiative, request.HasDarkvision, request.HasLowLightVision,
+                request.CurrentStamina, request.MaxStamina), ct);
             return result.ToResponse();
         })
         .WithSummary("Изменить HP/размер/поворот/инициативу/тёмное зрение жетона");
@@ -206,6 +211,29 @@ internal static class GameTableEndpoints
             return result.ToResponse();
         })
         .WithSummary("Включить/выключить туман войны и задать радиус зрения (только ГМ)");
+
+        group.MapPut("/{sessionId:guid}/variant-rules", async (Guid sessionId, SetVariantRulesRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new SetVariantRulesCommand(
+                sessionId, request.ProficiencyWithoutLevel, request.AutomaticBonusProgression,
+                request.FreeArchetype, request.GradualAbilityBoosts, request.StaminaVariant), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Переключить вариативные правила сессии (только ГМ)");
+
+        group.MapPut("/{sessionId:guid}/encounter-table", async (Guid sessionId, SetEncounterTableRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new SetEncounterTableCommand(sessionId, request.EncounterTableJson), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Задать таблицу случайных встреч сессии (только ГМ)");
+
+        group.MapPost("/{sessionId:guid}/encounter-table/roll", async (Guid sessionId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new RollEncounterTableCommand(sessionId), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Бросить таблицу случайных встреч сессии");
 
         group.MapPut("/{sessionId:guid}/environment", async (Guid sessionId, SetSceneEnvironmentRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -337,6 +365,17 @@ internal static class GameTableEndpoints
         })
         .WithSummary("Опубликовать/скрыть запись журнала от игроков (только ГМ)");
 
+        // M.1 — импорт купленного PDF-приключения: приватно в Journal этой сессии, картинки-карты
+        // загружаются в хранилище, но сценами не становятся автоматически (см. командный файл).
+        group.MapPost("/{sessionId:guid}/journal/import-pdf", async (Guid sessionId, IFormFile file, ISender sender, CancellationToken ct) =>
+        {
+            var command = new ImportAdventurePdfCommand(sessionId, file.OpenReadStream(), file.FileName, file.Length);
+            var result = await sender.Send(command, ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Импортировать приключение из PDF (текст постранично в журнал, карты — в хранилище; только ГМ)")
+        .DisableAntiforgery();
+
         group.MapPut("/{sessionId:guid}/journal/{entryId:guid}/visibility", async (Guid sessionId, Guid entryId, SetJournalEntryVisibilityRequest request, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new SetJournalEntryVisibilityCommand(sessionId, entryId, request.VisibleToUserIds), ct);
@@ -367,10 +406,16 @@ internal sealed record UpdateTokenStatsRequest(
     int? CurrentHp, int? Width, int? Height, int? Rotation,
     bool SetInitiative = false, int? Initiative = null,
     bool? HasDarkvision = null,
-    bool? HasLowLightVision = null);
+    bool? HasLowLightVision = null,
+    int? CurrentStamina = null,
+    int? MaxStamina = null);
 internal sealed record SetTokenVisibilityRequest(List<Guid>? VisibleToUserIds);
 internal sealed record SetGridCellSizeRequest(int Px);
 internal sealed record SetFogSettingsRequest(bool Enabled, int VisionRadiusFeet);
+internal sealed record SetVariantRulesRequest(
+    bool ProficiencyWithoutLevel, bool AutomaticBonusProgression, bool FreeArchetype,
+    bool GradualAbilityBoosts, bool StaminaVariant);
+internal sealed record SetEncounterTableRequest(string? EncounterTableJson);
 internal sealed record SetSceneEnvironmentRequest(string? TerrainTagsJson, string AmbientLighting);
 internal sealed record SetWallsRequest(string? WallsJson);
 internal sealed record SetLightsRequest(string? LightsJson);

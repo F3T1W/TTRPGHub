@@ -161,6 +161,10 @@
                 </div>
             }
 
+            @if (_actionMessage is not null)
+            {
+                <div class="small text-muted mb-2">@_actionMessage</div>
+            }
             @if (_ratings is null || _ratings.TotalCount == 0)
             {
                 <p class="text-muted small mb-0">Отзывов пока нет.</p>
@@ -190,6 +194,13 @@
                                             <button class="btn btn-sm btn-link p-0" style="color:var(--ta-border)"
                                                     @onclick="() => DeleteRatingAsync(r.Id)">
                                                 <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-link p-0" style="color:var(--ta-border)"
+                                                    title="Пожаловаться" @onclick="() => ReportRatingAsync(r.Id)">
+                                                <i class="bi bi-flag"></i>
                                             </button>
                                         }
                                     </Authorized>

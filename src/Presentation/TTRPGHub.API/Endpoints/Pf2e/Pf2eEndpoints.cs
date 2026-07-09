@@ -1,5 +1,9 @@
 using MediatR;
 using TTRPGHub.Extensions;
+using TTRPGHub.Features.Pf2e.Hazards.Queries.GetHazardDetail;
+using TTRPGHub.Features.Pf2e.Hazards.Queries.GetHazards;
+using TTRPGHub.Features.Pf2e.Vehicles.Queries.GetVehicleDetail;
+using TTRPGHub.Features.Pf2e.Vehicles.Queries.GetVehicles;
 using TTRPGHub.Features.Pf2e.Monsters.Queries.GetMonsterDetail;
 using TTRPGHub.Features.Pf2e.Monsters.Queries.GetMonsters;
 using TTRPGHub.Features.Pf2e.Spells.Queries.GetSpellDetail;
@@ -55,6 +59,34 @@ public static class Pf2eEndpoints
             var svg = Services.Pf2eTokenArtGenerator.GenerateSvg(monster.Slug, monster.Name, monster.Traits);
             return Results.Content(svg, "image/svg+xml");
         });
+
+        // N.1 — hazards (ловушки/опасности): категория контента, которой не было вообще.
+        group.MapGet("/hazards", async (
+            [AsParameters] Pf2eHazardSearchParams p, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetPf2eHazardsQuery(p.Search, p.Level, p.Page, p.PageSize), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
+
+        group.MapGet("/hazards/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetPf2eHazardDetailQuery(id), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
+
+        // N.9 — vehicles (транспорт): категория контента, которой не было вообще.
+        group.MapGet("/vehicles", async (
+            [AsParameters] Pf2eVehicleSearchParams p, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetPf2eVehiclesQuery(p.Search, p.Level, p.Page, p.PageSize), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
+
+        group.MapGet("/vehicles/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetPf2eVehicleDetailQuery(id), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
     }
 }
 
@@ -65,3 +97,9 @@ public record Pf2eSpellSearchParams(
 public record Pf2eMonsterSearchParams(
     string? Search, string? Trait, string? Size, int? Level,
     int Page = 1, int PageSize = 30);
+
+public record Pf2eHazardSearchParams(
+    string? Search, int? Level, int Page = 1, int PageSize = 30);
+
+public record Pf2eVehicleSearchParams(
+    string? Search, int? Level, int Page = 1, int PageSize = 30);

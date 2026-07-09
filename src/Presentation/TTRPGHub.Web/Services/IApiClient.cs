@@ -94,6 +94,33 @@ public sealed record CharacterDetailDto(
 
 public sealed record UpdatePf2eStatsRequest(string StatsJson);
 
+// N.3 — Pathfinder Society Chronicle Sheets
+public sealed record ChronicleDto(
+    Guid Id, string ScenarioName, DateOnly SessionDate, string? GmName, string? Faction,
+    int GoldEarned, int AchievementPoints, string? BoonsUsed, string? Notes);
+
+public sealed record CreateChronicleRequest(
+    string ScenarioName, DateOnly SessionDate, string? GmName, string? Faction,
+    int GoldEarned, int AchievementPoints, string? BoonsUsed, string? Notes);
+
+public sealed record CreateChronicleResponse(Guid ChronicleId);
+
+// N.8 — Companion/Familiar/Animal Companion листы
+public sealed record CompanionDto(
+    Guid Id, string Name, string Kind, int Level,
+    int MaxHitPoints, int CurrentHitPoints, int? ArmorClass,
+    string? Speed, string? AttacksText, string? AbilitiesText, string? Notes);
+
+public sealed record CreateCompanionRequest(
+    string Name, string Kind, int Level, int MaxHitPoints, int? ArmorClass,
+    string? Speed, string? AttacksText, string? AbilitiesText, string? Notes);
+
+public sealed record CreateCompanionResponse(Guid CompanionId);
+
+public sealed record UpdateCompanionRequest(
+    string Name, string Kind, int Level, int MaxHitPoints, int CurrentHitPoints, int? ArmorClass,
+    string? Speed, string? AttacksText, string? AbilitiesText, string? Notes);
+
 public sealed record UpdateCharacterRequest(
     Guid CharacterId,
     string Name,
@@ -165,6 +192,30 @@ public interface IApiClient
 
     [Put("/api/characters/{id}/pf2e-stats")]
     Task UpdatePf2eStatsAsync(Guid id, [Body] UpdatePf2eStatsRequest request, CancellationToken ct = default);
+
+    [Get("/api/characters/{id}/chronicles")]
+    Task<List<ChronicleDto>> GetChroniclesAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/characters/{id}/chronicles")]
+    Task<CreateChronicleResponse> CreateChronicleAsync(Guid id, [Body] CreateChronicleRequest request, CancellationToken ct = default);
+
+    [Delete("/api/characters/{id}/chronicles/{chronicleId}")]
+    Task DeleteChronicleAsync(Guid id, Guid chronicleId, CancellationToken ct = default);
+
+    [Get("/api/characters/{id}/companions")]
+    Task<List<CompanionDto>> GetCompanionsAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/characters/{id}/companions")]
+    Task<CreateCompanionResponse> CreateCompanionAsync(Guid id, [Body] CreateCompanionRequest request, CancellationToken ct = default);
+
+    [Put("/api/characters/{id}/companions/{companionId}")]
+    Task UpdateCompanionAsync(Guid id, Guid companionId, [Body] UpdateCompanionRequest request, CancellationToken ct = default);
+
+    [Delete("/api/characters/{id}/companions/{companionId}")]
+    Task DeleteCompanionAsync(Guid id, Guid companionId, CancellationToken ct = default);
+
+    [Get("/api/companions/{companionId}")]
+    Task<CompanionDto> GetCompanionByIdAsync(Guid companionId, CancellationToken ct = default);
 
     [Post("/api/characters/{id}/avatar")]
     [Multipart]
@@ -337,6 +388,24 @@ public interface IApiClient
 
     [Get("/api/v1/pf2e/monsters/{id}")]
     Task<Pf2eMonsterDetailDto> GetPf2eMonsterAsync(Guid id, CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/hazards")]
+    Task<Pf2eHazardPagedResult> GetPf2eHazardsAsync(
+        [Query] string? search = null, [Query] int? level = null,
+        [Query] int page = 1, [Query] int pageSize = 30,
+        CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/hazards/{id}")]
+    Task<Pf2eHazardDetailDto> GetPf2eHazardAsync(Guid id, CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/vehicles")]
+    Task<Pf2eVehiclePagedResult> GetPf2eVehiclesAsync(
+        [Query] string? search = null, [Query] int? level = null,
+        [Query] int page = 1, [Query] int pageSize = 30,
+        CancellationToken ct = default);
+
+    [Get("/api/v1/pf2e/vehicles/{id}")]
+    Task<Pf2eVehicleDetailDto> GetPf2eVehicleAsync(Guid id, CancellationToken ct = default);
 
     // ── Users ─────────────────────────────────────────────────────────────────
 
@@ -518,6 +587,15 @@ public interface IApiClient
     [Put("/api/table/{sessionId}/environment")]
     Task SetTableSceneEnvironmentAsync(Guid sessionId, [Body] SetSceneEnvironmentRequest request, CancellationToken ct = default);
 
+    [Put("/api/table/{sessionId}/variant-rules")]
+    Task SetTableVariantRulesAsync(Guid sessionId, [Body] SetVariantRulesRequest request, CancellationToken ct = default);
+
+    [Put("/api/table/{sessionId}/encounter-table")]
+    Task SetTableEncounterTableAsync(Guid sessionId, [Body] SetEncounterTableRequest request, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/encounter-table/roll")]
+    Task<TableMessageDto> RollTableEncounterTableAsync(Guid sessionId, CancellationToken ct = default);
+
     [Put("/api/table/{sessionId}/walls")]
     Task SetTableWallsAsync(Guid sessionId, [Body] SetWallsRequest request, CancellationToken ct = default);
 
@@ -575,6 +653,10 @@ public interface IApiClient
     [Delete("/api/table/{sessionId}/journal/{entryId}")]
     Task DeleteJournalEntryAsync(Guid sessionId, Guid entryId, CancellationToken ct = default);
 
+    [Post("/api/table/{sessionId}/journal/import-pdf")]
+    [Multipart]
+    Task<ImportAdventurePdfResponse> ImportAdventurePdfAsync(Guid sessionId, [AliasAs("file")] StreamPart file, CancellationToken ct = default);
+
     // ── Rules Reference 2.0 (системно-независимый справочник) ──────────────────
 
     [Get("/api/v1/rules/systems")]
@@ -631,6 +713,15 @@ public interface IApiClient
     [Patch("/api/tickets/{id}/status")]
     Task ChangeTicketStatusAsync(Guid id, [Body] ChangeTicketStatusRequest request, CancellationToken ct = default);
 
+    [Get("/api/tickets/{id}")]
+    Task<TicketDto> GetTicketByIdAsync(Guid id, CancellationToken ct = default);
+
+    [Get("/api/tickets/{id}/comments")]
+    Task<List<TicketCommentDto>> GetTicketCommentsAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/tickets/{id}/comments")]
+    Task<Guid> AddTicketCommentAsync(Guid id, [Body] AddTicketCommentRequest request, CancellationToken ct = default);
+
     // ── Модерация ─────────────────────────────────────────────────────────────────
 
     [Get("/api/v1/users/admin")]
@@ -648,12 +739,48 @@ public interface IApiClient
     [Patch("/api/v1/reports/{id}/resolve")]
     Task ResolveReportAsync(Guid id, [Body] ResolveReportRequest request, CancellationToken ct = default);
 
+    [Get("/api/v1/moderation-log")]
+    Task<List<ModerationLogEntryDto>> GetModerationLogAsync(CancellationToken ct = default);
+
     [Delete("/api/v1/forum/topics/{topicId}")]
     Task DeleteForumTopicAsync(Guid topicId, CancellationToken ct = default);
 
     [Delete("/api/v1/forum/posts/{postId}")]
     Task DeleteForumPostAsync(Guid postId, CancellationToken ct = default);
+
+    [Put("/api/v1/forum/topics/{topicId}/pin")]
+    Task SetForumTopicPinnedAsync(Guid topicId, [Body] SetPinnedRequest request, CancellationToken ct = default);
+
+    [Put("/api/v1/forum/topics/{topicId}/lock")]
+    Task SetForumTopicLockedAsync(Guid topicId, [Body] SetLockedRequest request, CancellationToken ct = default);
+
+    // K.7 — макросы: личная библиотека, не привязана к сессии (см. Macro.cs).
+    [Get("/api/v1/macros")]
+    Task<List<MacroDto>> GetMyMacrosAsync(CancellationToken ct = default);
+
+    [Post("/api/v1/macros")]
+    Task<MacroDto> CreateMacroAsync([Body] CreateMacroRequest request, CancellationToken ct = default);
+
+    [Put("/api/v1/macros/{id}")]
+    Task UpdateMacroAsync(Guid id, [Body] UpdateMacroRequest request, CancellationToken ct = default);
+
+    [Delete("/api/v1/macros/{id}")]
+    Task DeleteMacroAsync(Guid id, CancellationToken ct = default);
+
+    [Put("/api/v1/macros/{id}/hotbar-slot")]
+    Task SetMacroHotbarSlotAsync(Guid id, [Body] SetHotbarSlotRequest request, CancellationToken ct = default);
+
+    [Multipart]
+    [Post("/api/v1/macros/import/foundry")]
+    Task<List<MacroDto>> ImportFoundryMacrosAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
 }
+
+public sealed record MacroDto(
+    Guid Id, string Name, string? ImageUrl, string Type, string Command,
+    int HotbarSlot, DateTime CreatedAt, DateTime UpdatedAt);
+public sealed record CreateMacroRequest(string Name, string? ImageUrl, string Type, string Command);
+public sealed record UpdateMacroRequest(string Name, string? ImageUrl, string Type, string Command);
+public sealed record SetHotbarSlotRequest(int Slot);
 
 public sealed record AvatarUploadResponse(string Url);
 
@@ -852,10 +979,34 @@ public sealed record Pf2eMonsterDetailDto(
     int Intelligence, int Wisdom, int Charisma,
     int ArmorClass, int Fortitude, int Reflex, int Will, int HitPoints,
     string Speed, string? Attacks, string? Abilities, string Source, string? AttacksJson,
-    string? ResistancesJson, string? WeaknessesJson);
+    string? ResistancesJson, string? WeaknessesJson, string? ImmunitiesJson, string? AurasJson);
 
 public sealed record Pf2eMonsterPagedResult(
     List<Pf2eMonsterSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
+
+public sealed record Pf2eHazardSummaryDto(
+    Guid Id, string Slug, string Name, string NameRu, int Level, string Traits, int StealthDc);
+
+public sealed record Pf2eHazardDetailDto(
+    Guid Id, string Slug, string Name, string NameRu, int Level, string Traits,
+    int StealthDc, string? StealthNote, string? Description, string? DisableText,
+    int? ArmorClass, int? Fortitude, int? Reflex, int? Hardness, int? HitPoints,
+    string? Immunities, string? AbilitiesText, string? ResetText, string Source);
+
+public sealed record Pf2eHazardPagedResult(
+    List<Pf2eHazardSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
+
+public sealed record Pf2eVehicleSummaryDto(
+    Guid Id, string Slug, string Name, string NameRu, int Level, string? Size, int? ArmorClass, int? HitPoints);
+
+public sealed record Pf2eVehicleDetailDto(
+    Guid Id, string Slug, string Name, string NameRu, int Level, string? Size, string? Price,
+    string? Dimensions, string? Crew, string? Passengers, string? PilotingCheck,
+    int? ArmorClass, int? Fortitude, int? Hardness, int? HitPoints, int? BrokenThreshold,
+    string? Immunities, string? Speed, string? Collision, string? AbilitiesText, string Source);
+
+public sealed record Pf2eVehiclePagedResult(
+    List<Pf2eVehicleSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
 
 // ── Users ─────────────────────────────────────────────────────────────────────
 
@@ -997,7 +1148,8 @@ public sealed record TableTokenDto(
     double X, double Y, int Width, int Height, int Rotation, Guid? OwnerId, bool CanMove,
     string CombatantType, Guid? CombatantId, int? CurrentHp, int? MaxHp, int? ArmorClass,
     List<TokenConditionDto> Conditions, int? Initiative, bool HasDarkvision, bool HasLowLightVision,
-    List<Guid>? VisibleToUserIds);
+    List<Guid>? VisibleToUserIds,
+    int? CurrentStamina = null, int? MaxStamina = null);
 
 public sealed record TokenConditionDto(Guid Id, string Slug, string Name, int? Value);
 public sealed record ApplyConditionRequest(string Slug, string Name, int? Value);
@@ -1015,7 +1167,9 @@ public sealed record TableStateDto(
     bool CombatActive, int CombatRound, Guid? CombatTurnTokenId,
     string? LightsJson,
     string? TerrainTagsJson, string AmbientLighting,
-    List<SceneSummaryDto> Scenes, Guid ActiveSceneId);
+    List<SceneSummaryDto> Scenes, Guid ActiveSceneId,
+    bool ProficiencyWithoutLevel, bool AutomaticBonusProgression, bool FreeArchetype,
+    bool GradualAbilityBoosts, bool StaminaVariant, string? EncounterTableJson);
 
 public sealed record SendChatRequest(string Content);
 public sealed record RollDiceRequest(string Expression, int? Dc = null, string? Label = null);
@@ -1031,10 +1185,16 @@ public sealed record UpdateTokenStatsRequest(
     int? CurrentHp, int? Width, int? Height, int? Rotation,
     bool SetInitiative = false, int? Initiative = null,
     bool? HasDarkvision = null,
-    bool? HasLowLightVision = null);
+    bool? HasLowLightVision = null,
+    int? CurrentStamina = null,
+    int? MaxStamina = null);
 public sealed record SetTokenVisibilityRequest(List<Guid>? VisibleToUserIds);
 public sealed record SetGridCellSizeRequest(int Px);
 public sealed record SetFogSettingsRequest(bool Enabled, int VisionRadiusFeet);
+public sealed record SetVariantRulesRequest(
+    bool ProficiencyWithoutLevel, bool AutomaticBonusProgression, bool FreeArchetype,
+    bool GradualAbilityBoosts, bool StaminaVariant);
+public sealed record SetEncounterTableRequest(string? EncounterTableJson);
 public sealed record SetSceneEnvironmentRequest(string? TerrainTagsJson, string AmbientLighting);
 public sealed record SetWallsRequest(string? WallsJson);
 public sealed record SetLightsRequest(string? LightsJson);
@@ -1048,6 +1208,8 @@ public sealed record CreateJournalEntryRequest(
     string Title, string ContentMarkdown, Guid? ParentId = null, Guid? CampaignId = null);
 public sealed record SetJournalEntryVisibilityRequest(List<Guid>? VisibleToUserIds);
 public sealed record SetJournalEntryPublishedRequest(bool Published);
+public sealed record ImportAdventurePdfResponse(Guid FolderEntryId, int PagesImported, List<ImportedMapImageDto> Images);
+public sealed record ImportedMapImageDto(int PageNumber, string Url, int Width, int Height);
 public sealed record SessionCharacterDto(
     Guid Id, string Name, string? AvatarUrl, Guid OwnerId, string OwnerUsername,
     int CurrentHitPoints, int MaxHitPoints, int ArmorClass);
@@ -1102,6 +1264,8 @@ public sealed record PagedTicketsResult(List<TicketDto> Items, int Total, int Pa
 }
 
 public sealed record ChangeTicketStatusRequest(string Status);
+public sealed record AddTicketCommentRequest(string Body);
+public sealed record TicketCommentDto(Guid Id, Guid TicketId, Guid AuthorId, string AuthorUsername, string Body, DateTime CreatedAt);
 
 // ── Модерация ─────────────────────────────────────────────────────────────────
 
@@ -1115,9 +1279,15 @@ public sealed record AdminUserPageDto(List<AdminUserDto> Items, int Total, int P
 public sealed record ChangeRoleRequest(string Role);
 
 public sealed record CreateReportRequest(string EntityType, Guid EntityId, string Reason);
+public sealed record SetPinnedRequest(bool Pinned);
+public sealed record SetLockedRequest(bool Locked);
 
 public sealed record ContentReportDto(
     Guid Id, string EntityType, Guid EntityId, string Reason,
     Guid ReporterId, string ReporterUsername, DateTime CreatedAt);
 
 public sealed record ResolveReportRequest(string Status);
+
+public sealed record ModerationLogEntryDto(
+    Guid Id, Guid ActorUserId, string ActorUsername, string Action,
+    string TargetType, Guid TargetId, DateTime CreatedAt, string? Details);

@@ -23,7 +23,7 @@
                         {
                             <div class="ta-card p-2 mb-2" draggable="true"
                                  @ondragstart="() => _draggedId = t.Id">
-                                <div class="fw-semibold small">@t.Title</div>
+                                <a href="/tickets/@t.Id" class="fw-semibold small text-decoration-none" style="color:var(--ta-accent-light)">@t.Title</a>
                                 <div class="text-muted" style="font-size:0.75rem;">@t.CreatedAt.ToLocalTime().ToString("dd.MM HH:mm")</div>
                                 <p class="mb-1 small">@t.Description</p>
                                 @if (t.ContactInfo is not null)

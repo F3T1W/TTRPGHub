@@ -29,6 +29,7 @@ public static class DependencyInjection
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICharacterRepository, CharacterRepository>();
+        services.AddScoped<ICompanionRepository, CompanionRepository>();
         services.AddScoped<IGameSessionRepository, GameSessionRepository>();
         services.AddScoped<ICampaignRepository, CampaignRepository>();
         services.AddScoped<ISessionNoteRepository, SessionNoteRepository>();
@@ -38,6 +39,9 @@ public static class DependencyInjection
         services.AddScoped<IDnd5eMonsterRepository, Dnd5eMonsterRepository>();
         services.AddScoped<IPf2eSpellRepository, Pf2eSpellRepository>();
         services.AddScoped<IPf2eMonsterRepository, Pf2eMonsterRepository>();
+        services.AddScoped<IPf2eHazardRepository, Pf2eHazardRepository>();
+        services.AddScoped<IPf2eVehicleRepository, Pf2eVehicleRepository>();
+        services.AddScoped<IPathfinderSocietyChronicleRepository, PathfinderSocietyChronicleRepository>();
         services.AddScoped<IEmailConfirmationTokenRepository, EmailConfirmationTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IForumCategoryRepository, ForumCategoryRepository>();
@@ -55,10 +59,13 @@ public static class DependencyInjection
         services.AddScoped<ITableTokenRepository, TableTokenRepository>();
         services.AddScoped<ISceneRepository, SceneRepository>();
         services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
+        services.AddScoped<IMacroRepository, MacroRepository>();
         services.AddScoped<IGameSystemRepository, GameSystemRepository>();
         services.AddScoped<IRuleEntryRepository, RuleEntryRepository>();
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
+        services.AddScoped<ITicketCommentRepository, TicketCommentRepository>();
         services.AddScoped<IContentReportRepository, ContentReportRepository>();
+        services.AddScoped<IModerationLogRepository, ModerationLogRepository>();
 
         services.AddHttpClient<GoogleTranslateService>();
         services.AddScoped<ITranslationService, GoogleTranslateService>();

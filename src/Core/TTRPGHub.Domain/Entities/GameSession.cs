@@ -28,6 +28,42 @@ public sealed class GameSession : Entity<GameSessionId>
     public double AudioPositionSeconds { get; private set; }
     public DateTime AudioUpdatedAt { get; private set; }
 
+    // N.6 — вариативные правила PF2e переключаются на уровне всей сессии (не сцены — это не
+    // свойство конкретной карты, как туман/сетка), формулы читают флаг через TableStateDto.
+    // Proficiency Without Level — бонус владения не включает уровень персонажа (Pf2eLookups.Bonus).
+    public bool ProficiencyWithoutLevel { get; private set; }
+
+    // Automatic Bonus Progression — числовые бонусы к атаке/КЗ/спасброскам/Внимательности от
+    // уровня вместо рун на оружии/доспехе (Pf2eLookups.AbpBonus/ComputeArmorClass).
+    public bool AutomaticBonusProgression { get; private set; }
+
+    // Free Archetype — персонаж получает дополнительный фит архетипа на каждом чётном уровне
+    // (2,4,6...), не тратя обычный классовый слот. Считается по Pf2eFeat.Source == "archetype"
+    // (см. Pf2eLookups.FeatSources) — сколько фитов игрок разметил как взятые из архетипного
+    // слота против Pf2eLookups.ExpectedFreeArchetypeFeats(level).
+    public bool FreeArchetype { get; private set; }
+
+    // Gradual Ability Boosts — вместо +2 к четырём характеристикам разом на 5/10/15/20 уровне
+    // персонаж получает +1 на каждом уровне. Систему повышений характеристик как таковую (сами
+    // значения Str/Dex/... редактируются на Character/Detail.razor вне PF2e-листа) это не меняет —
+    // тоггл включает чек-лист учёта на листе персонажа (Pf2eStatsModel.AbilityBoostLevels):
+    // отмечены ли уже повышения за каждый пройденный уровень, чтобы не забыть/не задвоить.
+    public bool GradualAbilityBoosts { get; private set; }
+
+    // Stamina — персонаж получает отдельный пул очков (TableToken.CurrentStamina/MaxStamina)
+    // поверх обычных HP; урон в бою бьёт сначала по нему, HP остаются нетронутыми, пока Stamina
+    // не кончится (см. Table.razor.cs ApplyDamageAsync/AdjustStaminaAsync). Упрощение против
+    // полного правила Gamemastery Guide: не считаем Resolve Points отдельно и не завязываем
+    // восстановление Stamina на конкретный вид отдыха — GM правит числа вручную, как и с HP.
+    public bool StaminaVariant { get; private set; }
+
+    // N.12 — таблица случайных встреч ГМа: одна таблица на сессию (не библиотека таблиц —
+    // для одного стола обычно актуальна одна таблица под текущую локацию/акт), хранится как
+    // есть в JSON {title, entries:[{min,max,label,monsterId?}]}. Редактируется на клиенте
+    // (Pf2eLookups), но сам бросок (RollEncounterTableCommand) читает и разбирает этот JSON
+    // на сервере — иначе результат броска можно было бы подделать с клиента.
+    public string? EncounterTableJson { get; private set; }
+
     private readonly List<SessionParticipant> _participants = [];
     public IReadOnlyList<SessionParticipant> Participants => _participants.AsReadOnly();
 
@@ -144,6 +180,32 @@ public sealed class GameSession : Entity<GameSessionId>
             return Error.Unauthorized();
 
         ActiveSceneId = sceneId;
+        UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? SetVariantRules(
+        UserId requesterId, bool proficiencyWithoutLevel, bool automaticBonusProgression,
+        bool freeArchetype, bool gradualAbilityBoosts, bool staminaVariant)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        ProficiencyWithoutLevel = proficiencyWithoutLevel;
+        AutomaticBonusProgression = automaticBonusProgression;
+        FreeArchetype = freeArchetype;
+        GradualAbilityBoosts = gradualAbilityBoosts;
+        StaminaVariant = staminaVariant;
+        UpdatedAt = DateTime.UtcNow;
+        return null;
+    }
+
+    public Error? SetEncounterTable(UserId requesterId, string? encounterTableJson)
+    {
+        if (OrganizerId != requesterId)
+            return Error.Unauthorized();
+
+        EncounterTableJson = encounterTableJson;
         UpdatedAt = DateTime.UtcNow;
         return null;
     }

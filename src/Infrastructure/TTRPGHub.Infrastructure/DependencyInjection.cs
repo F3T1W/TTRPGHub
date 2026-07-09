@@ -37,6 +37,8 @@ public static class DependencyInjection
         services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddSingleton<ICharacterPdfService, CharacterPdfService>();
+        services.AddSingleton<IChroniclePdfService, ChroniclePdfService>();
+        services.AddSingleton<IAdventurePdfParser, TTRPGHub.Infrastructure.Pdf.PdfPigAdventureParser>();
 
         services.Configure<VapidOptions>(configuration.GetSection("Vapid"));
         services.AddScoped<IPushNotificationSender, WebPushNotificationSender>();

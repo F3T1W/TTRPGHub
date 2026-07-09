@@ -4,10 +4,12 @@ using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities.Moderation;
 using TTRPGHub.Repositories;
 
+
 namespace TTRPGHub.Features.Moderation.Commands.ResolveReport;
 
 internal sealed class ResolveReportCommandHandler(
     IContentReportRepository reports,
+    IModerationLogRepository moderationLog,
     ICurrentUser currentUser,
     IUnitOfWork unitOfWork
 ) : IRequestHandler<ResolveReportCommand, Result>
@@ -23,6 +25,10 @@ internal sealed class ResolveReportCommandHandler(
 
         report.Resolve(currentUser.Id, status);
         reports.Update(report);
+
+        await moderationLog.AddAsync(ModerationLogEntry.Create(
+            currentUser.Id, $"ResolveReport:{status}", report.EntityType.ToString(), report.EntityId), ct);
+
         await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success();

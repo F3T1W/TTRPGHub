@@ -26,6 +26,15 @@ public partial class Pf2eStatsSheet
     private int _perceptionBonusFromFeats;
     private Dictionary<string, int> _skillBonusFromFeats = [];
     private Dictionary<string, List<string>> _grantsByFeatSlug = [];
+    private Dictionary<string, Pf2eLookups.Pf2eFeatChoiceSet> _choiceSetByFeatSlug = [];
+    private Dictionary<string, List<Pf2eLookups.Pf2eFeatRollOption>> _rollOptionsByFeatSlug = [];
+
+    // N.6 — расчётное КЗ по формуле (ComputeArmorClass) поверх экипированной брони; ABP здесь
+    // не подключён — у листа персонажа нет сессии/стола, вариативные правила и без того нигде
+    // не учитываются на этой странице (ровно как _proficiencyWithoutLevel никогда не передавался
+    // в Pf2eBonus выше). Живой ABP-бонус к КЗ считается на столе (Table.razor.cs), где сессия есть.
+    private Pf2eLookups.EquippedItemContext? _equippedArmorContext;
+    private int _computedArmorClass;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -66,11 +75,57 @@ public partial class Pf2eStatsSheet
     private void RemoveInventoryItem(int index) =>
         _pf2e = _pf2e with { Inventory = [.. _pf2e.Inventory.Where((_, i) => i != index)] };
 
-    private void UpdateInventoryItem(int index, Pf2eLookups.Pf2eInventoryItem item)
+    // N.6 — тот же приём, что и у UpdateFeat: точное совпадение имени с каталогом снаряжения
+    // привязывает Slug автоматически (нужен, чтобы формула КЗ нашла категорию/dex_cap/ac_bonus
+    // экипированной брони — до этого Slug у предметов инвентаря никогда не проставлялся).
+    private async Task UpdateInventoryItem(int index, Pf2eLookups.Pf2eInventoryItem item)
     {
+        if (!string.IsNullOrWhiteSpace(item.Name))
+        {
+            try
+            {
+                var page = await Api.GetRuleEntriesAsync("pf2e", "equipment", item.Name, 1, 5);
+                var match = page.Items.FirstOrDefault(i => string.Equals(i.Title, item.Name, StringComparison.OrdinalIgnoreCase));
+                item = item with { Slug = match?.Slug };
+            }
+            catch { item = item with { Slug = null }; }
+        }
+        else
+        {
+            item = item with { Slug = null };
+        }
+
         var list = _pf2e.Inventory.ToList();
         list[index] = item;
         _pf2e = _pf2e with { Inventory = list };
+        await RefreshArmorClassAsync();
+    }
+
+    private async Task RefreshArmorClassAsync()
+    {
+        _equippedArmorContext = null;
+        var equippedSlugs = _pf2e.Inventory
+            .Where(i => i.Equipped && i.Slug is not null)
+            .Select(i => i.Slug!)
+            .Distinct()
+            .ToList();
+
+        if (equippedSlugs.Count > 0)
+        {
+            try
+            {
+                var entries = await Api.GetRuleEntriesBySlugsAsync("pf2e", "equipment", new BatchSlugsRequest(equippedSlugs));
+                _equippedArmorContext = entries
+                    .Select(e => Pf2eLookups.ParseEquipmentContext(e.Slug, e.StatsJson))
+                    .FirstOrDefault(c => c.ItemKind is "armor" or "shield");
+            }
+            catch { /* формула посчитает без брони */ }
+        }
+
+        _computedArmorClass = Pf2eLookups.ComputeArmorClass(
+            AbilityModByKey("dex"), _pf2e.ArmorProficiencyRanks, Character.Level,
+            proficiencyWithoutLevel: false, _equippedArmorContext, automaticBonusProgression: false)
+            + _acBonusFromFeats;
     }
 
     private void AddAttack() =>
@@ -100,6 +155,19 @@ public partial class Pf2eStatsSheet
         var list = _pf2e.Resources.ToList();
         list[index] = resource;
         _pf2e = _pf2e with { Resources = list };
+    }
+
+    private void AddCustomRollOption() =>
+        _pf2e = _pf2e with { CustomRollOptions = [.. _pf2e.CustomRollOptions, ""] };
+
+    private void RemoveCustomRollOption(int index) =>
+        _pf2e = _pf2e with { CustomRollOptions = [.. _pf2e.CustomRollOptions.Where((_, i) => i != index)] };
+
+    private void UpdateCustomRollOption(int index, string value)
+    {
+        var list = _pf2e.CustomRollOptions.ToList();
+        list[index] = value;
+        _pf2e = _pf2e with { CustomRollOptions = list };
     }
 
     private void AddFeat() =>
@@ -141,15 +209,23 @@ public partial class Pf2eStatsSheet
         _perceptionBonusFromFeats = 0;
         _skillBonusFromFeats = [];
         _grantsByFeatSlug = [];
+        _choiceSetByFeatSlug = [];
+        _rollOptionsByFeatSlug = [];
 
         var slugs = _pf2e.Feats.Where(f => f.Slug is not null).Select(f => f.Slug!).Distinct().ToList();
         if (slugs.Count == 0)
+        {
+            await RefreshArmorClassAsync();
             return;
+        }
 
         try
         {
             var entries = await Api.GetRuleEntriesBySlugsAsync("pf2e", "feat", new BatchSlugsRequest(slugs));
+            var statsJsonBySlug = entries.ToDictionary(e => e.Slug, e => e.StatsJson ?? "");
             var rollOptions = slugs.Select(s => $"feat:{s}").ToHashSet();
+            Pf2eLookups.AddFeatChoiceRollOptions(rollOptions, _pf2e.Feats, statsJsonBySlug);
+            foreach (var option in _pf2e.CustomRollOptions) rollOptions.Add(option);
             var facts = new Dictionary<string, double>
             {
                 ["self:level"] = Character.Level,
@@ -166,6 +242,14 @@ public partial class Pf2eStatsSheet
                 if (grants.Count > 0)
                     _grantsByFeatSlug[entry.Slug] = grants;
 
+                var choiceSet = Pf2eLookups.ParseFeatChoiceSet(entry.StatsJson);
+                if (choiceSet is not null)
+                    _choiceSetByFeatSlug[entry.Slug] = choiceSet;
+
+                var featRollOptions = Pf2eLookups.ParseFeatRollOptions(entry.StatsJson);
+                if (featRollOptions.Count > 0)
+                    _rollOptionsByFeatSlug[entry.Slug] = featRollOptions;
+
                 foreach (var mod in Pf2eLookups.ParseFeatModifiers(entry.StatsJson))
                 {
                     if (!Pf2eLookups.PredicateEvaluator.Evaluate(mod.Predicate, rollOptions, facts))
@@ -179,6 +263,45 @@ public partial class Pf2eStatsSheet
             }
         }
         catch { /* ignore */ }
+
+        await RefreshArmorClassAsync();
+    }
+
+    // N.10 — выбор ChoiceSet/тумблер RollOption вне режима редактирования листа (это игровое
+    // действие за столом, а не правка сути персонажа) — поэтому сохраняется немедленно, без
+    // ожидания явного "Сохранить" из общего флоу _editingPf2e/SavePf2eAsync.
+    private async Task SetFeatChoiceAsync(int index, string? choice)
+    {
+        var feat = _pf2e.Feats[index];
+        var list = _pf2e.Feats.ToList();
+        list[index] = feat with { SelectedChoice = string.IsNullOrWhiteSpace(choice) ? null : choice };
+        _pf2e = _pf2e with { Feats = list };
+        await RefreshFeatModifiersAsync();
+        await PersistFeatStateAsync();
+    }
+
+    private async Task ToggleFeatRollOptionAsync(int index, string option, bool enabled)
+    {
+        var feat = _pf2e.Feats[index];
+        var toggled = (feat.ToggledOptions ?? []).ToList();
+        if (enabled) { if (!toggled.Contains(option)) toggled.Add(option); }
+        else toggled.Remove(option);
+        var list = _pf2e.Feats.ToList();
+        list[index] = feat with { ToggledOptions = toggled.Count > 0 ? toggled : null };
+        _pf2e = _pf2e with { Feats = list };
+        await RefreshFeatModifiersAsync();
+        await PersistFeatStateAsync();
+    }
+
+    private async Task PersistFeatStateAsync()
+    {
+        try
+        {
+            await Api.UpdatePf2eStatsAsync(Character.Id, new UpdatePf2eStatsRequest(_pf2e.ToJson()));
+            var updated = await Api.GetCharacterByIdAsync(Character.Id);
+            await CharacterChanged.InvokeAsync(updated);
+        }
+        catch { /* выбор останется применённым в текущей сессии, повторим при следующем изменении */ }
     }
 
     private void AddKnownSpell() =>
@@ -192,6 +315,68 @@ public partial class Pf2eStatsSheet
         var list = _pf2e.KnownSpells.ToList();
         list[index] = spell;
         _pf2e = _pf2e with { KnownSpells = list };
+    }
+
+    private void AddKnownFormula() =>
+        _pf2e = _pf2e with { KnownFormulas = [.. _pf2e.KnownFormulas, new Pf2eLookups.Pf2eKnownFormula("", 1)] };
+
+    private void RemoveKnownFormula(int index) =>
+        _pf2e = _pf2e with { KnownFormulas = [.. _pf2e.KnownFormulas.Where((_, i) => i != index)] };
+
+    private async Task UpdateKnownFormula(int index, Pf2eLookups.Pf2eKnownFormula formula)
+    {
+        if (!string.IsNullOrWhiteSpace(formula.Name))
+        {
+            try
+            {
+                var page = await Api.GetRuleEntriesAsync("pf2e", "equipment", formula.Name, 1, 5);
+                var match = page.Items.FirstOrDefault(i => string.Equals(i.Title, formula.Name, StringComparison.OrdinalIgnoreCase));
+                formula = formula with { Slug = match?.Slug };
+            }
+            catch { formula = formula with { Slug = null }; }
+        }
+        else
+        {
+            formula = formula with { Slug = null };
+        }
+
+        var list = _pf2e.KnownFormulas.ToList();
+        list[index] = formula;
+        _pf2e = _pf2e with { KnownFormulas = list };
+    }
+
+    private string? _craftResultMessage;
+    private readonly Random _craftRandom = new();
+
+    // Craft-активность (N.2): бросок Ремесла против стандартного DC уровня формулы,
+    // успех/крит.успех добавляет готовый предмет в инвентарь (Pf2eInventoryItem, Quantity 1).
+    // Крафт — не часть режима "редактирования листа": результат сохраняется сразу, независимо
+    // от _editingPf2e, чтобы игрок мог скрафтить предмет во время даунтайма без входа в правку.
+    private async Task CraftFormula(Pf2eLookups.Pf2eKnownFormula formula)
+    {
+        var rank = _pf2e.SkillRanks.GetValueOrDefault("crafting");
+        var bonus = Pf2eBonus(rank) + AbilityModByKey("int");
+        var natural = _craftRandom.Next(1, 21);
+        var total = natural + bonus;
+        var dc = Pf2eLookups.StandardDc(formula.Level);
+        var degree = Pf2eLookups.RollDegree(natural, total, dc);
+
+        _craftResultMessage = $"«{formula.Name}»: d20({natural}) + {bonus} = {total} против DC {dc} — " + degree switch
+        {
+            Pf2eLookups.DegreeOfSuccess.CriticalSuccess => "критический успех, предмет добавлен в инвентарь.",
+            Pf2eLookups.DegreeOfSuccess.Success => "успех, предмет добавлен в инвентарь.",
+            Pf2eLookups.DegreeOfSuccess.Failure => "провал, материалы потрачены впустую.",
+            _ => "критический провал, материалы потрачены впустую.",
+        };
+
+        if (degree is Pf2eLookups.DegreeOfSuccess.Success or Pf2eLookups.DegreeOfSuccess.CriticalSuccess)
+        {
+            _pf2e = _pf2e with
+            {
+                Inventory = [.. _pf2e.Inventory, new Pf2eLookups.Pf2eInventoryItem(formula.Name, 1, 0, false, formula.Slug)]
+            };
+            await SavePf2eAsync();
+        }
     }
 
     private static readonly int[] SpellSlotLevels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -222,4 +407,14 @@ public partial class Pf2eStatsSheet
     private static readonly (string Key, string Label)[] Pf2eSaves = Pf2eLookups.Saves;
     private static readonly (string Key, string Label)[] Pf2eSkills = Pf2eLookups.Skills;
     private static readonly (int Value, string Label)[] Pf2eRanks = Pf2eLookups.Ranks;
+
+    private static readonly (string Key, string Label)[] ArmorCategories =
+        [("unarmored", "Без брони"), ("light", "Лёгкая"), ("medium", "Средняя"), ("heavy", "Тяжёлая")];
+
+    private async Task UpdateArmorProficiencyRank(string category, int rank)
+    {
+        var ranks = new Dictionary<string, int>(_pf2e.ArmorProficiencyRanks) { [category] = rank };
+        _pf2e = _pf2e with { ArmorProficiencyRanks = ranks };
+        await RefreshArmorClassAsync();
+    }
 }

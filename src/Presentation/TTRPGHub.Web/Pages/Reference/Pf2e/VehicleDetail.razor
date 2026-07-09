@@ -1,0 +1,146 @@
+@page "/reference/pf2e/vehicles/{Id:guid}"
+@attribute [Authorize]
+<PageTitle>@(_vehicle?.NameRu ?? "Транспорт") — Pathfinder 2e</PageTitle>
+
+<div class="container-fluid py-4" style="max-width:900px;">
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_vehicle is null)
+    {
+        <div class="alert alert-danger">Транспорт не найден.</div>
+    }
+    else
+    {
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="/reference" class="text-decoration-none" style="color:var(--ta-accent-light);">Справочник</a></li>
+                <li class="breadcrumb-item"><a href="/reference/pf2e/vehicles" class="text-decoration-none" style="color:var(--ta-accent-light);">Транспорт</a></li>
+                <li class="breadcrumb-item active text-muted">@_vehicle.NameRu</li>
+            </ol>
+        </nav>
+
+        <div class="ta-card p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="text-white mb-1">@_vehicle.NameRu</h2>
+                    <p class="text-muted mb-0 small">@_vehicle.Name @(!string.IsNullOrWhiteSpace(_vehicle.Size) ? $"· {_vehicle.Size}" : "")</p>
+                </div>
+                <span class="badge @LevelBadge(_vehicle.Level)" style="font-size:.9rem;padding:.4em .8em;">Транспорт @_vehicle.Level</span>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.Price))
+            {
+                <p class="text-muted small mb-3">Цена: @_vehicle.Price</p>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+
+            <div class="row g-3 mb-3">
+                @if (_vehicle.ArmorClass is { } ac)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">КБ</div>
+                        <div class="text-white">@ac</div>
+                    </div>
+                }
+                @if (_vehicle.Fortitude is { } fort)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Стойкость</div>
+                        <div class="text-white">+@fort</div>
+                    </div>
+                }
+                @if (_vehicle.Hardness is { } hard)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">Твёрдость</div>
+                        <div class="text-white">@hard</div>
+                    </div>
+                }
+                @if (_vehicle.HitPoints is { } hp)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="small text-muted mb-1">ОЗ @(_vehicle.BrokenThreshold is { } bt ? $"(ПП {bt})" : "")</div>
+                        <div class="text-white">@hp</div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.Dimensions) || !string.IsNullOrWhiteSpace(_vehicle.Crew) || !string.IsNullOrWhiteSpace(_vehicle.Passengers))
+            {
+                <div class="row g-3 mb-3">
+                    @if (!string.IsNullOrWhiteSpace(_vehicle.Dimensions))
+                    {
+                        <div class="col-12 col-md-4">
+                            <div class="small text-muted mb-1">Габариты</div>
+                            <div class="text-white" style="white-space:pre-line;">@_vehicle.Dimensions</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_vehicle.Crew))
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted mb-1">Экипаж</div>
+                            <div class="text-white">@_vehicle.Crew</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_vehicle.Passengers))
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="small text-muted mb-1">Пассажиры</div>
+                            <div class="text-white">@_vehicle.Passengers</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.PilotingCheck))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Проверка пилотирования</div>
+                    <div class="text-white" style="white-space:pre-line;">@_vehicle.PilotingCheck</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.Speed) || !string.IsNullOrWhiteSpace(_vehicle.Collision))
+            {
+                <div class="row g-3 mb-3">
+                    @if (!string.IsNullOrWhiteSpace(_vehicle.Speed))
+                    {
+                        <div class="col-12 col-md-6">
+                            <div class="small text-muted mb-1">Скорость</div>
+                            <div class="text-white">@_vehicle.Speed</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_vehicle.Collision))
+                    {
+                        <div class="col-12 col-md-6">
+                            <div class="small text-muted mb-1">Столкновение</div>
+                            <div class="text-white">@_vehicle.Collision</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.Immunities))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Иммунитеты</div>
+                    <div class="text-white">@_vehicle.Immunities</div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_vehicle.AbilitiesText))
+            {
+                <div class="mb-3">
+                    <div class="small text-muted mb-1" style="color:var(--ta-gold)!important;">ОСОБЕННОСТИ</div>
+                    <div class="text-white" style="white-space:pre-line;">@_vehicle.AbilitiesText</div>
+                </div>
+            }
+
+            <hr style="border-color:var(--ta-border);">
+            <div class="small text-muted">Источник: @_vehicle.Source</div>
+        </div>
+    }
+</div>

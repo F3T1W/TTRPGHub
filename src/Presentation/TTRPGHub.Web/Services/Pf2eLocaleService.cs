@@ -6,7 +6,11 @@ namespace TTRPGHub.Services;
 // conditions/spells/monsters/rule entries. Нет перевода → показываем EN как есть.
 public sealed class Pf2eLocaleService(HttpClient http, ContentLanguageService language)
 {
-    private sealed record LocaleEntry(string? Name, string? Summary, string? Description);
+    // M.4 — Heightened отдельным полем: раньше DescriptionAsync("spell", slug, ...) вызывался
+    // и для базового описания, и для текста усиления с одним и тем же slug — оба возвращали
+    // Description, из-за чего усиление показывало продублированный текст описания вместо
+    // своего. Теперь у "усиления" собственное поле и свой метод (HeightenedAsync).
+    private sealed record LocaleEntry(string? Name, string? Summary, string? Description, string? Heightened);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -52,6 +56,14 @@ public sealed class Pf2eLocaleService(HttpClient http, ContentLanguageService la
         return entry?.Description ?? english;
     }
 
+    public async Task<string?> HeightenedAsync(string category, string slug, string? english)
+    {
+        if (!language.IsRussian) return english;
+        await EnsureLoadedAsync();
+        var entry = Lookup(category, slug);
+        return entry?.Heightened ?? english;
+    }
+
     public async Task<string> LocalizeCsvAsync(string? englishCsv)
     {
         if (string.IsNullOrWhiteSpace(englishCsv) || !language.IsRussian)
@@ -62,6 +74,17 @@ public sealed class Pf2eLocaleService(HttpClient http, ContentLanguageService la
         return string.Join(", ", englishCsv
             .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
             .Select(token => LocalizeToken(token)));
+    }
+
+    // M.4 — Pf2eMonster (в отличие от Pf2eSpell) не хранит английский флейвор-текст вообще
+    // (нет такого поля у нашего ORC/OGL источника монстров) — оверлей тут не "перевод
+    // существующего", а единственный источник этого текста. Без английского fallback:
+    // нет RU-перевода — блок с описанием просто не показывается, а не показывает пустоту.
+    public async Task<string?> FlavorAsync(string category, string slug)
+    {
+        if (!language.IsRussian) return null;
+        await EnsureLoadedAsync();
+        return Lookup(category, slug)?.Description;
     }
 
     public bool HasTranslation(string category, string slug)

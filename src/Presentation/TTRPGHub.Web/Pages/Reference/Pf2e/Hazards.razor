@@ -1,0 +1,94 @@
+@page "/reference/pf2e/hazards"
+@attribute [Authorize]
+<PageTitle>Опасности Pathfinder 2e — Таверна Аферистов</PageTitle>
+
+<div class="container-fluid py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="/reference" class="text-decoration-none" style="color:var(--ta-accent-light);">Справочник</a></li>
+            <li class="breadcrumb-item"><a href="/reference/pf2e/spells" class="text-decoration-none" style="color:var(--ta-accent-light);">Pathfinder 2e</a></li>
+            <li class="breadcrumb-item active text-muted">Опасности</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+        <h2 class="text-white mb-0">⚠️ Pathfinder 2e — Опасности</h2>
+        <a href="/reference/pf2e/monsters" class="btn btn-outline-secondary btn-sm ms-auto">← Бестиарий</a>
+    </div>
+
+    <div class="ta-card mb-4">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small text-muted mb-1">Поиск</label>
+                <input class="form-control" placeholder="Название опасности..." @bind="_search" @bind:event="oninput" @onkeydown="OnSearchKeyDown" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1">Уровень</label>
+                <select class="form-select" @bind="_level">
+                    <option value="">Все</option>
+                    @foreach (var l in _levels) { <option value="@l">@l</option> }
+                </select>
+            </div>
+            <div class="col-6 col-md-3 d-flex gap-2">
+                <button class="btn btn-ta-primary flex-grow-1" @onclick="ApplyFilters">
+                    <i class="bi bi-funnel me-1"></i>Найти
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="ResetFilters" title="Сбросить">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_result is null || _result.Items.Count == 0)
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-search" style="font-size:2.5rem;opacity:.3;"></i>
+            <p class="mt-3">Опасности не найдены. Попробуй изменить фильтры.</p>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Найдено: <strong style="color:var(--ta-accent-light);">@_result.Total</strong></span>
+            <span class="text-muted small">Страница @_result.Page из @_result.TotalPages</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0" style="--bs-table-bg:transparent;">
+                <thead>
+                    <tr class="text-muted small" style="border-color:var(--ta-border);">
+                        <th>Название</th>
+                        <th class="text-center">Ур.</th>
+                        <th>Свойства</th>
+                        <th class="text-center">Скрытность</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var hazard in _result.Items)
+                    {
+                        <tr style="border-color:var(--ta-border);cursor:pointer;" @onclick="@(() => Nav.NavigateTo($"/reference/pf2e/hazards/{hazard.Id}"))">
+                            <td class="fw-semibold text-white">@hazard.NameRu</td>
+                            <td class="text-center"><span class="badge @LevelBadge(hazard.Level)">@hazard.Level</span></td>
+                            <td class="text-muted small" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@hazard.Traits</td>
+                            <td class="text-center text-white">КС @hazard.StealthDc</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_result.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-center gap-2 mt-4">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="PrevPage" disabled="@(_page <= 1)">← Назад</button>
+                <span class="btn btn-outline-secondary btn-sm disabled">@_page / @_result.TotalPages</span>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="NextPage" disabled="@(_page >= _result.TotalPages)">Вперёд →</button>
+            </div>
+        }
+    }
+</div>

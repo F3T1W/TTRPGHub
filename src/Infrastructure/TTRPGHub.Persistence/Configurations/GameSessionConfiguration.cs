@@ -47,6 +47,12 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
         builder.Property(s => s.IsAudioPlaying).IsRequired().HasDefaultValue(false).HasColumnName("is_audio_playing");
         builder.Property(s => s.AudioPositionSeconds).IsRequired().HasDefaultValue(0d).HasColumnName("audio_position_seconds");
         builder.Property(s => s.AudioUpdatedAt).IsRequired().HasDefaultValueSql("now()").HasColumnName("audio_updated_at");
+        builder.Property(s => s.ProficiencyWithoutLevel).IsRequired().HasDefaultValue(false).HasColumnName("proficiency_without_level");
+        builder.Property(s => s.AutomaticBonusProgression).IsRequired().HasDefaultValue(false).HasColumnName("automatic_bonus_progression");
+        builder.Property(s => s.FreeArchetype).IsRequired().HasDefaultValue(false).HasColumnName("free_archetype");
+        builder.Property(s => s.GradualAbilityBoosts).IsRequired().HasDefaultValue(false).HasColumnName("gradual_ability_boosts");
+        builder.Property(s => s.StaminaVariant).IsRequired().HasDefaultValue(false).HasColumnName("stamina_variant");
+        builder.Property(s => s.EncounterTableJson).HasColumnType("jsonb").HasColumnName("encounter_table_json");
         builder.Property(s => s.CreatedAt).IsRequired().HasColumnName("created_at");
         builder.Property(s => s.UpdatedAt).IsRequired().HasColumnName("updated_at");
 

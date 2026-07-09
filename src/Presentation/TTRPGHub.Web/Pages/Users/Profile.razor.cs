@@ -21,6 +21,7 @@ public partial class Profile
     private string _formRole = "Player";
     private string? _formError;
     private bool _submitting;
+    private string? _actionMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -64,6 +65,19 @@ public partial class Profile
             _ratings = await Api.GetUserRatingsAsync(Id);
         }
         catch { }
+    }
+
+    private async Task ReportRatingAsync(Guid ratingId)
+    {
+        try
+        {
+            await Api.CreateReportAsync(new CreateReportRequest("Rating", ratingId, "Жалоба на отзыв"));
+            _actionMessage = "Жалоба отправлена, модераторы её рассмотрят.";
+        }
+        catch
+        {
+            _actionMessage = "Не удалось отправить жалобу.";
+        }
     }
 
     private static string StarClass(int star, int score) =>

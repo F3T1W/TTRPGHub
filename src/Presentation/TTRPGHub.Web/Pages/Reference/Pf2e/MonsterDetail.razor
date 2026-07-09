@@ -40,6 +40,11 @@
                 }
             </div>
 
+            @if (!string.IsNullOrWhiteSpace(_displayFlavor))
+            {
+                <p class="text-muted fst-italic mb-3">@_displayFlavor</p>
+            }
+
             <hr style="border-color:var(--ta-border);">
 
             <div class="row g-3 mb-4">

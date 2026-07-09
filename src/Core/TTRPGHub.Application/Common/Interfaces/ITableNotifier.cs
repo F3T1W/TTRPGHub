@@ -32,4 +32,14 @@ public interface ITableNotifier
     // повторным вызовом GetTableState (карта/токены/туман/стены/свет/бой у сцен независимы,
     // проще перезапросить всё целиком, чем присылать diff по каждому полю).
     Task NotifyActiveSceneChangedAsync(Guid sessionId, CancellationToken ct = default);
+
+    // N.6 — тоггл вариативных правил сессии (Proficiency Without Level, Automatic Bonus
+    // Progression, Free Archetype, Gradual Ability Boosts, Stamina).
+    Task NotifyVariantRulesChangedAsync(
+        Guid sessionId, bool proficiencyWithoutLevel, bool automaticBonusProgression,
+        bool freeArchetype, bool gradualAbilityBoosts, bool staminaVariant, CancellationToken ct = default);
+
+    // N.12 — ГМ отредактировал таблицу случайных встреч (сама сессия броска идёт как обычное
+    // сообщение чата через NotifyMessageAsync, отдельного уведомления на бросок не нужно).
+    Task NotifyEncounterTableChangedAsync(Guid sessionId, string? encounterTableJson, CancellationToken ct = default);
 }

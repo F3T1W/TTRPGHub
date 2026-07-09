@@ -11,6 +11,11 @@
 
     <h4 class="text-white mb-4"><i class="bi bi-chat-dots me-2"></i>Обсуждение: @EntitySlug</h4>
 
+    @if (_actionMessage is not null)
+    {
+        <div class="small text-muted mb-3">@_actionMessage</div>
+    }
+
     @if (_loading)
     {
         <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
@@ -51,6 +56,9 @@
                         {
                             <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartReply(post.Id)">
                                 <i class="bi bi-reply me-1"></i>Ответить
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => ReportAsync(post.Id)" title="Пожаловаться">
+                                <i class="bi bi-flag"></i>
                             </button>
                         }
                         @if (post.IsOwn)
@@ -95,6 +103,12 @@
                                         <button class="btn btn-sm @(reply.IsLikedByMe ? "btn-ta-primary" : "btn-outline-secondary")" style="font-size:.75rem;padding:.2rem .5rem;" @onclick="() => ToggleLikeAsync(reply.Id)" disabled="@(!_isAuthenticated)">
                                             <i class="bi @(reply.IsLikedByMe ? "bi-heart-fill" : "bi-heart") me-1"></i>@reply.LikeCount
                                         </button>
+                                        @if (_isAuthenticated)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" style="font-size:.75rem;padding:.2rem .5rem;" @onclick="() => ReportAsync(reply.Id)" title="Пожаловаться">
+                                                <i class="bi bi-flag"></i>
+                                            </button>
+                                        }
                                         @if (reply.IsOwn)
                                         {
                                             <button class="btn btn-sm btn-outline-danger ms-auto" style="font-size:.75rem;padding:.2rem .5rem;" @onclick="() => DeleteAsync(reply.Id)">

@@ -10,7 +10,8 @@ internal static class TableTokenMapper
         token.Rotation, token.OwnerId?.Value, canMove, token.CombatantType.ToString(), token.CombatantId,
         token.CurrentHp, token.MaxHp, token.ArmorClass,
         token.Conditions.Select(c => new TokenConditionDto(c.Id, c.Slug, c.Name, c.Value)).ToList(),
-        token.Initiative, token.HasDarkvision, token.HasLowLightVision, ParseVisibleTo(token.VisibleToJson));
+        token.Initiative, token.HasDarkvision, token.HasLowLightVision, ParseVisibleTo(token.VisibleToJson),
+        token.CurrentStamina, token.MaxStamina);
 
     internal static List<Guid>? ParseVisibleTo(string? json) =>
         string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<List<Guid>>(json);

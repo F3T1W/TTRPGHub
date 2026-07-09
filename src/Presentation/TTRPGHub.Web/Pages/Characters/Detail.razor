@@ -426,4 +426,21 @@ else if (_char is not null)
             <Pf2eStatsSheet Character="_char" CharacterChanged="OnCharacterPf2eUpdatedAsync" />
         </div>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(_char.Pf2eStatsJson))
+    {
+        <!-- ── Pathfinder Society Chronicle Sheets (N.3) ────────────────────────── -->
+        <div class="row g-4 mt-1">
+            <div class="col-12">
+                <PfsChronicleSheet Character="_char" />
+            </div>
+        </div>
+
+        <!-- ── Компаньоны/фамильяры (N.8) ────────────────────────────────────────── -->
+        <div class="row g-4 mt-1">
+            <div class="col-12">
+                <CompanionSheet Character="_char" />
+            </div>
+        </div>
+    }
 }

@@ -1,0 +1,49 @@
+@page "/admin/moderation-log"
+@attribute [Authorize(Roles = "Moderator,Admin")]
+<PageTitle>Журнал модерации — Таверна Аферистов</PageTitle>
+
+<div class="container py-4">
+    <h2 class="mb-1">Журнал модерации</h2>
+    <p class="text-muted small mb-4">Кто и что сделал: удаление постов/тем, закрепление, блокировка, разбор жалоб.</p>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5"><div class="spinner-border" style="color:var(--ta-accent);"></div></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else if (_entries.Count == 0)
+    {
+        <div class="ta-card p-5 text-center text-muted">
+            <p class="mb-0">Записей пока нет.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Когда</th>
+                        <th>Кто</th>
+                        <th>Действие</th>
+                        <th>Цель</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _entries)
+                    {
+                        <tr>
+                            <td class="text-muted small">@e.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@e.ActorUsername</td>
+                            <td>@ActionLabel(e.Action)</td>
+                            <td class="small text-muted">@e.TargetType (@e.TargetId)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

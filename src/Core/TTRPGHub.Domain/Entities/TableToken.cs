@@ -28,6 +28,13 @@ public sealed class TableToken
     public int? MaxHp { get; private set; }
     public int? ArmorClass { get; private set; }
 
+    // N.6 — Stamina (вариативное правило): отдельный пул очков поверх HP, урон бьёт по нему
+    // первым (см. Table.razor.cs ApplyDamageAsync). Null у токенов, где GM не включал Stamina
+    // (или у монстров/декораций, которым это не нужно) — не привязан жёстко к CombatantType,
+    // GM решает сам, каким токенам заводить пул.
+    public int? CurrentStamina { get; private set; }
+    public int? MaxStamina { get; private set; }
+
     // J.2 — трекер инициативы: значение броска инициативы для этого токена в текущем бою.
     // Null означает "не участвует в инициативе" (декорация, ещё не вступил в бой и т.п.) —
     // такие токены не показываются в трекере и пропускаются при переходе хода.
@@ -160,6 +167,17 @@ public sealed class TableToken
         UpdatedAt = DateTime.UtcNow;
     }
 
+    // N.6 — Stamina: current/max задаются вместе (инициализация пула или ручная правка GM),
+    // Current всегда зажат в [0, Max текущего вызова или уже сохранённого].
+    public void SetStamina(int? currentStamina, int? maxStamina)
+    {
+        if (maxStamina is { } max)
+            MaxStamina = max;
+        if (currentStamina is { } current)
+            CurrentStamina = MaxStamina.HasValue ? Math.Clamp(current, 0, MaxStamina.Value) : Math.Max(0, current);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     // Обратная синхронизация от привязанного персонажа (см. Character.SetCurrentHitPoints):
     // правки на листе персонажа (level-up, лечение вне боя) должны отражаться на его токене,
     // если тот сейчас стоит на какой-то карте — иначе GM видит устаревшие HP/AC в бою.
@@ -196,7 +214,7 @@ public sealed class TableToken
     private static int ClampSize(int value) => Math.Clamp(value, 1, 6);
 }
 
-public enum TokenCombatantType { None, Character, Pf2eMonster, Dnd5eMonster }
+public enum TokenCombatantType { None, Character, Pf2eMonster, Dnd5eMonster, Pf2eHazard, Companion, Pf2eVehicle }
 
 public sealed class TokenCondition
 {

@@ -74,6 +74,18 @@ internal sealed class SignalRTableNotifier(IHubContext<TableHub> hubContext) : I
             .Group(TableHub.GroupName(sessionId))
             .SendAsync("FogSettingsChanged", enabled, visionRadiusFeet, ct);
 
+    public Task NotifyVariantRulesChangedAsync(
+        Guid sessionId, bool proficiencyWithoutLevel, bool automaticBonusProgression,
+        bool freeArchetype, bool gradualAbilityBoosts, bool staminaVariant, CancellationToken ct = default) =>
+        hubContext.Clients
+            .Group(TableHub.GroupName(sessionId))
+            .SendAsync("VariantRulesChanged", proficiencyWithoutLevel, automaticBonusProgression, freeArchetype, gradualAbilityBoosts, staminaVariant, ct);
+
+    public Task NotifyEncounterTableChangedAsync(Guid sessionId, string? encounterTableJson, CancellationToken ct = default) =>
+        hubContext.Clients
+            .Group(TableHub.GroupName(sessionId))
+            .SendAsync("EncounterTableChanged", encounterTableJson, ct);
+
     public Task NotifyJournalEntryChangedAsync(Guid sessionId, JournalEntryDto entry, CancellationToken ct = default) =>
         hubContext.Clients
             .Group(TableHub.GroupName(sessionId))

@@ -66,6 +66,8 @@ internal sealed class GetTableStateQueryHandler(
             activeScene.CombatActive, activeScene.CombatRound, activeScene.CombatTurnTokenId,
             activeScene.LightsJson,
             activeScene.TerrainTagsJson, activeScene.AmbientLighting,
-            scenes.Select(s => new SceneSummaryDto(s.Id, s.Name)).ToList(), activeScene.Id);
+            scenes.Select(s => new SceneSummaryDto(s.Id, s.Name)).ToList(), activeScene.Id,
+            session.ProficiencyWithoutLevel, session.AutomaticBonusProgression, session.FreeArchetype,
+            session.GradualAbilityBoosts, session.StaminaVariant, session.EncounterTableJson);
     }
 }

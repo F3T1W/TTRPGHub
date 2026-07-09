@@ -3,6 +3,8 @@ using TTRPGHub.Features.Forum.Commands.CreatePost;
 using TTRPGHub.Features.Forum.Commands.CreateTopic;
 using TTRPGHub.Features.Forum.Commands.DeletePost;
 using TTRPGHub.Features.Forum.Commands.DeleteTopic;
+using TTRPGHub.Features.Forum.Commands.SetTopicLocked;
+using TTRPGHub.Features.Forum.Commands.SetTopicPinned;
 using TTRPGHub.Features.Forum.Commands.ToggleLike;
 using TTRPGHub.Features.Forum.Queries.GetCategories;
 using TTRPGHub.Features.Forum.Queries.GetPosts;
@@ -63,8 +65,20 @@ public static class ForumEndpoints
             (await m.Send(new DeletePostCommand(postId), ct)).ToResponse())
             .RequireAuthorization();
 
+        g.MapPut("/topics/{topicId:guid}/pin", async (
+            Guid topicId, SetPinnedRequest req, IMediator m, CancellationToken ct) =>
+            (await m.Send(new SetTopicPinnedCommand(topicId, req.Pinned), ct)).ToResponse())
+            .RequireAuthorization(p => p.RequireRole("Moderator", "Admin"));
+
+        g.MapPut("/topics/{topicId:guid}/lock", async (
+            Guid topicId, SetLockedRequest req, IMediator m, CancellationToken ct) =>
+            (await m.Send(new SetTopicLockedCommand(topicId, req.Locked), ct)).ToResponse())
+            .RequireAuthorization(p => p.RequireRole("Moderator", "Admin"));
+
         return app;
     }
 }
 
 public sealed record CreatePostRequest(string Content);
+public sealed record SetPinnedRequest(bool Pinned);
+public sealed record SetLockedRequest(bool Locked);

@@ -27,6 +27,9 @@
                                     @onclick="ToggleLikeAsync">
                                 <i class="bi bi-heart@(_item.LikedByMe ? "-fill" : "") me-1"></i>@_likeCount
                             </button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="ReportAsync" title="Пожаловаться">
+                                <i class="bi bi-flag"></i>
+                            </button>
                         </Authorized>
                         <NotAuthorized>
                             <span class="text-secondary"><i class="bi bi-heart me-1"></i>@_likeCount</span>
@@ -40,6 +43,11 @@
                     }
                 </div>
             </div>
+
+            @if (_actionMessage is not null)
+            {
+                <div class="small text-muted mb-2">@_actionMessage</div>
+            }
 
             <h1 class="h4 mb-2">@_item.Title</h1>
             <p class="text-secondary mb-3">@_item.Description</p>

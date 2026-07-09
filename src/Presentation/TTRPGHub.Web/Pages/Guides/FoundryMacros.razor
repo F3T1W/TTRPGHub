@@ -1,0 +1,134 @@
+@page "/guides/foundry-macros"
+
+<PageTitle>Адаптация макросов из Foundry — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:820px;">
+    <h2 class="mb-1"><i class="bi bi-lightning-charge me-2" style="color:var(--ta-gold)"></i>Адаптация макросов из Foundry</h2>
+    <p class="text-muted small mb-4">
+        Импорт переносит имя, иконку, тип и текст команды макроса 1:1 из экспортированного Foundry-JSON.
+        Но код внутри script-макроса написан под внутреннее API Foundry (<code>game.actors</code>, <code>canvas.tokens</code>,
+        <code>ChatMessage.create</code> и т.д.), а у нас — своя песочница с собственным набором функций. Полной бинарной
+        совместимости нет и не будет: код придётся вручную адаптировать. Это руководство — как это сделать быстро.
+    </p>
+
+    <div class="ta-card p-4 mb-3">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Как экспортировать макрос из Foundry</h5>
+        <ol class="small mb-0">
+            <li>В хотбаре Foundry правый клик по макросу → «Export Data» (или через макрос-редактор, если версия старая).</li>
+            <li>Сохранится <code>.json</code> файл с полями <code>name</code>, <code>type</code> (<code>"script"</code> или <code>"chat"</code>), <code>img</code>, <code>command</code>.</li>
+            <li>Можно экспортировать сразу несколько макросов в массив <code>[ {...}, {...} ]</code> — импорт у нас понимает оба формата.</li>
+            <li>Загрузи файл через кнопку «Импорт из Foundry» в карточке «Макросы» на странице стола.</li>
+        </ol>
+    </div>
+
+    <div class="ta-card p-4 mb-3">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Что происходит при импорте</h5>
+        <p class="small mb-0">
+            Имя, иконка и тип переносятся автоматически. Текст <code>command</code> копируется как есть — но если это
+            <b>script-макрос</b>, его код почти наверняка не заработает без правок, потому что он обращается к объектам
+            Foundry, которых у нас просто нет. Если это <b>chat-макрос</b> (обычный текст/бросок в чат), обычно всё
+            работает сразу или почти сразу — см. раздел про <code>/r</code> ниже.
+        </p>
+    </div>
+
+    <div class="ta-card p-4 mb-3">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Chat-макросы — обычно ничего адаптировать не нужно</h5>
+        <p class="small">
+            Если макрос в Foundry просто отправлял текст в чат — переноси его как есть. Если он делал бросок
+            (в Foundry это обычно <code>/r 2d6+3</code> или похожий инлайн-ролл), у нас работает тот же самый
+            слэш-синтаксис в начале команды:
+        </p>
+        <pre class="p-2 rounded small" style="background:var(--ta-surface);border:1px solid var(--ta-border);"><code>/r 2d6+3</code></pre>
+        <p class="small mb-0">
+            Всё, что после <code>/r </code>, отправляется в наш реальный бросок кубов и результат появляется в чате стола.
+            Остальной текст (без <code>/r</code>) отправляется как обычное сообщение.
+        </p>
+    </div>
+
+    <div class="ta-card p-4 mb-3">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Script-макросы — наше API вместо Foundry-объектов</h5>
+        <p class="small mb-2">
+            Script-код выполняется в изолированной песочнице (без доступа к странице, только через наши функции).
+            Вместо <code>game</code>, <code>canvas</code>, <code>ChatMessage</code> и т.д. из Foundry — используй
+            объект <code>game</code> с этим набором функций (имя совпадает специально, чтобы меньше переучиваться,
+            но состав другой):
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm table-dark small mb-0" style="--bs-table-bg:transparent;">
+                <thead>
+                    <tr>
+                        <th>Функция</th>
+                        <th>Что делает</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>await game.roll(expr)</code></td>
+                        <td>Бросок кубов по выражению (напр. <code>"2d6+3"</code>), возвращает результат броска.</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.chat(text)</code></td>
+                        <td>Отправляет текст в чат стола.</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.getSelectedToken()</code></td>
+                        <td>Возвращает выбранный на карте токен (или <code>null</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.getTargetToken()</code></td>
+                        <td>Возвращает токен-цель (или <code>null</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.getTokens()</code></td>
+                        <td>Возвращает список всех токенов на столе.</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.applyDamage(tokenId, amount)</code></td>
+                        <td>Наносит урон токену (с учётом стамины/сопротивлений, как обычный урон на столе).</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.applyCondition(tokenId, condition)</code></td>
+                        <td>Накладывает состояние (условие) на токен.</td>
+                    </tr>
+                    <tr>
+                        <td><code>await game.notify(text)</code></td>
+                        <td>Показывает уведомление ГМ/игроку локально (не в общий чат).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="ta-card p-4 mb-3">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Пример адаптации</h5>
+        <p class="small mb-1">Типичный Foundry script-макрос «кинуть урон по выбранной цели»:</p>
+        <pre class="p-2 rounded small" style="background:var(--ta-surface);border:1px solid var(--ta-border);"><code>// Foundry
+let target = game.user.targets.first();
+let roll = await new Roll("2d6+3").roll();
+await roll.toMessage();
+target.actor.applyDamage(roll.total);</code></pre>
+        <p class="small mb-1">То же самое у нас:</p>
+        <pre class="p-2 rounded small" style="background:var(--ta-surface);border:1px solid var(--ta-border);"><code>// Наша песочница
+const target = await game.getTargetToken();
+const result = await game.roll("2d6+3");
+await game.chat(result.content);
+if (target) {
+    await game.applyDamage(target.id, result.total);
+}</code></pre>
+        <p class="small mb-0">
+            Общий принцип: убери всё, что трогает <code>canvas</code>, <code>ChatMessage</code>, <code>Actor</code>,
+            <code>Item</code> напрямую — замени на подходящую функцию из таблицы выше. Если нужного действия в
+            таблице нет, макрос в текущей версии сделать нельзя (набор функций сознательно небольшой ради
+            безопасности песочницы).
+        </p>
+    </div>
+
+    <div class="ta-card p-4">
+        <h5 class="mb-2" style="color:var(--ta-gold)">Частые проблемы</h5>
+        <ul class="small mb-0">
+            <li><b>Макрос ничего не делает</b> — скорее всего, обращается к объекту Foundry (<code>canvas</code>, <code>game.actors</code> и т.п.), которого у нас нет. Проверь консоль браузера на ошибки.</li>
+            <li><b>Макрос завис</b> — песочница принудительно останавливает выполнение через 10 секунд, если функция не завершилась (например, забыт <code>await</code> или бесконечный цикл).</li>
+            <li><b>Нет доступа к DOM/сети/localStorage</b> — это не баг, а осознанное ограничение безопасности: код макроса не может достучаться до страницы или чужих данных.</li>
+        </ul>
+    </div>
+</div>

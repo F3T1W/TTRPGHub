@@ -19,6 +19,7 @@ public partial class Thread
     private Guid? _replyingToId;
     private string _replyContent = "";
     private bool _isAuthenticated;
+    private string? _actionMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -98,6 +99,19 @@ public partial class Thread
             await LoadAsync();
         }
         catch { }
+    }
+
+    private async Task ReportAsync(Guid postId)
+    {
+        try
+        {
+            await Api.CreateReportAsync(new CreateReportRequest("DiscussionPost", postId, "Жалоба на сообщение обсуждения"));
+            _actionMessage = "Жалоба отправлена, модераторы её рассмотрят.";
+        }
+        catch
+        {
+            _actionMessage = "Не удалось отправить жалобу.";
+        }
     }
 
     private void StartReply(Guid postId)
