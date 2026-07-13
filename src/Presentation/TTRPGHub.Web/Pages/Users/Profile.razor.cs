@@ -24,6 +24,13 @@ public partial class Profile
     private bool _submitting;
     private string? _actionMessage;
 
+    private bool _editingProfile;
+    private string _editDisplayName = string.Empty;
+    private string _editBio = string.Empty;
+    private string _editCity = string.Empty;
+    private string? _editProfileError;
+    private bool _savingProfile;
+
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
@@ -67,6 +74,39 @@ public partial class Profile
             _ratings = await Api.GetUserRatingsAsync(Id);
         }
         catch { }
+    }
+
+    private void StartEditProfile()
+    {
+        if (_profile is null) return;
+        _editDisplayName = _profile.DisplayName ?? string.Empty;
+        _editBio = _profile.Bio ?? string.Empty;
+        _editCity = _profile.City ?? string.Empty;
+        _editProfileError = null;
+        _editingProfile = true;
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _savingProfile = true;
+        _editProfileError = null;
+        try
+        {
+            await Api.UpdateProfileAsync(new UpdateProfileRequest(
+                string.IsNullOrWhiteSpace(_editDisplayName) ? null : _editDisplayName,
+                string.IsNullOrWhiteSpace(_editBio) ? null : _editBio,
+                string.IsNullOrWhiteSpace(_editCity) ? null : _editCity));
+            _editingProfile = false;
+            _profile = await Api.GetUserProfileAsync(Id);
+        }
+        catch
+        {
+            _editProfileError = "Не удалось сохранить профиль.";
+        }
+        finally
+        {
+            _savingProfile = false;
+        }
     }
 
     private async Task ReportRatingAsync(Guid ratingId)

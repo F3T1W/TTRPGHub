@@ -56,10 +56,50 @@
                     }
                 </div>
             </div>
-            @if (!string.IsNullOrEmpty(_profile.Bio))
+            @if (!string.IsNullOrEmpty(_profile.Bio) && !_editingProfile)
             {
                 <hr style="border-color:var(--ta-border);" />
                 <p class="text-white mb-0" style="white-space:pre-wrap;">@_profile.Bio</p>
+            }
+
+            @if (_isOwn)
+            {
+                <hr style="border-color:var(--ta-border);" />
+                @if (!_editingProfile)
+                {
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="StartEditProfile">
+                        <i class="bi bi-pencil me-1"></i>Редактировать профиль
+                    </button>
+                }
+                else
+                {
+                    <div class="mb-2">
+                        <label class="form-label small text-muted">Отображаемое имя</label>
+                        <input class="form-control form-control-sm" maxlength="100" @bind="_editDisplayName" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted">О себе</label>
+                        <textarea class="form-control form-control-sm" rows="3" maxlength="500" @bind="_editBio"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small text-muted">Город</label>
+                        <input class="form-control form-control-sm" list="ta-ru-cities" maxlength="100" @bind="_editCity" placeholder="Например: Москва" />
+                        <datalist id="ta-ru-cities">
+                            @foreach (var city in RuCities.All)
+                            {
+                                <option value="@city"></option>
+                            }
+                        </datalist>
+                    </div>
+                    @if (_editProfileError is not null)
+                    {
+                        <div class="text-danger small mb-2">@_editProfileError</div>
+                    }
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-ta-primary" @onclick="SaveProfileAsync" disabled="@_savingProfile">Сохранить</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _editingProfile = false">Отмена</button>
+                    </div>
+                }
             }
         </div>
 

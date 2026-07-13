@@ -15,6 +15,21 @@ public partial class Create
         "FATE Core", "Shadowrun", "Warhammer Fantasy", "Cyberpunk RED", "Другая"
     ];
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var userId = await Tokens.GetUserIdAsync();
+            if (userId is { } id)
+            {
+                var profile = await Api.GetUserProfileAsync(id);
+                if (!string.IsNullOrWhiteSpace(profile.City))
+                    _form.Location = profile.City;
+            }
+        }
+        catch { /* необязательное автозаполнение — молча пропускаем */ }
+    }
+
     private async Task SubmitAsync()
     {
         _saving = true; _error = null;

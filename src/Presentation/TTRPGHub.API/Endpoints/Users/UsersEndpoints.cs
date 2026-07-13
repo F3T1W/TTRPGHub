@@ -1,6 +1,7 @@
 using MediatR;
 using TTRPGHub.Extensions;
 using TTRPGHub.Features.Users.Commands.ChangeUserRole;
+using TTRPGHub.Features.Users.Commands.UpdateProfile;
 using TTRPGHub.Features.Users.Queries.GetAllUsers;
 using TTRPGHub.Features.Users.Queries.GetUserProfile;
 
@@ -20,6 +21,11 @@ internal static class UsersEndpoints
         .WithSummary("Публичный профиль пользователя")
         .AllowAnonymous();
 
+        group.MapPut("/me/profile", async (UpdateProfileRequest req, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new UpdateProfileCommand(req.DisplayName, req.Bio, req.City), ct)).ToResponse())
+            .RequireAuthorization()
+            .WithSummary("Обновить свой профиль (имя, био, город)");
+
         group.MapGet("/admin", async (string? search, int page, int pageSize, ISender sender, CancellationToken ct) =>
             (await sender.Send(new GetAllUsersQuery(search, page == 0 ? 1 : page, pageSize == 0 ? 30 : pageSize), ct)).ToResponse())
             .RequireAuthorization(p => p.RequireRole("Admin"))
@@ -33,3 +39,4 @@ internal static class UsersEndpoints
 }
 
 internal sealed record ChangeRoleRequest(string Role);
+internal sealed record UpdateProfileRequest(string? DisplayName, string? Bio, string? City);

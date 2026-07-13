@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @inject IApiClient Api
 @inject NavigationManager Nav
+@inject TokenStorage Tokens
 
 <PageTitle>Создать сессию — Таверна Аферистов</PageTitle>
 
@@ -64,7 +65,13 @@
                 </div>
                 <div class="col-6">
                     <label class="form-label">Город / место</label>
-                    <InputText class="form-control" @bind-Value="_form.Location" placeholder="Например: Москва, антикафе «Тавропед»" />
+                    <InputText class="form-control" list="ta-ru-cities" @bind-Value="_form.Location" placeholder="Например: Москва, антикафе «Тавропед»" />
+                    <datalist id="ta-ru-cities">
+                        @foreach (var city in RuCities.All)
+                        {
+                            <option value="@city"></option>
+                        }
+                    </datalist>
                 </div>
             </div>
 

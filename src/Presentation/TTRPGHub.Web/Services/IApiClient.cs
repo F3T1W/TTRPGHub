@@ -439,6 +439,9 @@ public interface IApiClient
     [Get("/api/v1/users/{id}")]
     Task<UserProfileDto> GetUserProfileAsync(Guid id, CancellationToken ct = default);
 
+    [Put("/api/v1/users/me/profile")]
+    Task UpdateProfileAsync([Body] UpdateProfileRequest request, CancellationToken ct = default);
+
     // Events
     [Get("/api/v1/events")]
     Task<EventsPagedResult> GetEventsAsync(
@@ -1051,6 +1054,8 @@ public sealed record Pf2eVehiclePagedResult(
     List<Pf2eVehicleSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);
 
 // ── Users ─────────────────────────────────────────────────────────────────────
+
+public sealed record UpdateProfileRequest(string? DisplayName, string? Bio, string? City);
 
 public sealed record UserProfileDto(
     Guid Id,
