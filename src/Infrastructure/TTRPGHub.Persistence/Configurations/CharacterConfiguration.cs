@@ -73,6 +73,7 @@ internal sealed class CharacterConfiguration : IEntityTypeConfiguration<Characte
 
         // PF2e-лист (см. комментарий на Character.Pf2eStatsJson)
         builder.Property(c => c.Pf2eStatsJson).HasColumnType("jsonb").HasColumnName("pf2e_stats_json");
+        builder.Property(c => c.SelectedFeatsJson).HasColumnType("jsonb").HasColumnName("selected_feats_json");
 
         // Calculated props
         builder.Ignore(c => c.ProficiencyBonus);

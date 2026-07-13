@@ -314,6 +314,55 @@ else if (_char is not null)
             </div>
 
             <div class="ta-card p-4 mb-4">
+                <h6 class="sheet-section-title">Фиты (из справочника)</h6>
+                @if (_selectedFeats.Count == 0)
+                {
+                    <p class="small text-muted mb-2 fst-italic">Фиты пока не выбраны.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-2">
+                        @foreach (var feat in _selectedFeats)
+                        {
+                            <li class="d-flex align-items-center justify-content-between mb-1">
+                                <a href="/reference/pf2e/rules/feat/@feat.Slug" class="small text-decoration-none" style="color:var(--ta-accent-light)">
+                                    @feat.Name <span class="text-muted">(ур. @feat.Level)</span>
+                                </a>
+                                <button class="btn btn-sm btn-link text-danger p-0" @onclick="() => RemoveFeatAsync(feat.Slug)" title="Убрать">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="input-group input-group-sm">
+                    <input class="form-control" placeholder="Найти фит в справочнике PF2e..."
+                           @bind="_featSearch" @bind:event="oninput" @onkeyup="SearchFeatsAsync" />
+                </div>
+                @if (_featSearching)
+                {
+                    <div class="small text-muted mt-1">Поиск...</div>
+                }
+                else if (_featSearchResults.Count > 0)
+                {
+                    <ul class="list-unstyled mt-2 mb-0">
+                        @foreach (var result in _featSearchResults)
+                        {
+                            <li class="mb-1">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => AddFeatAsync(result)">
+                                    <i class="bi bi-plus-lg me-1"></i>@result.Title
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                @if (_featError is not null)
+                {
+                    <div class="text-danger small mt-2">@_featError</div>
+                }
+            </div>
+
+            <div class="ta-card p-4 mb-4">
                 <h6 class="sheet-section-title">Снаряжение</h6>
                 @if (_editing)
                 {

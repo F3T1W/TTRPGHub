@@ -39,7 +39,7 @@ public partial class IndexBase : ComponentBase
     {
         get
         {
-            var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5014";
+            var apiBase = ApiBaseUrl.Resolve(Configuration, Nav.BaseUri);
             var webcalBase = apiBase.Replace("http://", "webcal://").Replace("https://", "webcal://").TrimEnd('/');
             return $"{webcalBase}/api/calendar/feed/{_token}";
         }

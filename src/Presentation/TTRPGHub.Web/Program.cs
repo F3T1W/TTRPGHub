@@ -8,7 +8,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<TTRPGHub.App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBase = new Uri(builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5014");
+var apiBase = new Uri(ApiBaseUrl.Resolve(builder.Configuration, builder.HostEnvironment.BaseAddress));
 
 builder.Services.AddScoped<TokenStorage>();
 builder.Services.AddScoped<AuthHeaderHandler>();

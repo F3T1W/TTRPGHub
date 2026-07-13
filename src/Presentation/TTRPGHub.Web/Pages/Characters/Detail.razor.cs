@@ -30,15 +30,22 @@ public partial class Detail
     private string? _levelUpError;
     private LevelUpResponse? _levelUpResult;
 
+    private List<SelectedFeatDto> _selectedFeats = [];
+    private string _featSearch = string.Empty;
+    private List<RuleEntrySummaryDto> _featSearchResults = [];
+    private bool _featSearching;
+    private string? _featError;
+
     protected override async Task OnInitializedAsync()
     {
-        var apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5014";
+        var apiBase = ApiBaseUrl.Resolve(Config, Nav.BaseUri);
         _pdfUrl = $"{apiBase}/api/characters/{Id}/pdf";
         try
         {
             _char = await Api.GetCharacterByIdAsync(Id);
             _form = CharacterFormModel.From(_char);
             _newLevel = _char.Level + 1;
+            _selectedFeats = ParseSelectedFeats(_char.SelectedFeatsJson);
         }
         catch { _error = "Не удалось загрузить персонажа."; }
         finally { _loading = false; }
@@ -167,6 +174,61 @@ public partial class Detail
         var json = JsonSerializer.Serialize(export, new JsonSerializerOptions { WriteIndented = true });
         var filename = $"{_char.Name.Replace(" ", "_")}.json";
         await Js.InvokeVoidAsync("downloadJson", filename, json);
+    }
+
+    private static List<SelectedFeatDto> ParseSelectedFeats(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<List<SelectedFeatDto>>(json) ?? []; }
+        catch (JsonException) { return []; }
+    }
+
+    private async Task SearchFeatsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_featSearch))
+        {
+            _featSearchResults = [];
+            return;
+        }
+
+        _featSearching = true;
+        try
+        {
+            var page = await Api.GetRuleEntriesAsync("pf2e", "feat", _featSearch, 1, 10);
+            _featSearchResults = page.Items;
+        }
+        catch { _featSearchResults = []; }
+        finally { _featSearching = false; }
+    }
+
+    private async Task AddFeatAsync(RuleEntrySummaryDto entry)
+    {
+        if (_char is null || _selectedFeats.Any(f => f.Slug == entry.Slug)) return;
+
+        _selectedFeats.Add(new SelectedFeatDto(entry.Slug, entry.Title, _char.Level));
+        _featSearch = string.Empty;
+        _featSearchResults = [];
+        await SaveFeatsAsync();
+    }
+
+    private async Task RemoveFeatAsync(string slug)
+    {
+        _selectedFeats.RemoveAll(f => f.Slug == slug);
+        await SaveFeatsAsync();
+    }
+
+    private async Task SaveFeatsAsync()
+    {
+        _featError = null;
+        try
+        {
+            var json = JsonSerializer.Serialize(_selectedFeats);
+            await Api.UpdateCharacterFeatsAsync(Id, new UpdateFeatsRequest(json));
+        }
+        catch
+        {
+            _featError = "Не удалось сохранить список фитов.";
+        }
     }
 
     private static int CalcMod(int score) => (int)Math.Floor((score - 10) / 2.0);

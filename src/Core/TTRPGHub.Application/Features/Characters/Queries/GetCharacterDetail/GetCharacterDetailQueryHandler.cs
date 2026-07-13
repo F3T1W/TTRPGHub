@@ -36,6 +36,6 @@ internal sealed class GetCharacterDetailQueryHandler(
         c.ArmorClass, c.Speed, c.HitDice,
         c.SkillProficiencies, c.SavingThrowProficiencies,
         c.FeaturesAndTraits, c.Equipment, c.AvatarUrl,
-        c.CreatedAt, c.UpdatedAt, c.Pf2eStatsJson
+        c.CreatedAt, c.UpdatedAt, c.Pf2eStatsJson, c.SelectedFeatsJson
     );
 }

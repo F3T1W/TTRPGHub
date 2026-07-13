@@ -10,13 +10,14 @@ public partial class PfsChronicleSheet
 
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private IConfiguration Config { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     private List<ChronicleDto> _chronicles = [];
     private bool _loading = true;
     private bool _adding;
     private bool _saving;
     private string? _error;
-    private string _apiBase = "http://localhost:5014";
+    private string _apiBase = "";
 
     private string _scenarioName = "";
     private DateOnly _sessionDate = DateOnly.FromDateTime(DateTime.Today);
@@ -29,7 +30,7 @@ public partial class PfsChronicleSheet
 
     protected override async Task OnInitializedAsync()
     {
-        _apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? _apiBase;
+        _apiBase = ApiBaseUrl.Resolve(Config, Nav.BaseUri);
         await LoadAsync();
     }
 

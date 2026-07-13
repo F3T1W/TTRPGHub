@@ -798,7 +798,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         // K.3 — уникальный генерируемый арт по данным монстра (см. Pf2eTokenArtGenerator в API);
         // статичные плейсхолдеры по типу существа (J.6, Pf2eLookups.MonsterPlaceholderIcon)
         // остались фолбэком для жетонов без привязки к бестиарию.
-        var apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5014";
+        var apiBase = ApiBaseUrl.Resolve(Config, Nav.BaseUri);
         var label = MonsterDisplay(m).Name;
         try
         {
@@ -2132,7 +2132,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         {
             var monster = await Api.GetPf2eMonsterAsync(monsterId);
             var color = TokenColors[_tokens.Count % TokenColors.Length];
-            var apiBase = Config["ApiBaseUrl"]?.TrimEnd('/') ?? "http://localhost:5014";
+            var apiBase = ApiBaseUrl.Resolve(Config, Nav.BaseUri);
             await Api.AddTableTokenAsync(Id, new AddTokenRequest(
                 monster.Name, $"{apiBase}/api/v1/pf2e/monsters/{monsterId}/token.svg", color, 5, 5, null,
                 Width: SizeToCells(monster.Size), Height: SizeToCells(monster.Size),

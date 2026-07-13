@@ -22,6 +22,10 @@ public partial class Index
 
     private readonly List<GameSystemCard> _systems =
     [
+        new("Гайды", "📘", "/reference/guides/rules/rule",
+            "Памятки для новичков и мастеров: с чего начать игру, как провести сессию-ноль, первая сессия глазами ГМа.",
+            ["Онбординг", "ГМ", "Игрок"], Available: true),
+
         new("D&D 5e", "🐉", "/reference/dnd5e/spells",
             "Dungeons & Dragons 5-е издание — самая популярная НРИ в мире. Полный SRD: заклинания, монстры, снаряжение.",
             ["Заклинания", "Бестиарий"], Available: true),

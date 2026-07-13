@@ -56,6 +56,11 @@ public sealed class Character : Entity<CharacterId>
     // D&D5e-персонаж без PF2e-листа.
     public string? Pf2eStatsJson { get; private set; }
 
+    // Структурированные фиты — вместо парсинга FeaturesAndTraits (свободный текст) игрок выбирает
+    // фит из справочника по слагу, уровень фиксируется на момент выбора. Свободный текст остаётся
+    // как есть — для наследия/импорта и произвольных заметок, эти два поля не связаны.
+    public string? SelectedFeatsJson { get; private set; }
+
     // Calculated props
     public int ProficiencyBonus => Level switch { <= 4 => 2, <= 8 => 3, <= 12 => 4, <= 16 => 5, _ => 6 };
     public int StrengthModifier     => Modifier(Strength);
@@ -160,6 +165,12 @@ public sealed class Character : Entity<CharacterId>
     public void SetPf2eStats(string? statsJson)
     {
         Pf2eStatsJson = statsJson;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetSelectedFeats(string? selectedFeatsJson)
+    {
+        SelectedFeatsJson = selectedFeatsJson;
         UpdatedAt = DateTime.UtcNow;
     }
 

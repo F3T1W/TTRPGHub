@@ -89,10 +89,13 @@ public sealed record CharacterDetailDto(
     string? AvatarUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    string? Pf2eStatsJson
+    string? Pf2eStatsJson,
+    string? SelectedFeatsJson
 );
 
 public sealed record UpdatePf2eStatsRequest(string StatsJson);
+public sealed record UpdateFeatsRequest(string SelectedFeatsJson);
+public sealed record SelectedFeatDto(string Slug, string Name, int Level);
 
 // N.3 — Pathfinder Society Chronicle Sheets
 public sealed record ChronicleDto(
@@ -192,6 +195,9 @@ public interface IApiClient
 
     [Put("/api/characters/{id}/pf2e-stats")]
     Task UpdatePf2eStatsAsync(Guid id, [Body] UpdatePf2eStatsRequest request, CancellationToken ct = default);
+
+    [Put("/api/characters/{id}/feats")]
+    Task UpdateCharacterFeatsAsync(Guid id, [Body] UpdateFeatsRequest request, CancellationToken ct = default);
 
     [Get("/api/characters/{id}/chronicles")]
     Task<List<ChronicleDto>> GetChroniclesAsync(Guid id, CancellationToken ct = default);

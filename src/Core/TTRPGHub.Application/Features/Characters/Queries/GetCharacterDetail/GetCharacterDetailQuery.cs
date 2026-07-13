@@ -47,5 +47,6 @@ public sealed record CharacterDetailDto(
     string? AvatarUrl,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    string? Pf2eStatsJson
+    string? Pf2eStatsJson,
+    string? SelectedFeatsJson
 );
