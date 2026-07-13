@@ -783,7 +783,10 @@ public static class Pf2eLookups
     // PF2e используют одну и ту же пару полей, разница только в том, меняется ли список между
     // отдыхами — это не моделируем, отслеживание "что подготовлено сегодня" на совести игрока.
     public sealed record Pf2eSpellSlotLevel(int Max, int Used);
-    public sealed record Pf2eKnownSpell(string Name, int Level, bool Prepared);
+    // IsFocus — заклинание берётся из общего пула Focus Points, а не из слотов по уровням
+    // (см. Pf2eStatsModel.FocusPoints). Default false сохраняет обратную совместимость с уже
+    // сохранённым Pf2eStatsJson без этого поля — System.Text.Json подставит false при десериализации.
+    public sealed record Pf2eKnownSpell(string Name, int Level, bool Prepared, bool IsFocus = false);
 
     // N.2 — известная формула создания предмета (Formula Book). Slug — связь со справочником
     // (RuleCategory.Equipment), заполняется по тому же принципу, что и у Pf2eFeat: подтягивается
@@ -995,6 +998,10 @@ public static class Pf2eLookups
         public List<Pf2eResource> Resources { get; set; } = [];
         public List<Pf2eFeat> Feats { get; set; } = [];
         public Dictionary<int, Pf2eSpellSlotLevel> SpellSlots { get; set; } = [];
+        // Фокус-поинты — отдельный пул, восстанавливается за 10-минутный отдых (не как обычные
+        // слоты — те только на полном отдыхе), поэтому раньше жили в общем Resources без разбора.
+        // Теперь отдельное поле — тот же паттерн Max/Used, что и у слотов заклинаний.
+        public Pf2eSpellSlotLevel FocusPoints { get; set; } = new(0, 0);
         public List<Pf2eKnownSpell> KnownSpells { get; set; } = [];
         public List<Pf2eKnownFormula> KnownFormulas { get; set; } = [];
 

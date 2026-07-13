@@ -390,6 +390,8 @@ public partial class Pf2eStatsSheet
         _pf2e = _pf2e with { SpellSlots = dict };
     }
 
+    private void UpdateFocusPoints(Pf2eLookups.Pf2eSpellSlotLevel focus) => _pf2e = _pf2e with { FocusPoints = focus };
+
     private int Pf2eBonus(int rank) => Pf2eLookups.Bonus(rank, Character.Level);
 
     private int AbilityModByKey(string key) => key switch

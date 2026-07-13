@@ -567,9 +567,13 @@
                                             @if (_selectedCharacterStats.SpellcastingRank > 0 && _selectedCharacterStats.KnownSpells.Any(s => s.Prepared))
                                             {
                                                 <div class="small text-muted mb-1">Заклинания (DC @SelectedSpellDc):</div>
-                                                @if (_selectedCharacterStats.SpellSlots.Count > 0)
+                                                @if (_selectedCharacterStats.SpellSlots.Count > 0 || _selectedCharacterStats.FocusPoints.Max > 0)
                                                 {
                                                     <div class="small text-muted mb-1">
+                                                        @if (_selectedCharacterStats.FocusPoints.Max > 0)
+                                                        {
+                                                            <text>Focus: @(_selectedCharacterStats.FocusPoints.Max - _selectedCharacterStats.FocusPoints.Used)/@_selectedCharacterStats.FocusPoints.Max. </text>
+                                                        }
                                                         Слоты:
                                                         @string.Join(", ", _selectedCharacterStats.SpellSlots
                                                             .Where(kv => kv.Key > 0)
@@ -581,15 +585,22 @@
                                                     @foreach (var spell in _selectedCharacterStats.KnownSpells.Where(s => s.Prepared))
                                                     {
                                                         var spellBonus = SelectedSpellAttackBonus(t.Id);
-                                                        var slot = spell.Level > 0 ? _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level) : null;
-                                                        var noSlots = slot is not null && slot.Used >= slot.Max;
-                                                        var slotNote = spell.Level > 0 ? " (списывает слот)" : " (заговор, без слота)";
-                                                        <button @onclick="() => RollPf2eSpellAttackAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов" : $"Атака заклинанием{slotNote}")">
+                                                        var noSlots = spell.IsFocus
+                                                            ? _selectedCharacterStats.FocusPoints.Used >= _selectedCharacterStats.FocusPoints.Max
+                                                            : spell.Level > 0 && _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level) is { } slot && slot.Used >= slot.Max;
+                                                        var slotNote = spell.IsFocus ? " (списывает Focus Point)" : spell.Level > 0 ? " (списывает слот)" : " (заговор, без слота)";
+                                                        <button @onclick="() => RollPf2eSpellAttackAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Атака заклинанием{slotNote}")">
                                                             @spell.Name @FormatBonus(spellBonus)
                                                         </button>
-                                                        <button @onclick="() => AnnouncePf2eSpellDcAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов" : $"Объявить DC в чат{slotNote}")">
+                                                        <button @onclick="() => AnnouncePf2eSpellDcAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Объявить DC в чат{slotNote}")">
                                                             DC
                                                         </button>
+                                                        @if (TargetToken is not null)
+                                                        {
+                                                            <button @onclick='() => RollTargetSaveAsync(spell, "fortitude")' disabled="@_rolling" title="Спасбросок цели: Стойкость">Спб. Стойк.</button>
+                                                            <button @onclick='() => RollTargetSaveAsync(spell, "reflex")' disabled="@_rolling" title="Спасбросок цели: Реакция">Спб. Реакц.</button>
+                                                            <button @onclick='() => RollTargetSaveAsync(spell, "will")' disabled="@_rolling" title="Спасбросок цели: Воля">Спб. Воля</button>
+                                                        }
                                                     }
                                                 </div>
                                                 @if (_rangeWarning is not null)

@@ -1632,6 +1632,26 @@ public partial class Table : ComponentBase, IAsyncDisposable
         if (spell.Level <= 0 || _selectedCharacterStats is null || token.CombatantId is not Guid characterId)
             return true;
 
+        // Фокус-заклинания списывают Focus Points, а не слот по уровню — отдельный пул с
+        // восстановлением за 10-минутный отдых (см. Pf2eStatsModel.FocusPoints).
+        if (spell.IsFocus)
+        {
+            var focus = _selectedCharacterStats.FocusPoints;
+            if (focus.Used >= focus.Max)
+            {
+                _rollError = "Нет свободных Focus Points.";
+                return false;
+            }
+
+            _selectedCharacterStats = _selectedCharacterStats with { FocusPoints = focus with { Used = focus.Used + 1 } };
+            StateHasChanged();
+
+            try { await Api.UpdatePf2eStatsAsync(characterId, new UpdatePf2eStatsRequest(_selectedCharacterStats.ToJson())); }
+            catch { /* локально уже списано — переживёт до следующей полной перезагрузки листа */ }
+
+            return true;
+        }
+
         var slot = _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level, new Pf2eLookups.Pf2eSpellSlotLevel(0, 0));
         if (slot.Used >= slot.Max)
         {
@@ -1650,6 +1670,60 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* локально слот уже списан — переживёт до следующей полной перезагрузки листа */ }
 
         return true;
+    }
+
+    // Автоспасбросок цели: раньше AnnouncePf2eSpellDcAsync только объявлял DC в чат, дальше ГМ/цель
+    // бросали спасбросок вручную где-то ещё. Теперь можно сразу бросить его за цель — бонус берём
+    // из токена-монстра (плоские Fortitude/Reflex/Will справочника) или токена-персонажа (ранг
+    // спасброска + модификатор нужной характеристики, та же формула, что и для самого каста).
+    private async Task RollTargetSaveAsync(Pf2eLookups.Pf2eKnownSpell spell, string saveType)
+    {
+        if (TargetToken is not { } target) return;
+
+        int bonus;
+        try
+        {
+            if (target.CombatantType == "Monster" && target.CombatantId is Guid monsterId)
+            {
+                var monster = await Api.GetPf2eMonsterAsync(monsterId);
+                bonus = saveType switch
+                {
+                    "fortitude" => monster.Fortitude,
+                    "reflex" => monster.Reflex,
+                    _ => monster.Will
+                };
+            }
+            else if (target.CombatantType == "Character" && target.CombatantId is Guid characterId)
+            {
+                var targetChar = await Api.GetCharacterByIdAsync(characterId);
+                var targetStats = Pf2eLookups.Pf2eStatsModel.FromJson(targetChar.Pf2eStatsJson);
+                var rank = targetStats.SaveRanks.GetValueOrDefault(saveType);
+                var abilityMod = saveType switch
+                {
+                    "fortitude" => targetChar.ConstitutionModifier,
+                    "reflex" => targetChar.DexterityModifier,
+                    _ => targetChar.WisdomModifier
+                };
+                bonus = Pf2eLookups.Bonus(rank, targetChar.Level, _proficiencyWithoutLevel) + abilityMod;
+            }
+            else
+            {
+                _rollError = "У цели нет данных для автоматического спасброска.";
+                return;
+            }
+        }
+        catch { _rollError = "Не удалось получить статы цели."; return; }
+
+        var saveLabel = saveType switch { "fortitude" => "Стойкость", "reflex" => "Реакция", _ => "Воля" };
+        var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
+        _rolling = true;
+        try
+        {
+            await Api.RollTableDiceAsync(Id, new RollDiceRequest(
+                expression, SelectedSpellDc, $"{target.Label}: спасбросок ({saveLabel}) от «{spell.Name}»"));
+        }
+        catch { _rollError = "Не удалось выполнить бросок."; }
+        finally { _rolling = false; }
     }
 
     // Бонус атаки монстра уже готовое число из статблока (см. Pf2eMonster.AttacksJson) — в

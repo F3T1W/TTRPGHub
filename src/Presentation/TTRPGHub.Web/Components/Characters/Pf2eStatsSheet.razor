@@ -195,6 +195,14 @@ else if (_showPf2e)
                             @if (_editingPf2e)
                             {
                                 <div class="mt-2">
+                                    <div class="small text-muted mb-1">Focus Points</div>
+                                    <div class="d-flex align-items-center gap-1 mb-2">
+                                        <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" placeholder="исп."
+                                               value="@_pf2e.FocusPoints.Used" @onchange="e => UpdateFocusPoints(_pf2e.FocusPoints with { Used = int.TryParse(e.Value?.ToString(), out var u) ? u : _pf2e.FocusPoints.Used })" />
+                                        <span class="small">/</span>
+                                        <input type="number" min="0" class="form-control form-control-sm" style="width:55px;" placeholder="макс."
+                                               value="@_pf2e.FocusPoints.Max" @onchange="e => UpdateFocusPoints(_pf2e.FocusPoints with { Max = int.TryParse(e.Value?.ToString(), out var m) ? m : _pf2e.FocusPoints.Max })" />
+                                    </div>
                                     <div class="small text-muted mb-1">Слоты по уровням</div>
                                     @foreach (var lvl in SpellSlotLevels)
                                     {
@@ -210,9 +218,16 @@ else if (_showPf2e)
                                     }
                                 </div>
                             }
-                            else if (_pf2e.SpellSlots.Any(s => s.Value.Max > 0))
+                            else if (_pf2e.SpellSlots.Any(s => s.Value.Max > 0) || _pf2e.FocusPoints.Max > 0)
                             {
                                 <div class="mt-2">
+                                    @if (_pf2e.FocusPoints.Max > 0)
+                                    {
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span>Focus Points</span>
+                                            <span class="fw-semibold" style="color:var(--ta-accent-light);">@_pf2e.FocusPoints.Used / @_pf2e.FocusPoints.Max</span>
+                                        </div>
+                                    }
                                     <div class="small text-muted mb-1">Слоты по уровням</div>
                                     @foreach (var lvl in SpellSlotLevels)
                                     {
@@ -585,6 +600,8 @@ else if (_showPf2e)
                                                    @onchange="e => UpdateKnownSpell(idx, spell with { Level = int.TryParse(e.Value?.ToString(), out var l) ? l : spell.Level })" />
                                             <input type="checkbox" class="form-check-input" checked="@spell.Prepared" title="Подготовлено"
                                                    @onchange="e => UpdateKnownSpell(idx, spell with { Prepared = (bool)(e.Value ?? false) })" />
+                                            <input type="checkbox" class="form-check-input" checked="@spell.IsFocus" title="Фокус-заклинание (тратит Focus Point, не слот)"
+                                                   @onchange="e => UpdateKnownSpell(idx, spell with { IsFocus = (bool)(e.Value ?? false) })" />
                                             <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveKnownSpell(idx)">
                                                 <i class="bi bi-x"></i>
                                             </button>
@@ -593,7 +610,7 @@ else if (_showPf2e)
                                     else
                                     {
                                         <div class="d-flex justify-content-between small mb-1">
-                                            <span>@(spell.Prepared ? "✓ " : "")@spell.Name</span>
+                                            <span>@(spell.Prepared ? "✓ " : "")@spell.Name @(spell.IsFocus ? " 🔷" : "")</span>
                                             <span class="text-muted">ур. @spell.Level</span>
                                         </div>
                                     }
