@@ -30,13 +30,21 @@ public sealed class Pf2eHazard : Entity<Pf2eHazardId>
     public string? ResetText { get; private set; }
     public string Source { get; private set; } = "";
 
+    // N.7 — атаки хазарда структурированы отдельно от AbilitiesText (тот же формат, что
+    // Pf2eMonster.AttacksJson: [{Name, Bonus, DamageDice, DamageBonus, DamageType}]) — раньше
+    // ГМ бросал урон хазарда вручную, читая описание. AbilitiesText остаётся как есть для
+    // реакций/аур/прочих способностей без готового числового бонуса — атаки вынесены, а не
+    // продублированы, чтобы не путать источники правды.
+    public string? AttacksJson { get; private set; }
+
     private Pf2eHazard() { }
 
     public static Pf2eHazard Create(
         string slug, string name, string nameRu, int level, string traits,
         int stealthDc, string? stealthNote, string? description, string? disableText,
         int? armorClass, int? fortitude, int? reflex, int? hardness, int? hitPoints,
-        string? immunities, string? abilitiesText, string? resetText, string source)
+        string? immunities, string? abilitiesText, string? resetText, string source,
+        string? attacksJson = null)
     {
         return new Pf2eHazard
         {
@@ -59,6 +67,9 @@ public sealed class Pf2eHazard : Entity<Pf2eHazardId>
             AbilitiesText = abilitiesText,
             ResetText = resetText,
             Source = source,
+            AttacksJson = attacksJson,
         };
     }
+
+    public void SetAttacks(string? attacksJson) => AttacksJson = attacksJson;
 }

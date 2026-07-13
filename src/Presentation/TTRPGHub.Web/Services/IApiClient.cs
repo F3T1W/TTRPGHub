@@ -1006,7 +1006,8 @@ public sealed record Pf2eHazardDetailDto(
     Guid Id, string Slug, string Name, string NameRu, int Level, string Traits,
     int StealthDc, string? StealthNote, string? Description, string? DisableText,
     int? ArmorClass, int? Fortitude, int? Reflex, int? Hardness, int? HitPoints,
-    string? Immunities, string? AbilitiesText, string? ResetText, string Source);
+    string? Immunities, string? AbilitiesText, string? ResetText, string Source,
+    string? AttacksJson);
 
 public sealed record Pf2eHazardPagedResult(
     List<Pf2eHazardSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);

@@ -892,6 +892,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _selectedActionSlug = string.Empty;
         _selectedFeatModifiers = [];
         _selectedHazard = null;
+        _selectedHazardAttacks = [];
         _rangeWarning = null;
         _selectedCharacterCompanions = [];
         _selectedCompanion = null;
@@ -916,11 +917,17 @@ public partial class Table : ComponentBase, IAsyncDisposable
     }
 
     private Pf2eHazardDetailDto? _selectedHazard;
+    private List<Pf2eLookups.Pf2eMonsterAttack> _selectedHazardAttacks = [];
 
     private async Task LoadSelectedHazardAsync(Guid hazardId)
     {
-        try { _selectedHazard = await Api.GetPf2eHazardAsync(hazardId); StateHasChanged(); }
-        catch { _selectedHazard = null; }
+        try
+        {
+            _selectedHazard = await Api.GetPf2eHazardAsync(hazardId);
+            _selectedHazardAttacks = Pf2eLookups.ParseMonsterAttacks(_selectedHazard.AttacksJson);
+            StateHasChanged();
+        }
+        catch { _selectedHazard = null; _selectedHazardAttacks = []; }
     }
 
     private Pf2eVehicleDetailDto? _selectedVehicle;

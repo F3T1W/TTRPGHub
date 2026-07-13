@@ -26,6 +26,7 @@ internal sealed class Pf2eHazardConfiguration : IEntityTypeConfiguration<Pf2eHaz
         builder.Property(h => h.AbilitiesText).HasColumnName("abilities_text");
         builder.Property(h => h.ResetText).HasColumnName("reset_text");
         builder.Property(h => h.Source).HasColumnName("source").HasMaxLength(300);
+        builder.Property(h => h.AttacksJson).HasColumnType("jsonb").HasColumnName("attacks_json");
 
         builder.Property(h => h.Level).HasColumnName("level");
         builder.Property(h => h.StealthDc).HasColumnName("stealth_dc");

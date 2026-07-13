@@ -18,6 +18,6 @@ internal sealed class GetPf2eHazardDetailQueryHandler(IPf2eHazardRepository repo
             h.Id.Value, h.Slug, h.Name, h.NameRu, h.Level, h.Traits,
             h.StealthDc, h.StealthNote, h.Description, h.DisableText,
             h.ArmorClass, h.Fortitude, h.Reflex, h.Hardness, h.HitPoints,
-            h.Immunities, h.AbilitiesText, h.ResetText, h.Source);
+            h.Immunities, h.AbilitiesText, h.ResetText, h.Source, h.AttacksJson);
     }
 }

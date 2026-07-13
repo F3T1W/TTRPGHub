@@ -24,4 +24,5 @@ public sealed record Pf2eHazardDetailDto(
     string? Immunities,
     string? AbilitiesText,
     string? ResetText,
-    string Source);
+    string Source,
+    string? AttacksJson);
