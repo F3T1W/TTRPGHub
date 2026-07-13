@@ -58,6 +58,14 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
     // монстр с несколькими аурами (редкость) — несколько записей в массиве.
     public string? AurasJson { get; private set; }
 
+    // K.2 (продолжение) — структурированные модификаторы с предикатами для монстра-как-актора
+    // (в отличие от AttacksJson — там уже готовые числа, здесь условные бонусы вроде "+2 к атаке
+    // против ошеломлённых целей"). Формат — тот же Pf2eFlatModifier, что у фитов/снаряжения
+    // персонажа: [{selector, value, type, predicate}], читается тем же общим
+    // PredicateEvaluator — новый движок предикатов не потребовался, только новая точка данных
+    // и сборка roll options/facts для монстра как действующей стороны (Table.razor.cs).
+    public string? ModifiersJson { get; private set; }
+
     private Pf2eMonster() { }
 
     public static Pf2eMonster Create(
@@ -67,7 +75,7 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
         int armorClass, int fortitude, int reflex, int will, int hitPoints,
         string speed, string? attacks, string? abilities, string source,
         string? attacksJson = null, string? resistancesJson = null, string? weaknessesJson = null,
-        string? immunitiesJson = null, string? aurasJson = null)
+        string? immunitiesJson = null, string? aurasJson = null, string? modifiersJson = null)
     {
         return new Pf2eMonster
         {
@@ -101,6 +109,7 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
             WeaknessesJson  = weaknessesJson,
             ImmunitiesJson  = immunitiesJson,
             AurasJson       = aurasJson,
+            ModifiersJson   = modifiersJson,
         };
     }
 }

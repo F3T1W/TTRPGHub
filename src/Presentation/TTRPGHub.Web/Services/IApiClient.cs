@@ -994,7 +994,8 @@ public sealed record Pf2eMonsterDetailDto(
     int Intelligence, int Wisdom, int Charisma,
     int ArmorClass, int Fortitude, int Reflex, int Will, int HitPoints,
     string Speed, string? Attacks, string? Abilities, string Source, string? AttacksJson,
-    string? ResistancesJson, string? WeaknessesJson, string? ImmunitiesJson, string? AurasJson);
+    string? ResistancesJson, string? WeaknessesJson, string? ImmunitiesJson, string? AurasJson,
+    string? ModifiersJson);
 
 public sealed record Pf2eMonsterPagedResult(
     List<Pf2eMonsterSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);

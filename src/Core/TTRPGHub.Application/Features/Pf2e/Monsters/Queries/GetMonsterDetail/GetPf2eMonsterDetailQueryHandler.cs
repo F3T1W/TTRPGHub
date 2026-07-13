@@ -21,6 +21,6 @@ internal sealed class GetPf2eMonsterDetailQueryHandler(IPf2eMonsterRepository re
             m.Intelligence, m.Wisdom, m.Charisma,
             m.ArmorClass, m.Fortitude, m.Reflex, m.Will, m.HitPoints,
             m.Speed, m.Attacks, m.Abilities, m.Source, m.AttacksJson,
-            m.ResistancesJson, m.WeaknessesJson, m.ImmunitiesJson, m.AurasJson);
+            m.ResistancesJson, m.WeaknessesJson, m.ImmunitiesJson, m.AurasJson, m.ModifiersJson);
     }
 }

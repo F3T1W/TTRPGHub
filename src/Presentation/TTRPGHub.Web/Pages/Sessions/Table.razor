@@ -629,9 +629,9 @@
                                             }
                                             <div class="small text-muted mb-1">Спасброски (DC @(_selectedCharacterStats is not null ? SelectedSpellDc : _checkDc ?? _selectedMonsterAbilityDc)):</div>
                                             <div class="d-flex flex-wrap gap-1 mb-2">
-                                                <button @onclick='() => RollMonsterSaveAsync("Стойкость", _selectedMonsterFort)' disabled="@_rolling">Стойкость @FormatBonus(_selectedMonsterFort)</button>
-                                                <button @onclick='() => RollMonsterSaveAsync("Рефлекс", _selectedMonsterReflex)' disabled="@_rolling">Рефлекс @FormatBonus(_selectedMonsterReflex)</button>
-                                                <button @onclick='() => RollMonsterSaveAsync("Воля", _selectedMonsterWill)' disabled="@_rolling">Воля @FormatBonus(_selectedMonsterWill)</button>
+                                                <button @onclick='() => RollMonsterSaveAsync("Стойкость", _selectedMonsterFort + MonsterSaveModifier("fortitude"))' disabled="@_rolling">Стойкость @FormatBonus(_selectedMonsterFort + MonsterSaveModifier("fortitude"))</button>
+                                                <button @onclick='() => RollMonsterSaveAsync("Рефлекс", _selectedMonsterReflex + MonsterSaveModifier("reflex"))' disabled="@_rolling">Рефлекс @FormatBonus(_selectedMonsterReflex + MonsterSaveModifier("reflex"))</button>
+                                                <button @onclick='() => RollMonsterSaveAsync("Воля", _selectedMonsterWill + MonsterSaveModifier("will"))' disabled="@_rolling">Воля @FormatBonus(_selectedMonsterWill + MonsterSaveModifier("will"))</button>
                                             </div>
                                             <div class="small text-muted mb-2">Class DC способности: @_selectedMonsterAbilityDc</div>
                                         }

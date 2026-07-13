@@ -29,4 +29,5 @@ public sealed record Pf2eMonsterDetailDto(
     string? ResistancesJson,
     string? WeaknessesJson,
     string? ImmunitiesJson,
-    string? AurasJson);
+    string? AurasJson,
+    string? ModifiersJson);

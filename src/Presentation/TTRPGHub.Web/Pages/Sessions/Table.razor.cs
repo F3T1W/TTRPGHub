@@ -133,6 +133,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private int _selectedCharacterLevel;
     private Dictionary<string, int> _selectedCharacterAbilityMods = [];
     private List<Pf2eLookups.Pf2eMonsterAttack> _selectedMonsterAttacks = [];
+    private List<Pf2eLookups.Pf2eFlatModifier> _selectedMonsterModifiers = [];
+    private List<string> _selectedMonsterTraits = [];
     private int _selectedMonsterLevel;
     private int _selectedMonsterFort;
     private int _selectedMonsterReflex;
@@ -883,6 +885,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _conditionBlockedError = null;
         _selectedCharacterStats = null;
         _selectedMonsterAttacks = [];
+        _selectedMonsterModifiers = [];
+        _selectedMonsterTraits = [];
         _selectedMonsterResistances = [];
         _selectedMonsterWeaknesses = [];
         _selectedMonsterImmunities = [];
@@ -977,6 +981,10 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _selectedMonsterWeaknesses = Pf2eLookups.ParseDamageAdjustments(monster.WeaknessesJson);
             _selectedMonsterImmunities = Pf2eLookups.ParseImmunities(monster.ImmunitiesJson);
             _monsterAuraCache[monsterId] = Pf2eLookups.ParseAuras(monster.AurasJson);
+            _selectedMonsterModifiers = Pf2eLookups.ParseFeatModifiers(monster.ModifiersJson);
+            _selectedMonsterTraits = monster.Traits
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => t.ToLowerInvariant()).ToList();
             _selectedMonsterLevel = monster.Level;
             _selectedMonsterFort = monster.Fortitude;
             _selectedMonsterReflex = monster.Reflex;
@@ -1298,8 +1306,12 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private int MonsterAttackBonus(Pf2eLookups.Pf2eMonsterAttack attack, Guid tokenId)
     {
         var map = _state?.CombatActive == true ? Pf2eLookups.MapPenalty(CurrentStrikeIndex(tokenId)) : 0;
-        return attack.Bonus + map;
+        return attack.Bonus + map + CheckModifier("attack");
     }
+
+    // K.2 (продолжение) — условные бонусы монстра к спасброскам ("+2 Стойкость против яда" и
+    // т.п.), та же механика предикатов, что и у атак выше.
+    private int MonsterSaveModifier(string selector) => CheckModifier(selector);
 
     private int? TargetArmorClass => TargetToken?.ArmorClass;
 
@@ -1452,8 +1464,13 @@ public partial class Table : ComponentBase, IAsyncDisposable
         if (!string.IsNullOrEmpty(_selectedActionSlug)) options.Add($"action:{_selectedActionSlug}");
 
         if (SelectedToken is { } self)
+        {
             foreach (var c in self.Conditions)
                 options.Add($"self:condition:{c.Slug}");
+            if (self.CombatantType == "Pf2eMonster")
+                foreach (var trait in _selectedMonsterTraits)
+                    options.Add($"self:trait:{trait}");
+        }
 
         if (TargetToken is { } target)
         {
@@ -1480,7 +1497,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
     private Dictionary<string, double> BuildCombatFacts()
     {
-        var facts = new Dictionary<string, double> { ["self:level"] = _selectedCharacterLevel };
+        var selfLevel = SelectedToken?.CombatantType == "Pf2eMonster" ? _selectedMonsterLevel : _selectedCharacterLevel;
+        var facts = new Dictionary<string, double> { ["self:level"] = selfLevel };
         if (SelectedToken is { CurrentHp: { } hp, MaxHp: > 0 and var maxHp })
             facts["hp-percent"] = 100.0 * hp / maxHp;
         if (SelectedToken is { } self)
@@ -1508,6 +1526,13 @@ public partial class Table : ComponentBase, IAsyncDisposable
         }
 
         foreach (var mod in _selectedItemModifiers)
+        {
+            if (mod.Selector != selector && mod.Selector != "all") continue;
+            if (!Pf2eLookups.PredicateEvaluator.Evaluate(mod.Predicate, options, facts)) continue;
+            parts.Add((mod.Type, mod.Value));
+        }
+
+        foreach (var mod in _selectedMonsterModifiers)
         {
             if (mod.Selector != selector && mod.Selector != "all") continue;
             if (!Pf2eLookups.PredicateEvaluator.Evaluate(mod.Predicate, options, facts)) continue;
