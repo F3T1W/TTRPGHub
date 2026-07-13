@@ -52,6 +52,12 @@ internal sealed class RuleEntryRepository(AppDbContext db) : IRuleEntryRepositor
     public void Remove(RuleEntry entry) =>
         db.RuleEntries.Remove(entry);
 
+    public async Task<IReadOnlyList<RuleEntry>> GetAllBySystemAsync(GameSystemId systemId, CancellationToken ct = default)
+    {
+        var list = await db.RuleEntries.Where(e => e.SystemId == systemId).ToListAsync(ct);
+        return list.AsReadOnly();
+    }
+
     private IQueryable<RuleEntry> Filter(GameSystemId systemId, RuleCategory category, string? search)
     {
         var query = db.RuleEntries.Where(e => e.SystemId == systemId && e.Category == category);

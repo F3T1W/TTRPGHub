@@ -803,6 +803,15 @@ public interface IApiClient
     [Multipart]
     [Post("/api/v1/macros/import/foundry")]
     Task<List<MacroDto>> ImportFoundryMacrosAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
+
+    // J.9 — модули: экспорт своих макросов + своей системы справочника в один JSON-файл,
+    // импорт такого же файла другим пользователем (см. ModuleManifest на бэкенде).
+    [Post("/api/v1/modules/export")]
+    Task<string> ExportModuleAsync([Body] ExportModuleRequest request, CancellationToken ct = default);
+
+    [Multipart]
+    [Post("/api/v1/modules/import")]
+    Task<ImportModuleResponse> ImportModuleAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
 }
 
 public sealed record MacroDto(
@@ -811,6 +820,10 @@ public sealed record MacroDto(
 public sealed record CreateMacroRequest(string Name, string? ImageUrl, string Type, string Command);
 public sealed record UpdateMacroRequest(string Name, string? ImageUrl, string Type, string Command);
 public sealed record SetHotbarSlotRequest(int Slot);
+
+public sealed record ExportModuleRequest(
+    string Name, string? Description, string? Version, List<Guid> MacroIds, string? SystemSlug);
+public sealed record ImportModuleResponse(int MacrosImported, int RuleEntriesImported, string? SystemSlug);
 
 public sealed record AvatarUploadResponse(string Url);
 

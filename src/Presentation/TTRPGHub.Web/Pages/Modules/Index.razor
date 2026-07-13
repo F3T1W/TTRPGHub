@@ -1,0 +1,105 @@
+@page "/modules"
+@attribute [Authorize]
+<PageTitle>Модули — Таверна Аферистов</PageTitle>
+
+<div class="container py-4" style="max-width:760px;">
+    <h2 class="mb-1">Модули</h2>
+    <p class="text-muted small mb-4">
+        Модуль — переносимый набор твоих макросов и/или своей системы справочника, упакованный
+        в один JSON-файл. Поделись файлом с другим ГМом (Discord, форум) — он импортирует его
+        одним кликом вместо ручного пересоздания каждого макроса и правила. Это не исполняемый
+        плагин с произвольным кодом — скрипт-макросы внутри модуля выполняются в той же
+        песочнице, что и обычно (см. страницу стола).
+    </p>
+
+    <div class="ta-card p-4 mb-4">
+        <h6 class="mb-3" style="color:var(--ta-gold)">Экспортировать модуль</h6>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">Название модуля</label>
+            <input class="form-control" @bind="_exportName" maxlength="100" placeholder="Например: Боевые макросы для клирика" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label small text-muted">Описание (необязательно)</label>
+            <textarea class="form-control" rows="2" @bind="_exportDescription" maxlength="500"></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small text-muted">Версия</label>
+            <input class="form-control" style="max-width:150px;" @bind="_exportVersion" placeholder="1.0.0" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">Макросы для включения</label>
+            @if (_myMacros.Count == 0)
+            {
+                <p class="small text-muted fst-italic">У тебя пока нет макросов (создаются на странице стола).</p>
+            }
+            else
+            {
+                @foreach (var m in _myMacros)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="@("macro-" + m.Id)"
+                               checked="@_selectedMacroIds.Contains(m.Id)"
+                               @onchange="e => ToggleMacro(m.Id, (bool)(e.Value ?? false))" />
+                        <label class="form-check-label small" for="@("macro-" + m.Id)">
+                            @m.Name <span class="text-muted">(@(m.Type == "Script" ? "скрипт" : "чат"))</span>
+                        </label>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small text-muted">Своя система справочника (необязательно)</label>
+            <select class="form-select" @bind="_exportSystemSlug">
+                <option value="">— не включать —</option>
+                @foreach (var s in _mySystems)
+                {
+                    <option value="@s.Slug">@s.Name</option>
+                }
+            </select>
+            @if (_mySystems.Count == 0)
+            {
+                <div class="small text-muted mt-1">Своих систем справочника нет (создаются в «Справочник → Своя система»).</div>
+            }
+        </div>
+
+        @if (_exportError is not null)
+        {
+            <div class="text-danger small mb-2">@_exportError</div>
+        }
+
+        <button class="btn btn-ta-primary" @onclick="ExportAsync" disabled="@(_exporting || string.IsNullOrWhiteSpace(_exportName))">
+            @if (_exporting) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            <i class="bi bi-download me-1"></i>Скачать модуль
+        </button>
+    </div>
+
+    <div class="ta-card p-4">
+        <h6 class="mb-3" style="color:var(--ta-gold)">Импортировать модуль</h6>
+        <p class="small text-muted">
+            Макросы добавятся в твою личную библиотеку. Если в модуле есть система справочника —
+            создастся новая своя система с её записями (существующие системы не перезаписываются).
+        </p>
+        <InputFile OnChange="ImportAsync" accept=".json" class="form-control" />
+        @if (_importing)
+        {
+            <div class="small text-muted mt-2"><span class="spinner-border spinner-border-sm me-1"></span>Импортируем...</div>
+        }
+        @if (_importResult is not null)
+        {
+            <div class="alert alert-success mt-3 mb-0 small">
+                Импортировано: @_importResult.MacrosImported макрос(ов)@(_importResult.SystemSlug is not null ? $", {_importResult.RuleEntriesImported} записей справочника" : "").
+                @if (_importResult.SystemSlug is not null)
+                {
+                    <a href="/reference">Открыть справочник</a>
+                }
+            </div>
+        }
+        @if (_importError is not null)
+        {
+            <div class="text-danger small mt-2">@_importError</div>
+        }
+    </div>
+</div>

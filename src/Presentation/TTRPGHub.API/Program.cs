@@ -23,6 +23,7 @@ using TTRPGHub.API.Endpoints.Ratings;
 using TTRPGHub.API.Endpoints.Events;
 using TTRPGHub.API.Endpoints.Discussions;
 using TTRPGHub.Endpoints.Macros;
+using TTRPGHub.Endpoints.Modules;
 using TTRPGHub.Endpoints.Tickets;
 using TTRPGHub.Endpoints.Moderation;
 using TTRPGHub.Hubs;
@@ -137,6 +138,7 @@ try
     app.MapCalendarEndpoints();
     app.MapGameTableEndpoints();
     app.MapMacros();
+    app.MapModules();
     app.MapTickets();
     app.MapModerationEndpoints();
     app.MapHub<InitiativeHub>("/hubs/initiative");

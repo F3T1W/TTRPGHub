@@ -17,6 +17,8 @@ public interface IRuleEntryRepository
     Task<IReadOnlyList<RuleEntry>> GetBySlugsAsync(
         GameSystemId systemId, RuleCategory category, IReadOnlyCollection<string> slugs, CancellationToken ct = default);
 
+    Task<IReadOnlyList<RuleEntry>> GetAllBySystemAsync(GameSystemId systemId, CancellationToken ct = default);
+
     Task AddRangeAsync(IEnumerable<RuleEntry> entries, CancellationToken ct = default);
     Task AddAsync(RuleEntry entry, CancellationToken ct = default);
     void Update(RuleEntry entry);
