@@ -8,6 +8,7 @@ namespace TTRPGHub.Features.Characters.Queries.GetCharacterDetail;
 
 internal sealed class GetCharacterDetailQueryHandler(
     ICharacterRepository characterRepository,
+    IUserRepository userRepository,
     ICurrentUser currentUser
 ) : IRequestHandler<GetCharacterDetailQuery, Result<CharacterDetailDto>>
 {
@@ -17,13 +18,20 @@ internal sealed class GetCharacterDetailQueryHandler(
         if (character is null)
             return Error.NotFound(nameof(Character));
 
-        if (!character.IsPublic && character.OwnerId != currentUser.Id)
+        if (!character.IsPublic && !character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
-        return ToDto(character);
+        var coOwners = new List<CoOwnerDto>(character.CoOwnerIds.Count);
+        foreach (var id in character.CoOwnerIds)
+        {
+            var user = await userRepository.GetByIdAsync(new UserId(id), ct);
+            coOwners.Add(new CoOwnerDto(id, user?.Username ?? "—"));
+        }
+
+        return ToDto(character, coOwners);
     }
 
-    private static CharacterDetailDto ToDto(Character c) => new(
+    private static CharacterDetailDto ToDto(Character c, List<CoOwnerDto> coOwners) => new(
         c.Id.Value, c.OwnerId.Value,
         c.Name, c.Race, c.Class, c.Level, c.IsPublic,
         c.Background, c.Alignment, c.ExperiencePoints,
@@ -36,6 +44,6 @@ internal sealed class GetCharacterDetailQueryHandler(
         c.ArmorClass, c.Speed, c.HitDice,
         c.SkillProficiencies, c.SavingThrowProficiencies,
         c.FeaturesAndTraits, c.Equipment, c.AvatarUrl,
-        c.CreatedAt, c.UpdatedAt, c.Pf2eStatsJson, c.SelectedFeatsJson
+        c.CreatedAt, c.UpdatedAt, c.Pf2eStatsJson, c.SelectedFeatsJson, coOwners
     );
 }

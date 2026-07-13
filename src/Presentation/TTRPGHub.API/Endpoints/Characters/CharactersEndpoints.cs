@@ -5,6 +5,7 @@ using TTRPGHub.Entities;
 using TTRPGHub.Entities.Pf2e;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Pf2e;
+using TTRPGHub.Features.Characters.Commands.AddCoOwner;
 using TTRPGHub.Features.Characters.Commands.CreateCharacter;
 using TTRPGHub.Features.Characters.Commands.CreateCharacterFromRules;
 using TTRPGHub.Features.Characters.Commands.CreateChronicle;
@@ -13,6 +14,7 @@ using TTRPGHub.Features.Characters.Commands.DeleteChronicle;
 using TTRPGHub.Features.Characters.Commands.DeleteCompanion;
 using TTRPGHub.Features.Characters.Commands.ImportCharacter;
 using TTRPGHub.Features.Characters.Commands.LevelUpCharacter;
+using TTRPGHub.Features.Characters.Commands.RemoveCoOwner;
 using TTRPGHub.Features.Characters.Commands.UpdateCharacter;
 using TTRPGHub.Features.Characters.Commands.UpdateCharacterFeats;
 using TTRPGHub.Features.Characters.Commands.UpdateCharacterPf2eStats;
@@ -107,6 +109,25 @@ internal static class CharactersEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/{id:guid}/co-owners", async (Guid id, AddCoOwnerRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new AddCoOwnerCommand(id, req.Username), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Добавить совладельца персонажа (co-op — несколько игроков ведут одного персонажа)")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapDelete("/{id:guid}/co-owners/{userId:guid}", async (Guid id, Guid userId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new RemoveCoOwnerCommand(id, userId), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Убрать совладельца персонажа")
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/{id:guid}/level-up", async (Guid id, LevelUpRequest req, ISender sender, CancellationToken ct) =>
         {
@@ -295,6 +316,7 @@ internal static class CharactersEndpoints
 internal sealed record LevelUpRequest(int NewLevel);
 internal sealed record UpdatePf2eStatsRequest(string StatsJson);
 internal sealed record UpdateFeatsRequest(string SelectedFeatsJson);
+internal sealed record AddCoOwnerRequest(string Username);
 
 internal sealed record CreateChronicleRequest(
     string ScenarioName, DateOnly SessionDate, string? GmName, string? Faction,

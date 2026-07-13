@@ -19,7 +19,7 @@ internal sealed class CreateCompanionCommandHandler(
         if (character is null)
             return Error.NotFound(nameof(Character));
 
-        if (character.OwnerId != currentUser.Id)
+        if (!character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
         var companionResult = Companion.Create(

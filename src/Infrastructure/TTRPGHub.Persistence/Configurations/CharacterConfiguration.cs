@@ -22,6 +22,12 @@ internal sealed class CharacterConfiguration : IEntityTypeConfiguration<Characte
 
         builder.HasIndex(c => c.OwnerId);
 
+        builder.Property(c => c.CoOwnerIds)
+            .HasColumnType("uuid[]")
+            .HasColumnName("co_owner_ids")
+            .HasDefaultValueSql("'{}'")
+            .IsRequired();
+
         builder.Property(c => c.Name).HasMaxLength(100).IsRequired().HasColumnName("name");
         builder.Property(c => c.Race).HasMaxLength(50).IsRequired().HasColumnName("race");
         builder.Property(c => c.Class).HasMaxLength(50).IsRequired().HasColumnName("class");

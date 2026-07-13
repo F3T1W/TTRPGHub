@@ -22,7 +22,7 @@ internal sealed class UpdateCharacterCommandHandler(
         if (character is null)
             return Error.NotFound(nameof(Character));
 
-        if (character.OwnerId != currentUser.Id)
+        if (!character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
         var data = new UpdateSheetData(

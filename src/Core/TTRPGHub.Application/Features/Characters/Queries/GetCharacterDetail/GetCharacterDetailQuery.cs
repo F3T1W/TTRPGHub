@@ -48,5 +48,8 @@ public sealed record CharacterDetailDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     string? Pf2eStatsJson,
-    string? SelectedFeatsJson
+    string? SelectedFeatsJson,
+    List<CoOwnerDto> CoOwners
 );
+
+public sealed record CoOwnerDto(Guid UserId, string Username);

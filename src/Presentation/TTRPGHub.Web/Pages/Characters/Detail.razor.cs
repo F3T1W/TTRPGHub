@@ -36,6 +36,11 @@ public partial class Detail
     private bool _featSearching;
     private string? _featError;
 
+    private Guid? _currentUserId;
+    private bool _isPrimaryOwner;
+    private string _newCoOwnerUsername = string.Empty;
+    private string? _coOwnerError;
+
     protected override async Task OnInitializedAsync()
     {
         var apiBase = ApiBaseUrl.Resolve(Config, Nav.BaseUri);
@@ -46,6 +51,8 @@ public partial class Detail
             _form = CharacterFormModel.From(_char);
             _newLevel = _char.Level + 1;
             _selectedFeats = ParseSelectedFeats(_char.SelectedFeatsJson);
+            _currentUserId = await Tokens.GetUserIdAsync();
+            _isPrimaryOwner = _currentUserId.HasValue && _currentUserId.Value == _char.OwnerId;
         }
         catch { _error = "Не удалось загрузить персонажа."; }
         finally { _loading = false; }
@@ -228,6 +235,36 @@ public partial class Detail
         catch
         {
             _featError = "Не удалось сохранить список фитов.";
+        }
+    }
+
+    private async Task AddCoOwnerAsync()
+    {
+        if (_char is null || string.IsNullOrWhiteSpace(_newCoOwnerUsername)) return;
+
+        _coOwnerError = null;
+        try
+        {
+            await Api.AddCoOwnerAsync(Id, new AddCoOwnerRequest(_newCoOwnerUsername.Trim()));
+            _newCoOwnerUsername = string.Empty;
+            _char = await Api.GetCharacterByIdAsync(Id);
+        }
+        catch
+        {
+            _coOwnerError = "Не удалось добавить совладельца — проверьте имя пользователя.";
+        }
+    }
+
+    private async Task RemoveCoOwnerAsync(Guid userId)
+    {
+        try
+        {
+            await Api.RemoveCoOwnerAsync(Id, userId);
+            _char = await Api.GetCharacterByIdAsync(Id);
+        }
+        catch
+        {
+            _coOwnerError = "Не удалось убрать совладельца.";
         }
     }
 

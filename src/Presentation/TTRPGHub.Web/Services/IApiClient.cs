@@ -90,12 +90,15 @@ public sealed record CharacterDetailDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     string? Pf2eStatsJson,
-    string? SelectedFeatsJson
+    string? SelectedFeatsJson,
+    List<CoOwnerDto> CoOwners
 );
 
+public sealed record CoOwnerDto(Guid UserId, string Username);
 public sealed record UpdatePf2eStatsRequest(string StatsJson);
 public sealed record UpdateFeatsRequest(string SelectedFeatsJson);
 public sealed record SelectedFeatDto(string Slug, string Name, int Level);
+public sealed record AddCoOwnerRequest(string Username);
 
 // N.3 — Pathfinder Society Chronicle Sheets
 public sealed record ChronicleDto(
@@ -198,6 +201,12 @@ public interface IApiClient
 
     [Put("/api/characters/{id}/feats")]
     Task UpdateCharacterFeatsAsync(Guid id, [Body] UpdateFeatsRequest request, CancellationToken ct = default);
+
+    [Post("/api/characters/{id}/co-owners")]
+    Task AddCoOwnerAsync(Guid id, [Body] AddCoOwnerRequest request, CancellationToken ct = default);
+
+    [Delete("/api/characters/{id}/co-owners/{userId}")]
+    Task RemoveCoOwnerAsync(Guid id, Guid userId, CancellationToken ct = default);
 
     [Get("/api/characters/{id}/chronicles")]
     Task<List<ChronicleDto>> GetChroniclesAsync(Guid id, CancellationToken ct = default);

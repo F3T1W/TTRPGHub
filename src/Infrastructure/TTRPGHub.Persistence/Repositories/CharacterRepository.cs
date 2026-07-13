@@ -11,7 +11,7 @@ internal sealed class CharacterRepository(AppDbContext db) : ICharacterRepositor
     public async Task<IReadOnlyList<Character>> GetByOwnerAsync(UserId ownerId, CancellationToken ct = default)
     {
         var list = await db.Characters
-            .Where(c => c.OwnerId == ownerId)
+            .Where(c => c.OwnerId == ownerId || c.CoOwnerIds.Contains(ownerId.Value))
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync(ct);
         return list.AsReadOnly();

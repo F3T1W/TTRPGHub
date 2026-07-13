@@ -4,6 +4,7 @@
 @inject IApiClient Api
 @inject NavigationManager Nav
 @inject IJSRuntime Js
+@inject TokenStorage Tokens
 
 <PageTitle>@(_char?.Name ?? "Персонаж") — Таверна Аферистов</PageTitle>
 
@@ -312,6 +313,48 @@ else if (_char is not null)
                     <p class="small text-muted mb-0 fst-italic">Не заполнено</p>
                 }
             </div>
+
+            @if (_isPrimaryOwner || _char.CoOwners.Count > 0)
+            {
+                <div class="ta-card p-4 mb-4">
+                    <h6 class="sheet-section-title">Совладельцы (co-op)</h6>
+                    <p class="small text-muted">Несколько игроков могут вместе вести одного персонажа — совладельцы имеют те же права на лист, кроме управления самим списком совладельцев.</p>
+                    @if (_char.CoOwners.Count == 0)
+                    {
+                        <p class="small text-muted mb-2 fst-italic">Совладельцев пока нет.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-2">
+                            @foreach (var co in _char.CoOwners)
+                            {
+                                <li class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="small">@co.Username</span>
+                                    @if (_isPrimaryOwner)
+                                    {
+                                        <button class="btn btn-sm btn-link text-danger p-0" @onclick="() => RemoveCoOwnerAsync(co.UserId)" title="Убрать">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (_isPrimaryOwner)
+                    {
+                        <div class="input-group input-group-sm">
+                            <input class="form-control" placeholder="Имя пользователя..." @bind="_newCoOwnerUsername" />
+                            <button class="btn btn-outline-secondary" @onclick="AddCoOwnerAsync">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить
+                            </button>
+                        </div>
+                        @if (_coOwnerError is not null)
+                        {
+                            <div class="text-danger small mt-2">@_coOwnerError</div>
+                        }
+                    }
+                </div>
+            }
 
             <div class="ta-card p-4 mb-4">
                 <h6 class="sheet-section-title">Фиты (из справочника)</h6>

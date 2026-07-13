@@ -22,7 +22,7 @@ internal sealed class DeleteChronicleCommandHandler(
             return Error.NotFound(nameof(PathfinderSocietyChronicle));
 
         var character = await characterRepository.GetByIdAsync(chronicle.CharacterId, ct);
-        if (character is null || character.OwnerId != currentUser.Id)
+        if (character is null || !character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
         chronicleRepository.Delete(chronicle);

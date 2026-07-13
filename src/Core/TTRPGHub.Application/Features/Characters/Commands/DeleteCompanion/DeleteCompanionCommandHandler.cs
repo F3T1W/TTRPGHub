@@ -20,7 +20,7 @@ internal sealed class DeleteCompanionCommandHandler(
             return Error.NotFound(nameof(Companion));
 
         var character = await characterRepository.GetByIdAsync(companion.OwnerCharacterId, ct);
-        if (character is null || character.OwnerId != currentUser.Id)
+        if (character is null || !character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
         companionRepository.Delete(companion);

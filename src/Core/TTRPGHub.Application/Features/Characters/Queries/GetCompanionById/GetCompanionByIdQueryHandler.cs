@@ -21,7 +21,7 @@ internal sealed class GetCompanionByIdQueryHandler(
 
         var character = await characterRepository.GetByIdAsync(companion.OwnerCharacterId, ct);
         if (character is null) return Error.NotFound(nameof(Character));
-        if (!character.IsPublic && character.OwnerId != currentUser.Id)
+        if (!character.IsPublic && !character.IsOwnedBy(currentUser.Id))
             return Error.Unauthorized();
 
         return new CompanionDto(

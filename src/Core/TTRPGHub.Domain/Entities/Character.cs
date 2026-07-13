@@ -6,6 +6,13 @@ public sealed class Character : Entity<CharacterId>
 {
     // Main
     public UserId OwnerId { get; private init; }
+
+    // Co-op — несколько игроков ведут одного персонажа (партийный маскот, наёмный NPC "на
+    // подхвате" и т.п.). Совладельцы имеют те же права редактирования, что и владелец, кроме
+    // управления самим списком совладельцев — это остаётся только за OwnerId, чтобы не было
+    // цепной передачи прав без ведома изначального владельца.
+    public List<Guid> CoOwnerIds { get; private set; } = [];
+
     public string Name { get; private set; } = null!;
     public string Race { get; private set; } = null!;
     public string Class { get; private set; } = null!;
@@ -171,6 +178,26 @@ public sealed class Character : Entity<CharacterId>
     public void SetSelectedFeats(string? selectedFeatsJson)
     {
         SelectedFeatsJson = selectedFeatsJson;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public bool IsOwnedBy(UserId userId) => OwnerId == userId || CoOwnerIds.Contains(userId.Value);
+
+    public Result AddCoOwner(Guid userId)
+    {
+        if (userId == OwnerId.Value)
+            return Error.Validation("CoOwnerIds", "Этот пользователь уже владелец персонажа.");
+        if (CoOwnerIds.Contains(userId))
+            return Error.Validation("CoOwnerIds", "Этот пользователь уже совладелец.");
+
+        CoOwnerIds = [.. CoOwnerIds, userId];
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public void RemoveCoOwner(Guid userId)
+    {
+        CoOwnerIds = CoOwnerIds.Where(id => id != userId).ToList();
         UpdatedAt = DateTime.UtcNow;
     }
 
