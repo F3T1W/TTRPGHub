@@ -275,6 +275,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
         RecomputeFlanking();
         await RecomputeAuraEffectsAsync();
+        await RecomputeHazardDetectionAsync();
     }
 
     private static List<WallDto> ParseWalls(string? json)
@@ -362,6 +363,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             var canMove = _state?.IsOrganizer == true || dto.OwnerId == _currentUserId;
             _tokens.Add(dto with { CanMove = canMove });
             await RecomputeAuraEffectsAsync();
+            await RecomputeHazardDetectionAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -371,6 +373,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             if (idx >= 0) _tokens[idx] = _tokens[idx] with { X = x, Y = y };
             if (_placedTemplate is not null) RecomputeTemplateAffectedTokens();
             await RecomputeAuraEffectsAsync();
+            await RecomputeHazardDetectionAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -395,6 +398,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _tokens.RemoveAll(t => t.Id == tokenId);
             _auraAppliedSlugsByToken.Remove(tokenId);
             await RecomputeAuraEffectsAsync();
+            await RecomputeHazardDetectionAsync();
             await InvokeAsync(StateHasChanged);
         });
 
@@ -1244,6 +1248,79 @@ public partial class Table : ComponentBase, IAsyncDisposable
         }
     }
 
+    // I.6.1-доп./N.1-доп. — авто-детекция хазарда: раньше ГМ вручную решал, когда токен "замечает"
+    // спрятанную ловушку (VisibleToUserIds = [] — виден только ГМ). Теперь при подходе на 5 футов
+    // к скрытому хазарду автоматически бросается 1d20 против Pf2eHazard.StealthDc (без модификатора
+    // Восприятия персонажа — тот живёт на полном PF2e-листе, а не на произвольном токене на карте,
+    // подключить точный бонус потребовало бы грузить лист каждого токена при каждом движении).
+    // _hazardDetectionAttempted — какие токены уже бросали против конкретного хазарда, пока
+    // остаются в радиусе (не спамим бросками каждый пересчёт); сбрасывается, когда токен выходит
+    // из радиуса — повторный подход даёт новый шанс, как повторная попытка Восприятия в PF2e.
+    private readonly Dictionary<Guid, int> _hazardStealthDcCache = [];
+    private readonly Dictionary<Guid, HashSet<Guid>> _hazardDetectionAttempted = [];
+
+    private async Task<int?> GetHazardStealthDcAsync(Guid hazardId)
+    {
+        if (_hazardStealthDcCache.TryGetValue(hazardId, out var cached)) return cached;
+        try
+        {
+            var hazard = await Api.GetPf2eHazardAsync(hazardId);
+            _hazardStealthDcCache[hazardId] = hazard.StealthDc;
+            return hazard.StealthDc;
+        }
+        catch { return null; }
+    }
+
+    private async Task RecomputeHazardDetectionAsync()
+    {
+        var hazards = _tokens.Where(t =>
+            t is { CombatantType: "Pf2eHazard", CombatantId: not null } &&
+            t.VisibleToUserIds is { Count: 0 }).ToList();
+        if (hazards.Count == 0) return;
+
+        foreach (var hazard in hazards)
+        {
+            var attempted = _hazardDetectionAttempted.GetValueOrDefault(hazard.Id, []);
+            var inRange = new HashSet<Guid>();
+
+            foreach (var target in _tokens)
+            {
+                if (target.Id == hazard.Id || target.CombatantType is not ("Character" or "Companion")) continue;
+
+                var distance = Pf2eLookups.TokenDistanceFeet(
+                    hazard.X, hazard.Y, hazard.Width, hazard.Height,
+                    target.X, target.Y, target.Width, target.Height);
+                if (distance > 5) continue;
+
+                inRange.Add(target.Id);
+                if (!attempted.Add(target.Id)) continue;
+
+                var dc = await GetHazardStealthDcAsync(hazard.CombatantId!.Value);
+                if (dc is null) continue;
+
+                var roll = Random.Shared.Next(1, 21);
+                var success = roll >= dc;
+
+                try
+                {
+                    await Api.RollTableDiceAsync(Id, new RollDiceRequest("1d20", null,
+                        $"{target.Label}: Восприятие vs Скрытность хазарда «{hazard.Label}» (DC {dc}) — {(success ? "замечен!" : "не замечен")}"));
+                }
+                catch { /* ignore */ }
+
+                if (success)
+                {
+                    var hazardDto = _tokens.FirstOrDefault(t => t.Id == hazard.Id);
+                    if (hazardDto is not null) await SetTokenVisibilityAsync(hazardDto, null);
+                    break;
+                }
+            }
+
+            if (inRange.Count > 0) _hazardDetectionAttempted[hazard.Id] = attempted.Intersect(inRange).ToHashSet();
+            else _hazardDetectionAttempted.Remove(hazard.Id);
+        }
+    }
+
     private async Task ApplyAuraConditionAsync(Guid targetTokenId, string slug, string name, int? value)
     {
         try
@@ -1985,6 +2062,31 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* ignore */ }
     }
 
+    // J.7-доп. — совладение боевым токеном несколькими игроками (аналог Character.CoOwnerIds,
+    // назначает только GM, см. handler UpdateTokenStatsCommandHandler).
+    private async Task AddTokenCoOwnerAsync(TableTokenDto token, Guid userId)
+    {
+        if (userId == Guid.Empty || token.CoOwnerIds is { } existing && existing.Contains(userId))
+            return;
+
+        var idx = _tokens.FindIndex(t => t.Id == token.Id);
+        if (idx >= 0) _tokens[idx] = token with { CoOwnerIds = [..(token.CoOwnerIds ?? []), userId] };
+        StateHasChanged();
+
+        try { await Api.UpdateTableTokenStatsAsync(Id, token.Id, new UpdateTokenStatsRequest(null, null, null, null, AddCoOwnerId: userId)); }
+        catch { /* ignore */ }
+    }
+
+    private async Task RemoveTokenCoOwnerAsync(TableTokenDto token, Guid userId)
+    {
+        var idx = _tokens.FindIndex(t => t.Id == token.Id);
+        if (idx >= 0) _tokens[idx] = token with { CoOwnerIds = (token.CoOwnerIds ?? []).Where(id => id != userId).ToList() };
+        StateHasChanged();
+
+        try { await Api.UpdateTableTokenStatsAsync(Id, token.Id, new UpdateTokenStatsRequest(null, null, null, null, RemoveCoOwnerId: userId)); }
+        catch { /* ignore */ }
+    }
+
     private async Task ToggleLowLightVisionAsync(TableTokenDto token)
     {
         var newValue = !token.HasLowLightVision;
@@ -2675,6 +2777,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         catch { /* ignore */ }
 
         await RecomputeAuraEffectsAsync();
+        await RecomputeHazardDetectionAsync();
         StateHasChanged();
     }
 

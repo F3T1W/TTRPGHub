@@ -9,5 +9,7 @@ public sealed record UpdateTokenStatsCommand(
     bool? HasDarkvision = null,
     bool? HasLowLightVision = null,
     int? CurrentStamina = null,
-    int? MaxStamina = null
+    int? MaxStamina = null,
+    Guid? AddCoOwnerId = null,
+    Guid? RemoveCoOwnerId = null
 ) : IRequest<Result>;

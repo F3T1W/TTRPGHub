@@ -40,6 +40,12 @@ internal sealed class TableTokenConfiguration : IEntityTypeConfiguration<TableTo
             .HasConversion(id => id!.Value.Value, value => new UserId(value))
             .HasColumnName("owner_id");
 
+        builder.Property(t => t.CoOwnerIds)
+            .HasColumnType("uuid[]")
+            .HasColumnName("co_owner_ids")
+            .HasDefaultValueSql("'{}'")
+            .IsRequired();
+
         builder.Property(t => t.CombatantType)
             .IsRequired()
             .HasDefaultValue(TokenCombatantType.None)

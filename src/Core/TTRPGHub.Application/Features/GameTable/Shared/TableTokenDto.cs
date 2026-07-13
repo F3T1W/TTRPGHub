@@ -6,6 +6,7 @@ public sealed record TableTokenDto(
     string CombatantType, Guid? CombatantId, int? CurrentHp, int? MaxHp, int? ArmorClass,
     List<TokenConditionDto> Conditions, int? Initiative, bool HasDarkvision, bool HasLowLightVision,
     List<Guid>? VisibleToUserIds,
-    int? CurrentStamina = null, int? MaxStamina = null);
+    int? CurrentStamina = null, int? MaxStamina = null,
+    List<Guid>? CoOwnerIds = null);
 
 public sealed record TokenConditionDto(Guid Id, string Slug, string Name, int? Value);

@@ -72,6 +72,24 @@ internal sealed class UpdateTokenStatsCommandHandler(
         if (command.CurrentStamina is not null || command.MaxStamina is not null)
             token.SetStamina(command.CurrentStamina, command.MaxStamina);
 
+        // Совладельцев боевого токена назначает только GM — как выдачу токена персонажу
+        // при создании (см. AddTokenAsync/_newTokenOwnerId), а не как HP/поворот игрока.
+        if (command.AddCoOwnerId is { } addCoOwner)
+        {
+            if (!isOrganizer)
+                return Error.Unauthorized();
+            var result = token.AddCoOwner(addCoOwner);
+            if (result.IsFailure)
+                return result;
+        }
+
+        if (command.RemoveCoOwnerId is { } removeCoOwner)
+        {
+            if (!isOrganizer)
+                return Error.Unauthorized();
+            token.RemoveCoOwner(removeCoOwner);
+        }
+
         tokenRepository.Update(token);
         await unitOfWork.SaveChangesAsync(ct);
 

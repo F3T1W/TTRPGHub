@@ -1,3 +1,5 @@
+using TTRPGHub.Common;
+
 namespace TTRPGHub.Entities;
 
 public sealed class TableToken
@@ -18,6 +20,11 @@ public sealed class TableToken
     public int Height { get; private set; } = 1;
     public int Rotation { get; private set; }
     public UserId? OwnerId { get; private init; }
+
+    // J.7-доп. — несколько игроков могут делить один боевой токен (например, фамильяр/наёмник
+    // на группу или co-op персонаж, см. Character.CoOwnerIds — тот же паттерн, отдельный список,
+    // а не смена единственного OwnerId).
+    public List<Guid> CoOwnerIds { get; private set; } = [];
 
     // Привязка токена к источнику статов (персонаж игрока или монстр из справочника) —
     // HP/AC копируются на токен при создании, дальше живут независимо (GM может править
@@ -100,14 +107,33 @@ public sealed class TableToken
         };
     }
 
+    public bool IsOwnedBy(UserId userId) =>
+        OwnerId == userId || CoOwnerIds.Contains(userId.Value);
+
     public bool CanBeMovedBy(UserId userId, bool isOrganizer) =>
-        isOrganizer || OwnerId == userId;
+        isOrganizer || IsOwnedBy(userId);
 
     // J.7 — парсинг JSON здесь (не в Application) через System.Text.Json нежелателен для Domain
     // (см. паттерн ResistancesJson/WeaknessesJson у Pf2eMonster — тот же JSON-на-сущности хранится
     // сырым, парсинг делает вызывающий слой), поэтому список игроков передаётся уже распарсенным.
     public bool IsVisibleTo(UserId userId, bool isOrganizer, IReadOnlyCollection<Guid>? visibleToUserIds) =>
-        isOrganizer || OwnerId == userId || visibleToUserIds is null || visibleToUserIds.Contains(userId.Value);
+        isOrganizer || IsOwnedBy(userId) || visibleToUserIds is null || visibleToUserIds.Contains(userId.Value);
+
+    public Result AddCoOwner(Guid userId)
+    {
+        if (OwnerId?.Value == userId || CoOwnerIds.Contains(userId))
+            return Error.Validation("Пользователь уже владеет этим токеном");
+
+        CoOwnerIds.Add(userId);
+        UpdatedAt = DateTime.UtcNow;
+        return Result.Success();
+    }
+
+    public void RemoveCoOwner(Guid userId)
+    {
+        CoOwnerIds.Remove(userId);
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     public void SetVisibility(string? visibleToJson)
     {

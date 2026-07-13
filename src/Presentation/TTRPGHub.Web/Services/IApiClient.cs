@@ -1209,7 +1209,8 @@ public sealed record TableTokenDto(
     string CombatantType, Guid? CombatantId, int? CurrentHp, int? MaxHp, int? ArmorClass,
     List<TokenConditionDto> Conditions, int? Initiative, bool HasDarkvision, bool HasLowLightVision,
     List<Guid>? VisibleToUserIds,
-    int? CurrentStamina = null, int? MaxStamina = null);
+    int? CurrentStamina = null, int? MaxStamina = null,
+    List<Guid>? CoOwnerIds = null);
 
 public sealed record TokenConditionDto(Guid Id, string Slug, string Name, int? Value);
 public sealed record ApplyConditionRequest(string Slug, string Name, int? Value);
@@ -1247,7 +1248,9 @@ public sealed record UpdateTokenStatsRequest(
     bool? HasDarkvision = null,
     bool? HasLowLightVision = null,
     int? CurrentStamina = null,
-    int? MaxStamina = null);
+    int? MaxStamina = null,
+    Guid? AddCoOwnerId = null,
+    Guid? RemoveCoOwnerId = null);
 public sealed record SetTokenVisibilityRequest(List<Guid>? VisibleToUserIds);
 public sealed record SetGridCellSizeRequest(int Px);
 public sealed record SetFogSettingsRequest(bool Enabled, int VisionRadiusFeet);

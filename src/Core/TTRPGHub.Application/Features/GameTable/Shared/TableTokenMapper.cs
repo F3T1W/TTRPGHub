@@ -11,7 +11,7 @@ internal static class TableTokenMapper
         token.CurrentHp, token.MaxHp, token.ArmorClass,
         token.Conditions.Select(c => new TokenConditionDto(c.Id, c.Slug, c.Name, c.Value)).ToList(),
         token.Initiative, token.HasDarkvision, token.HasLowLightVision, ParseVisibleTo(token.VisibleToJson),
-        token.CurrentStamina, token.MaxStamina);
+        token.CurrentStamina, token.MaxStamina, token.CoOwnerIds);
 
     internal static List<Guid>? ParseVisibleTo(string? json) =>
         string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<List<Guid>>(json);

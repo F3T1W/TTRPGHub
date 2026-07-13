@@ -830,6 +830,18 @@
                                                     }
                                                 }
                                             </div>
+                                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                <span class="small text-muted">Совладельцы:</span>
+                                                @foreach (var p in _state.Participants.Where(p => !p.IsDungeonMaster && p.UserId != t.OwnerId))
+                                                {
+                                                    var isCoOwner = t.CoOwnerIds is not null && t.CoOwnerIds.Contains(p.UserId);
+                                                    <label class="small d-flex align-items-center gap-1 mb-0" style="cursor:pointer;" title="Разрешить этому игроку тоже двигать/менять этот токен">
+                                                        <input type="checkbox" checked="@isCoOwner"
+                                                               @onchange="() => (isCoOwner ? RemoveTokenCoOwnerAsync(t, p.UserId) : AddTokenCoOwnerAsync(t, p.UserId))" />
+                                                        @p.Username
+                                                    </label>
+                                                }
+                                            </div>
                                         }
                                         <div class="d-flex gap-1 align-items-center mb-1">
                                             <button @onclick="() => RotateTokenAsync(t, -45)" title="Повернуть влево">↺</button>

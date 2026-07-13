@@ -168,7 +168,7 @@ internal static class GameTableEndpoints
             var result = await sender.Send(new UpdateTokenStatsCommand(
                 sessionId, tokenId, request.CurrentHp, request.Width, request.Height, request.Rotation,
                 request.SetInitiative, request.Initiative, request.HasDarkvision, request.HasLowLightVision,
-                request.CurrentStamina, request.MaxStamina), ct);
+                request.CurrentStamina, request.MaxStamina, request.AddCoOwnerId, request.RemoveCoOwnerId), ct);
             return result.ToResponse();
         })
         .WithSummary("Изменить HP/размер/поворот/инициативу/тёмное зрение жетона");
@@ -408,7 +408,9 @@ internal sealed record UpdateTokenStatsRequest(
     bool? HasDarkvision = null,
     bool? HasLowLightVision = null,
     int? CurrentStamina = null,
-    int? MaxStamina = null);
+    int? MaxStamina = null,
+    Guid? AddCoOwnerId = null,
+    Guid? RemoveCoOwnerId = null);
 internal sealed record SetTokenVisibilityRequest(List<Guid>? VisibleToUserIds);
 internal sealed record SetGridCellSizeRequest(int Px);
 internal sealed record SetFogSettingsRequest(bool Enabled, int VisionRadiusFeet);
