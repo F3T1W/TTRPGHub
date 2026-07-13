@@ -12,6 +12,7 @@ public partial class Profile
 
     private UserProfileDto? _profile;
     private UserRatingsResult? _ratings;
+    private UserSessionReviewsResult? _sessionReviews;
     private bool _loading = true;
 
     private bool _isOwn;
@@ -30,6 +31,7 @@ public partial class Profile
         {
             _profile = await Api.GetUserProfileAsync(Id);
             _ratings = await Api.GetUserRatingsAsync(Id);
+            _sessionReviews = await Api.GetUserSessionReviewsAsync(Id);
 
             var myId = await Tokens.GetUserIdAsync();
             _isOwn = myId.HasValue && myId.Value == Id;

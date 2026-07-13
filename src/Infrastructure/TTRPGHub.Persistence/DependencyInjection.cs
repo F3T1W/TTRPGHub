@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IForumPostRepository, ForumPostRepository>();
         services.AddScoped<IHomebrewRepository, HomebrewRepository>();
         services.AddScoped<IRatingRepository, RatingRepository>();
+        services.AddScoped<ISessionReviewRepository, SessionReviewRepository>();
         services.AddScoped<IGameEventRepository, GameEventRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IDiscussionRepository, DiscussionRepository>();

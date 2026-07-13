@@ -39,6 +39,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<HomebrewItem> HomebrewItems => Set<HomebrewItem>();
     public DbSet<HomebrewLike> HomebrewLikes => Set<HomebrewLike>();
     public DbSet<UserRating> UserRatings => Set<UserRating>();
+    public DbSet<SessionReview> SessionReviews => Set<SessionReview>();
     public DbSet<GameEvent> GameEvents => Set<GameEvent>();
     public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
     public DbSet<DiscussionPost> DiscussionPosts => Set<DiscussionPost>();

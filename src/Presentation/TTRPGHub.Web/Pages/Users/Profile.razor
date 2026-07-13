@@ -217,6 +217,49 @@
             }
         </div>
 
+        @if (_sessionReviews is not null && _sessionReviews.TotalCount > 0)
+        {
+            <div class="ta-card p-4 mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="mb-0" style="color:var(--ta-gold)">Отзывы по сыгранным сессиям</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="color:var(--ta-gold)">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                int star = i;
+                                <i class="bi @StarClass(star, (int)Math.Round(_sessionReviews.AverageScore))"></i>
+                            }
+                        </span>
+                        <span class="text-white fw-semibold">@_sessionReviews.AverageScore.ToString("F1")</span>
+                        <span class="text-muted small">(@_sessionReviews.TotalCount)</span>
+                    </div>
+                </div>
+                @foreach (var r in _sessionReviews.Reviews)
+                {
+                    <div class="mb-2 pb-2" style="border-bottom:1px solid var(--ta-border)">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <a href="/sessions/@r.SessionId" style="color:var(--ta-accent-light)" class="text-decoration-none small">@r.SessionTitle</a>
+                                <span class="text-muted small ms-2">от @r.ReviewerUsername</span>
+                            </div>
+                            <span style="color:var(--ta-gold)">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    int star = i;
+                                    <i class="bi @StarClass(star, r.Score)"></i>
+                                }
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(r.Comment))
+                        {
+                            <p class="text-white small mt-1 mb-0">@r.Comment</p>
+                        }
+                        <div class="text-muted" style="font-size:.75rem;margin-top:.25rem">@r.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy")</div>
+                    </div>
+                }
+            </div>
+        }
+
         @if (_profile.Characters.Count == 0 && _profile.Campaigns.Count == 0 && (_ratings is null || _ratings.TotalCount == 0))
         {
             <div class="ta-card p-4 text-center text-muted">

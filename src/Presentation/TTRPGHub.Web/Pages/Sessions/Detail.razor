@@ -124,19 +124,79 @@
             <div class="list-group list-group-flush">
                 @foreach (var p in _session.Participants.OrderBy(x => x.Role))
                 {
-                    <div class="list-group-item bg-transparent border-secondary d-flex justify-content-between align-items-center py-2 px-0">
-                        <span>
-                            <i class="bi @(p.Role == ParticipantRole.DungeonMaster ? "bi-shield-fill" : "bi-person") me-2"
-                               style="color:@(p.Role == ParticipantRole.DungeonMaster ? "var(--ta-gold)" : "var(--ta-accent-light)");"></i>
-                            @p.Username
-                        </span>
-                        <span class="badge @(p.Role == ParticipantRole.DungeonMaster ? "bg-warning text-dark" : "bg-primary")">
-                            @(p.Role == ParticipantRole.DungeonMaster ? "Мастер" : "Игрок")
-                        </span>
+                    <div class="list-group-item bg-transparent border-secondary py-2 px-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="bi @(p.Role == ParticipantRole.DungeonMaster ? "bi-shield-fill" : "bi-person") me-2"
+                                   style="color:@(p.Role == ParticipantRole.DungeonMaster ? "var(--ta-gold)" : "var(--ta-accent-light)");"></i>
+                                @p.Username
+                            </span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge @(p.Role == ParticipantRole.DungeonMaster ? "bg-warning text-dark" : "bg-primary")">
+                                    @(p.Role == ParticipantRole.DungeonMaster ? "Мастер" : "Игрок")
+                                </span>
+                                @if (_session.Status == SessionStatus.Completed && _session.IsCurrentUserParticipant && p.UserId != _currentUserId)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartReview(p.UserId)">
+                                        <i class="bi bi-star me-1"></i>Отзыв
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        @if (_reviewTargetUserId == p.UserId)
+                        {
+                            <div class="mt-2 p-2" style="background:var(--ta-bg);border-radius:6px;">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="small text-muted">Оценка:</span>
+                                    @for (var s = 1; s <= 5; s++)
+                                    {
+                                        var score = s;
+                                        <i class="bi @(score <= _reviewScore ? "bi-star-fill" : "bi-star")"
+                                           style="color:var(--ta-gold);cursor:pointer;" @onclick="() => _reviewScore = score"></i>
+                                    }
+                                </div>
+                                <textarea class="form-control form-control-sm mb-2" rows="2" placeholder="Комментарий (необязательно)" @bind="_reviewComment"></textarea>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-ta-primary" @onclick="SubmitReviewAsync" disabled="@_submittingReview">Отправить</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => _reviewTargetUserId = null">Отмена</button>
+                                </div>
+                                @if (_reviewError is not null)
+                                {
+                                    <div class="text-danger small mt-2">@_reviewError</div>
+                                }
+                            </div>
+                        }
                     </div>
                 }
             </div>
         </div>
+
+        @if (_session.Status == SessionStatus.Completed && _reviews.Count > 0)
+        {
+            <div class="ta-card p-4 mt-4">
+                <h5 class="text-white mb-3" style="text-transform:uppercase;letter-spacing:.05em;font-size:.8rem;color:var(--ta-accent-light) !important;">
+                    <i class="bi bi-chat-square-text me-2"></i>Отзывы об этой сессии
+                </h5>
+                @foreach (var r in _reviews)
+                {
+                    <div class="mb-2 pb-2" style="border-bottom:1px solid var(--ta-border);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small"><strong>@r.ReviewerUsername</strong> → @r.RevieweeUsername</span>
+                            <span style="color:var(--ta-gold);">
+                                @for (var s = 1; s <= 5; s++)
+                                {
+                                    <i class="bi @(s <= r.Score ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(r.Comment))
+                        {
+                            <p class="small text-muted mb-0 mt-1">@r.Comment</p>
+                        }
+                    </div>
+                }
+            </div>
+        }
     }
 </div>
 

@@ -9,6 +9,7 @@ public partial class Detail
 {
     [Parameter] public Guid Id { get; set; }
     [Inject] private IJSRuntime Js { get; set; } = default!;
+    [Inject] private TokenStorage Tokens { get; set; } = default!;
 
     private SessionDetailDto? _session;
     private bool _loading = true;
@@ -16,14 +17,60 @@ public partial class Detail
     private string? _error;
     private string? _actionError;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private Guid? _currentUserId;
+    private List<SessionReviewDto> _reviews = [];
+    private Guid? _reviewTargetUserId;
+    private int _reviewScore = 5;
+    private string _reviewComment = string.Empty;
+    private string? _reviewError;
+    private bool _submittingReview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUserId = await Tokens.GetUserIdAsync();
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
         _loading = true; _error = null;
-        try { _session = await Api.GetSessionDetailAsync(Id); }
+        try
+        {
+            _session = await Api.GetSessionDetailAsync(Id);
+            if (_session.Status == SessionStatus.Completed)
+                _reviews = await Api.GetSessionReviewsAsync(Id);
+        }
         catch { _error = "Не удалось загрузить сессию."; }
         finally { _loading = false; }
+    }
+
+    private void StartReview(Guid targetUserId)
+    {
+        _reviewTargetUserId = _reviewTargetUserId == targetUserId ? null : targetUserId;
+        _reviewScore = 5;
+        _reviewComment = string.Empty;
+        _reviewError = null;
+    }
+
+    private async Task SubmitReviewAsync()
+    {
+        if (_reviewTargetUserId is not { } targetUserId) return;
+        _submittingReview = true;
+        _reviewError = null;
+        try
+        {
+            await Api.RateSessionParticipantAsync(Id, new RateSessionParticipantRequest(targetUserId, _reviewScore, _reviewComment));
+            _reviewTargetUserId = null;
+            _reviews = await Api.GetSessionReviewsAsync(Id);
+        }
+        catch
+        {
+            _reviewError = "Не удалось отправить отзыв.";
+        }
+        finally
+        {
+            _submittingReview = false;
+        }
     }
 
     private async Task JoinAsync()

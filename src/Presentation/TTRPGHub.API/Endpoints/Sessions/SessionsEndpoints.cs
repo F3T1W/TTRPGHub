@@ -1,6 +1,8 @@
 using MediatR;
 using TTRPGHub.Entities;
 using TTRPGHub.Extensions;
+using TTRPGHub.Features.Ratings.Commands.RateSessionParticipant;
+using TTRPGHub.Features.Ratings.Queries.GetSessionReviews;
 using TTRPGHub.Features.Sessions.Commands.ChangeSessionStatus;
 using TTRPGHub.Features.Sessions.Commands.CreateSession;
 using TTRPGHub.Features.Sessions.Commands.ImportSession;
@@ -104,7 +106,21 @@ internal static class SessionsEndpoints
                 : result.ToResponse();
         })
         .WithSummary("Импортировать сессию из JSON");
+
+        group.MapGet("/{id:guid}/reviews", async (Guid id, ISender sender, CancellationToken ct) =>
+            (await sender.Send(new GetSessionReviewsQuery(id), ct)).ToResponse())
+            .WithSummary("Отзывы участников по конкретной сессии");
+
+        group.MapPost("/{id:guid}/reviews", async (Guid id, RateSessionParticipantRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new RateSessionParticipantCommand(id, req.RevieweeId, req.Score, req.Comment), ct);
+            return result.IsSuccess
+                ? Results.Created($"/api/sessions/{id}/reviews/{result.Value}", result.Value)
+                : result.ToResponse();
+        })
+        .WithSummary("Оставить отзыв участнику сыгранной сессии");
     }
 }
 
 internal sealed record ChangeStatusRequest(SessionStatus Status);
+internal sealed record RateSessionParticipantRequest(Guid RevieweeId, int Score, string? Comment);

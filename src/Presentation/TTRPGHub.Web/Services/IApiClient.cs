@@ -250,6 +250,18 @@ public interface IApiClient
     [Get("/api/sessions/{id}")]
     Task<SessionDetailDto> GetSessionDetailAsync(Guid id, CancellationToken ct = default);
 
+    [Get("/api/sessions/{id}/reviews")]
+    Task<List<SessionReviewDto>> GetSessionReviewsAsync(Guid id, CancellationToken ct = default);
+
+    [Post("/api/sessions/{id}/reviews")]
+    Task<Guid> RateSessionParticipantAsync(Guid id, [Body] RateSessionParticipantRequest request, CancellationToken ct = default);
+
+    [Get("/api/v1/ratings/session-reviews/user/{userId}")]
+    Task<UserSessionReviewsResult> GetUserSessionReviewsAsync(Guid userId, CancellationToken ct = default);
+
+    [Delete("/api/v1/ratings/session-reviews/{reviewId}")]
+    Task DeleteSessionReviewAsync(Guid reviewId, CancellationToken ct = default);
+
     [Post("/api/sessions")]
     Task<CreateSessionResponse> CreateSessionAsync([Body] CreateSessionRequest request, CancellationToken ct = default);
 
@@ -828,6 +840,19 @@ public sealed record SessionDetailDto(
     bool IsCurrentUserParticipant, bool IsCurrentUserOrganizer);
 
 public sealed record SessionParticipantDto(Guid UserId, string Username, ParticipantRole Role, DateTime JoinedAt);
+
+public sealed record SessionReviewDto(
+    Guid Id, Guid ReviewerId, string ReviewerUsername, Guid RevieweeId, string RevieweeUsername,
+    int Score, string? Comment, DateTime CreatedAt);
+
+public sealed record RateSessionParticipantRequest(Guid RevieweeId, int Score, string? Comment);
+
+public sealed record UserSessionReviewDto(
+    Guid Id, Guid SessionId, string SessionTitle, Guid ReviewerId, string ReviewerUsername,
+    int Score, string? Comment, DateTime CreatedAt);
+
+public sealed record UserSessionReviewsResult(
+    List<UserSessionReviewDto> Reviews, double AverageScore, int TotalCount);
 
 public sealed record UpdateSessionRequest(
     Guid SessionId, string Title, string? Description, string System, int MaxPlayers, DateTime ScheduledAt,
