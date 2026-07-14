@@ -811,6 +811,16 @@ public interface IApiClient
     [Post("/api/v1/macros/import/foundry")]
     Task<List<MacroDto>> ImportFoundryMacrosAsync([AliasAs("file")] StreamPart file, CancellationToken ct = default);
 
+    // R.1 — расшаренные макросы стола: список читает любой участник, делиться/отзывать — только ГМ.
+    [Get("/api/table/{sessionId}/macros/shared")]
+    Task<List<MacroDto>> GetSharedMacrosAsync(Guid sessionId, CancellationToken ct = default);
+
+    [Post("/api/table/{sessionId}/macros/{macroId}/share")]
+    Task ShareMacroAsync(Guid sessionId, Guid macroId, CancellationToken ct = default);
+
+    [Delete("/api/table/{sessionId}/macros/{macroId}/share")]
+    Task UnshareMacroAsync(Guid sessionId, Guid macroId, CancellationToken ct = default);
+
     // J.9 — модули: экспорт своих макросов + своей системы справочника в один JSON-файл,
     // импорт такого же файла другим пользователем (см. ModuleManifest на бэкенде).
     [Post("/api/v1/modules/export")]

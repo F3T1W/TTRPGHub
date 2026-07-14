@@ -64,6 +64,12 @@ public sealed class GameSession : Entity<GameSessionId>
     // на сервере — иначе результат броска можно было бы подделать с клиента.
     public string? EncounterTableJson { get; private set; }
 
+    // R.1 — расшаренные макросы стола: GM отмечает макросы из своей личной библиотеки (K.7) как
+    // видимые/запускаемые всем участникам сессии, не только себе. Храним только ссылки на чужие
+    // (точнее, GM-овские) Macro.Id — сам макрос остаётся собственностью GM, ничего не копируется
+    // и не дублируется; отозвать доступ = просто убрать Id из списка, не трогая исходный макрос.
+    public List<Guid> SharedMacroIds { get; private set; } = [];
+
     private readonly List<SessionParticipant> _participants = [];
     public IReadOnlyList<SessionParticipant> Participants => _participants.AsReadOnly();
 
@@ -273,6 +279,19 @@ public sealed class GameSession : Entity<GameSessionId>
     }
 
     public bool IsParticipant(UserId userId) => _participants.Any(p => p.UserId == userId);
+
+    public void ShareMacro(Guid macroId)
+    {
+        if (!SharedMacroIds.Contains(macroId))
+            SharedMacroIds.Add(macroId);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UnshareMacro(Guid macroId)
+    {
+        SharedMacroIds.Remove(macroId);
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
 
 public enum SessionStatus { Planned, InProgress, Completed, Cancelled }

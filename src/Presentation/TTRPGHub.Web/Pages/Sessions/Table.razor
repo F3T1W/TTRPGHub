@@ -1036,10 +1036,27 @@
                         </button>
                     </div>
 
+                    <!-- R.1 — несколько страниц хотбара: 3 страницы по 10 слотов (Macro.HotbarSlot
+                         0-29, страница = slot/10). Переключатель страниц виден, только если у
+                         игрока вообще есть макросы дальше первой страницы — не загромождаем UI,
+                         пока не понадобилось. -->
+                    @if (_macros.Any(m => m.HotbarSlot >= 10))
+                    {
+                        <div class="d-flex gap-1 mb-1">
+                            @for (var page = 0; page < 3; page++)
+                            {
+                                var pageIdx = page;
+                                <button class="btn btn-sm @(pageIdx == _hotbarPage ? "btn-ta-primary" : "btn-outline-secondary")"
+                                        style="padding:1px 8px;font-size:.7rem;" @onclick="() => _hotbarPage = pageIdx">
+                                    @(pageIdx + 1)
+                                </button>
+                            }
+                        </div>
+                    }
                     <div class="d-flex flex-wrap gap-1 mb-2">
                         @for (var slot = 0; slot < 10; slot++)
                         {
-                            var slotIdx = slot;
+                            var slotIdx = _hotbarPage * 10 + slot;
                             var slotMacro = _macros.FirstOrDefault(m => m.HotbarSlot == slotIdx);
                             @if (slotMacro is not null)
                             {
@@ -1057,10 +1074,40 @@
                             }
                             else
                             {
-                                <div class="btn btn-sm btn-outline-secondary disabled" style="width:36px;height:36px;padding:2px;opacity:.3;">@slotIdx</div>
+                                <div class="btn btn-sm btn-outline-secondary disabled" style="width:36px;height:36px;padding:2px;opacity:.3;">@slot</div>
                             }
                         }
                     </div>
+
+                    @if (_sharedMacros.Count > 0)
+                    {
+                        <!-- R.1 — макросы стола, расшаренные ГМ: видны и запускаются всеми участниками,
+                             не только владельцем. Кнопка "убрать" — только у ГМ (сервер тоже проверяет). -->
+                        <div class="small text-muted mb-1">Общие макросы стола</div>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            @foreach (var shared in _sharedMacros)
+                            {
+                                <div class="d-flex align-items-center gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary" style="width:36px;height:36px;padding:2px;border-color:var(--ta-gold);"
+                                            title="@shared.Name" disabled="@_macroRunning" @onclick="() => RunMacroAsync(shared)">
+                                        @if (!string.IsNullOrWhiteSpace(shared.ImageUrl))
+                                        {
+                                            <img src="@shared.ImageUrl" alt="" style="width:100%;height:100%;object-fit:cover;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="small">@shared.Name[..Math.Min(2, shared.Name.Length)]</span>
+                                        }
+                                    </button>
+                                    @if (_state.IsOrganizer)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" style="padding:0 4px;" title="Убрать из общих"
+                                                @onclick="() => UnshareMacroAsync(shared.Id)"><i class="bi bi-x"></i></button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
 
                     @if (_macroNotice is not null)
                     {
@@ -1087,14 +1134,23 @@
                                         <span class="badge bg-secondary me-1" style="font-size:.6rem;">@(macro.Type == "Script" ? "JS" : "чат")</span>
                                         @macro.Name
                                     </button>
-                                    <select class="ta-condition-select" style="width:56px;" value="@macro.HotbarSlot"
+                                    <select class="ta-condition-select" style="width:70px;" value="@macro.HotbarSlot"
                                             @onchange="e => SetHotbarSlotAsync(macro.Id, int.Parse(e.Value!.ToString()!))">
                                         <option value="-1">—</option>
-                                        @for (var s = 0; s < 10; s++)
+                                        @for (var s = 0; s < 30; s++)
                                         {
-                                            <option value="@s">@s</option>
+                                            <option value="@s">@(s / 10 + 1).@(s % 10)</option>
                                         }
                                     </select>
+                                    @if (_state.IsOrganizer)
+                                    {
+                                        var isShared = _sharedMacros.Any(m => m.Id == macro.Id);
+                                        <button class="btn btn-sm @(isShared ? "btn-ta-primary" : "btn-outline-secondary")"
+                                                title="@(isShared ? "Убрать из общих макросов стола" : "Поделиться со всеми участниками стола")"
+                                                @onclick="() => (isShared ? UnshareMacroAsync(macro.Id) : ShareMacroAsync(macro.Id))">
+                                            <i class="bi bi-people"></i>
+                                        </button>
+                                    }
                                     <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEditMacro(macro)"><i class="bi bi-pencil"></i></button>
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteMacroAsync(macro.Id)"><i class="bi bi-x"></i></button>
                                 </div>

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Features.GameTable.Shared;
+using TTRPGHub.Features.Macros.Shared;
 using TTRPGHub.Hubs;
 
 namespace TTRPGHub.Services;
@@ -85,6 +86,11 @@ internal sealed class SignalRTableNotifier(IHubContext<TableHub> hubContext) : I
         hubContext.Clients
             .Group(TableHub.GroupName(sessionId))
             .SendAsync("EncounterTableChanged", encounterTableJson, ct);
+
+    public Task NotifySharedMacrosChangedAsync(Guid sessionId, List<MacroDto> macros, CancellationToken ct = default) =>
+        hubContext.Clients
+            .Group(TableHub.GroupName(sessionId))
+            .SendAsync("SharedMacrosChanged", macros, ct);
 
     public Task NotifyJournalEntryChangedAsync(Guid sessionId, JournalEntryDto entry, CancellationToken ct = default) =>
         hubContext.Clients

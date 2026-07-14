@@ -42,4 +42,8 @@ public interface ITableNotifier
     // N.12 — ГМ отредактировал таблицу случайных встреч (сама сессия броска идёт как обычное
     // сообщение чата через NotifyMessageAsync, отдельного уведомления на бросок не нужно).
     Task NotifyEncounterTableChangedAsync(Guid sessionId, string? encounterTableJson, CancellationToken ct = default);
+
+    // R.1 — GM поделился/отозвал макрос стола: список расшаренных макросов рассылается целиком
+    // (их обычно немного, проще перезапросить весь список клиенту, чем присылать diff по одному).
+    Task NotifySharedMacrosChangedAsync(Guid sessionId, List<Features.Macros.Shared.MacroDto> macros, CancellationToken ct = default);
 }

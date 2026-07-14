@@ -14,8 +14,11 @@ internal sealed class SetMacroHotbarSlotCommandHandler(
 {
     public async Task<Result> Handle(SetMacroHotbarSlotCommand command, CancellationToken ct)
     {
-        if (command.Slot is not (-1) and (< 0 or > 9))
-            return Error.Validation("Macro.Slot", "Слот хотбара должен быть от 0 до 9 (или -1, чтобы снять).");
+        // R.1 — несколько страниц хотбара: слот теперь 0-29 (3 страницы по 10, страница = slot/10,
+        // позиция внутри страницы = slot%10) вместо 0-9 — сам формат хранения не изменился,
+        // просто расширен диапазон, UI (Table.razor) делит его на страницы для отображения.
+        if (command.Slot is not (-1) and (< 0 or > 29))
+            return Error.Validation("Macro.Slot", "Слот хотбара должен быть от 0 до 29 (или -1, чтобы снять).");
 
         var macro = await macroRepository.GetByIdAsync(command.MacroId, ct);
         if (macro is null) return Error.NotFound(nameof(Macro));

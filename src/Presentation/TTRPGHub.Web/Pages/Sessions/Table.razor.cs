@@ -57,6 +57,11 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
     // K.7 — личная библиотека макросов пользователя (не привязана к этой сессии, см. Macro.cs).
     private List<MacroDto> _macros = [];
+    // R.1 — макросы, расшаренные ГМ всем участникам этой сессии (GameSession.SharedMacroIds) —
+    // выполняются той же RunMacroAsync, что и личные, доступны всем независимо от владельца.
+    private List<MacroDto> _sharedMacros = [];
+    // R.1 — активная страница личного хотбара (0-2, по 10 слотов = 30 слотов, см. Macro.HotbarSlot).
+    private int _hotbarPage;
     private bool _showMacroLibrary;
     private bool _editingMacro;
     private Guid? _editingMacroId;
@@ -221,6 +226,9 @@ public partial class Table : ComponentBase, IAsyncDisposable
             catch { /* ignore */ }
 
             try { _macros = await Api.GetMyMacrosAsync(); }
+            catch { /* ignore */ }
+
+            try { _sharedMacros = await Api.GetSharedMacrosAsync(Id); }
             catch { /* ignore */ }
 
             try { _journalEntries = await Api.GetJournalEntriesAsync(Id); }
@@ -450,6 +458,12 @@ public partial class Table : ComponentBase, IAsyncDisposable
             _freeArchetype = freeArchetype;
             _gradualAbilityBoosts = gradualAbilityBoosts;
             _staminaVariant = staminaVariant;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        _hub.On<List<MacroDto>>("SharedMacrosChanged", async macros =>
+        {
+            _sharedMacros = macros;
             await InvokeAsync(StateHasChanged);
         });
 
@@ -3290,6 +3304,20 @@ public partial class Table : ComponentBase, IAsyncDisposable
             await Api.SetMacroHotbarSlotAsync(macroId, new SetHotbarSlotRequest(slot));
             _macros = await Api.GetMyMacrosAsync();
         }
+        catch { /* ignore */ }
+    }
+
+    // R.1 — расшаренные макросы: только ГМ может делиться/отзывать (сервер и так проверяет
+    // OrganizerId, кнопки скрыты для игроков в разметке — двойная защита, не только UI).
+    private async Task ShareMacroAsync(Guid macroId)
+    {
+        try { await Api.ShareMacroAsync(Id, macroId); }
+        catch { /* ignore */ }
+    }
+
+    private async Task UnshareMacroAsync(Guid macroId)
+    {
+        try { await Api.UnshareMacroAsync(Id, macroId); }
         catch { /* ignore */ }
     }
 

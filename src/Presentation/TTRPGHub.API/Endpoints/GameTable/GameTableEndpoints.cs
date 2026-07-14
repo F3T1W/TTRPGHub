@@ -43,6 +43,9 @@ using TTRPGHub.Features.GameTable.Commands.UploadTokenImage;
 using TTRPGHub.Features.GameTable.Commands.ImportAdventurePdf;
 using TTRPGHub.Features.GameTable.Queries.GetSessionCharacters;
 using TTRPGHub.Features.GameTable.Queries.GetTableState;
+using TTRPGHub.Features.Macros.Commands.ShareMacro;
+using TTRPGHub.Features.Macros.Commands.UnshareMacro;
+using TTRPGHub.Features.Macros.Queries.GetSharedMacros;
 
 namespace TTRPGHub.Endpoints.GameTable;
 
@@ -389,6 +392,30 @@ internal static class GameTableEndpoints
             return result.ToResponse();
         })
         .WithSummary("Удалить запись журнала (только ГМ)");
+
+        // R.1 — расшаренные макросы стола: GM отмечает свои макросы (K.7) видимыми/запускаемыми
+        // всем участникам сессии. Список читает любой участник (не только ГМ), делиться/отзывать
+        // может только организатор — те же проверки, что и у самих Macro-эндпоинтов на владение.
+        group.MapGet("/{sessionId:guid}/macros/shared", async (Guid sessionId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetSharedMacrosQuery(sessionId), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        })
+        .WithSummary("Макросы, расшаренные ГМ всем участникам стола");
+
+        group.MapPost("/{sessionId:guid}/macros/{macroId:guid}/share", async (Guid sessionId, Guid macroId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new ShareMacroCommand(sessionId, macroId), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Поделиться своим макросом со всеми участниками стола (только ГМ)");
+
+        group.MapDelete("/{sessionId:guid}/macros/{macroId:guid}/share", async (Guid sessionId, Guid macroId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new UnshareMacroCommand(sessionId, macroId), ct);
+            return result.ToResponse();
+        })
+        .WithSummary("Отозвать расшаренный макрос (только ГМ)");
     }
 }
 

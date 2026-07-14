@@ -18,6 +18,13 @@ internal sealed class MacroRepository(AppDbContext db) : IMacroRepository
     public Task<Macro?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         db.Macros.FirstOrDefaultAsync(m => m.Id == id, ct);
 
+    public async Task<IReadOnlyList<Macro>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        if (ids.Count == 0) return [];
+        var list = await db.Macros.Where(m => ids.Contains(m.Id)).OrderBy(m => m.Name).ToListAsync(ct);
+        return list.AsReadOnly();
+    }
+
     public async Task AddAsync(Macro macro, CancellationToken ct = default) =>
         await db.Macros.AddAsync(macro, ct);
 

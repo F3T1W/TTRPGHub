@@ -53,6 +53,12 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
         builder.Property(s => s.GradualAbilityBoosts).IsRequired().HasDefaultValue(false).HasColumnName("gradual_ability_boosts");
         builder.Property(s => s.StaminaVariant).IsRequired().HasDefaultValue(false).HasColumnName("stamina_variant");
         builder.Property(s => s.EncounterTableJson).HasColumnType("jsonb").HasColumnName("encounter_table_json");
+
+        builder.Property(s => s.SharedMacroIds)
+            .HasColumnType("uuid[]")
+            .HasColumnName("shared_macro_ids")
+            .HasDefaultValueSql("'{}'")
+            .IsRequired();
         builder.Property(s => s.CreatedAt).IsRequired().HasColumnName("created_at");
         builder.Property(s => s.UpdatedAt).IsRequired().HasColumnName("updated_at");
 
