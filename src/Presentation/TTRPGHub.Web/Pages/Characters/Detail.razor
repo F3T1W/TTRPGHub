@@ -119,6 +119,41 @@ else if (_char is not null)
                     {
                         <div class="mt-1">Новое на этом уровне: @_levelUpResult.WhatsNew</div>
                     }
+                    @if (_newFeatSlots.Count > 0)
+                    {
+                        <div class="mt-1">
+                            Новые слоты: @string.Join(", ", _newFeatSlots.Select(s => $"{s.Label} (ур. {s.Level})"))
+                        </div>
+                    }
+                </div>
+            }
+            @if (_boostingLevel is { } boostLevel)
+            {
+                <div class="ta-card p-3 mt-2" style="background:var(--ta-bg);">
+                    <div class="small text-muted mb-2">
+                        Буст характеристик за уровень @boostLevel — выбери ровно 4 из 6 (+2, или +1 если уже 18+).
+                        Осталось выбрать: @(4 - _boostSelection.Count)
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        @foreach (var (code, label) in Pf2eLookups.AbilityCodes)
+                        {
+                            <label class="small d-flex align-items-center gap-1 mb-0" style="cursor:pointer;">
+                                <input type="checkbox" checked="@_boostSelection.Contains(code)"
+                                       disabled="@(!_boostSelection.Contains(code) && _boostSelection.Count >= 4)"
+                                       @onchange="() => ToggleBoostAbility(code)" />
+                                @label
+                            </label>
+                        }
+                    </div>
+                    @if (_boostError is not null)
+                    {
+                        <div class="text-danger small mb-2">@_boostError</div>
+                    }
+                    <button class="btn btn-ta-primary btn-sm" @onclick="ApplyAbilityBoostAsync"
+                            disabled="@(_applyingBoost || _boostSelection.Count != 4)">
+                        @if (_applyingBoost) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Применить буст
+                    </button>
                 </div>
             }
         </div>

@@ -331,6 +331,51 @@ public static class Pf2eLookups
     public static List<int> PendingGradualAbilityBoosts(int level, IReadOnlyCollection<int> loggedLevels) =>
         Enumerable.Range(1, Math.Max(level, 0)).Where(l => !loggedLevels.Contains(l)).ToList();
 
+    // R.1 — Билдер/прогрессия: стандартные (не Gradual) уровни повышения характеристик —
+    // 4 буста на выбор игрока каждый раз, PF2e Core Rulebook стр. 22. AbilityBoostLevels
+    // (см. комментарий выше) используется тем же полем и под этим режимом — "уровень отмечен"
+    // означает "4 буста этого уровня применены", а не "по одному разу за каждый уровень".
+    public static readonly int[] StandardAbilityBoostLevels = [5, 10, 15, 20];
+
+    public static readonly (string Code, string Label)[] AbilityCodes =
+        [("str", "Сила"), ("dex", "Ловкость"), ("con", "Телосложение"),
+         ("int", "Интеллект"), ("wis", "Мудрость"), ("cha", "Харизма")];
+
+    // PF2e: буст поднимает характеристику на +2, но только на +1, если она уже 18 или выше —
+    // не даём "разгонять" одну характеристику бесконечно быстрее остальных.
+    public static int ApplyAbilityBoost(int score) => score >= 18 ? score + 1 : score + 2;
+
+    // Стандартные уровни повышения характеристик, ещё не отмеченные в AbilityBoostLevels, вплоть
+    // до newLevel включительно — считает и пропущенные при скачке на несколько уровней разом.
+    public static List<int> DueStandardAbilityBoostLevels(int newLevel, IReadOnlyCollection<int> loggedLevels) =>
+        StandardAbilityBoostLevels.Where(l => l <= newLevel && !loggedLevels.Contains(l)).ToList();
+
+    // R.1 — Слоты фитов по уровню: единая для всех классов PF2e таблица (Core Rulebook стр. 32) —
+    // в отличие от прогрессии владений/HP, номера уровней слотов фитов не зависят от класса.
+    // Повышение навыка (skill increase) сюда же добавлено для полноты чек-листа "что нового",
+    // хотя это не фит-слот — авто-применения нет, игрок сам поднимает ранг на листе (Pf2eStatsSheet).
+    public static readonly (string Key, string Label, int[] Levels)[] FeatSlotTable =
+    [
+        ("ancestry", "Предковый фит", [1, 5, 9, 13, 17]),
+        ("skill", "Навыковый фит", [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]),
+        ("general", "Общий фит", [3, 7, 11, 15, 19]),
+        ("class", "Классовый фит", [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]),
+        ("skill-increase", "Повышение навыка", [3, 5, 7, 9, 11, 13, 15, 17, 19]),
+    ];
+
+    // Что нового открылось между старым и новым уровнем — чисто информационный чек-лист для
+    // экрана level-up, не блокирует и не применяет ничего автоматически (те же принципы, что
+    // у ExpectedFreeArchetypeFeats/PendingGradualAbilityBoosts — подсказка, не гейт).
+    public static List<(int Level, string Label)> NewFeatSlotsBetweenLevels(int oldLevel, int newLevel)
+    {
+        var result = new List<(int, string)>();
+        foreach (var (_, label, levels) in FeatSlotTable)
+            foreach (var lvl in levels)
+                if (lvl > oldLevel && lvl <= newLevel)
+                    result.Add((lvl, label));
+        return [.. result.OrderBy(x => x.Item1)];
+    }
+
     // Числовой модификатор из данных фита (J.1) — селектор: "land-speed", ключ навыка,
     // "perception" или "ac". Predicate (может быть null = безусловный) — сырое PF2e-условие
     // из Foundry: массив строк (все должны быть истинны) и/или объектов {or,not,nor,nand,gte,

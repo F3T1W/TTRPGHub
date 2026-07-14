@@ -29,6 +29,16 @@ public partial class Detail
     private int _newLevel;
     private string? _levelUpError;
     private LevelUpResponse? _levelUpResult;
+    private List<(int Level, string Label)> _newFeatSlots = [];
+
+    // R.1 — буст характеристик на level-up: список ещё не применённых стандартных уровней
+    // (5/10/15/20), текущий выбранный уровень для применения и набор из ровно 4 выбранных
+    // характеристик под него — один уровень за раз, даже если level-up перескочил несколько.
+    private List<int> _pendingBoostLevels = [];
+    private int? _boostingLevel;
+    private readonly HashSet<string> _boostSelection = [];
+    private bool _applyingBoost;
+    private string? _boostError;
 
     private List<SelectedFeatDto> _selectedFeats = [];
     private string _featSearch = string.Empty;
@@ -67,6 +77,7 @@ public partial class Detail
     private async Task LevelUpAsync()
     {
         if (_char is null) return;
+        var oldLevel = _char.Level;
         _levelingUp = true;
         _levelUpError = null;
         _levelUpResult = null;
@@ -76,6 +87,16 @@ public partial class Detail
             _levelUpResult = result;
             _char = await Api.GetCharacterByIdAsync(Id);
             _newLevel = _char.Level + 1;
+
+            _newFeatSlots = Pf2eLookups.NewFeatSlotsBetweenLevels(oldLevel, _char.Level);
+
+            if (!string.IsNullOrWhiteSpace(_char.Pf2eStatsJson))
+            {
+                var stats = Pf2eLookups.Pf2eStatsModel.FromJson(_char.Pf2eStatsJson);
+                _pendingBoostLevels = Pf2eLookups.DueStandardAbilityBoostLevels(_char.Level, stats.AbilityBoostLevels);
+                _boostingLevel = _pendingBoostLevels.Count > 0 ? _pendingBoostLevels[0] : null;
+                _boostSelection.Clear();
+            }
         }
         catch
         {
@@ -84,6 +105,59 @@ public partial class Detail
         finally
         {
             _levelingUp = false;
+        }
+    }
+
+    private void ToggleBoostAbility(string code)
+    {
+        if (!_boostSelection.Remove(code) && _boostSelection.Count < 4)
+            _boostSelection.Add(code);
+    }
+
+    // Применяет выбранный буст (+2, или +1 если характеристика уже 18+) к базовым полям
+    // персонажа и отмечает уровень в Pf2eStatsModel.AbilityBoostLevels, чтобы не предложить
+    // его снова на следующем level-up. Дальше — либо следующий уровень из очереди, либо конец.
+    private async Task ApplyAbilityBoostAsync()
+    {
+        if (_char is null || _boostingLevel is not { } level || _boostSelection.Count != 4) return;
+        _applyingBoost = true;
+        _boostError = null;
+        try
+        {
+            var form = CharacterFormModel.From(_char);
+            foreach (var code in _boostSelection)
+            {
+                form = code switch
+                {
+                    "str" => form with { Strength = Pf2eLookups.ApplyAbilityBoost(form.Strength) },
+                    "dex" => form with { Dexterity = Pf2eLookups.ApplyAbilityBoost(form.Dexterity) },
+                    "con" => form with { Constitution = Pf2eLookups.ApplyAbilityBoost(form.Constitution) },
+                    "int" => form with { Intelligence = Pf2eLookups.ApplyAbilityBoost(form.Intelligence) },
+                    "wis" => form with { Wisdom = Pf2eLookups.ApplyAbilityBoost(form.Wisdom) },
+                    "cha" => form with { Charisma = Pf2eLookups.ApplyAbilityBoost(form.Charisma) },
+                    _ => form
+                };
+            }
+
+            await Api.UpdateCharacterAsync(Id, form.ToRequest(Id));
+
+            var stats = Pf2eLookups.Pf2eStatsModel.FromJson(_char.Pf2eStatsJson);
+            stats.AbilityBoostLevels.Add(level);
+            await Api.UpdatePf2eStatsAsync(Id, new UpdatePf2eStatsRequest(stats.ToJson()));
+
+            _char = await Api.GetCharacterByIdAsync(Id);
+            _form = CharacterFormModel.From(_char);
+            _pendingBoostLevels.Remove(level);
+            _boostingLevel = _pendingBoostLevels.Count > 0 ? _pendingBoostLevels[0] : null;
+            _boostSelection.Clear();
+        }
+        catch
+        {
+            _boostError = "Не удалось применить буст характеристик.";
+        }
+        finally
+        {
+            _applyingBoost = false;
         }
     }
 
