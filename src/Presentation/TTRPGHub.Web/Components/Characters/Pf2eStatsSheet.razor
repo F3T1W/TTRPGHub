@@ -64,7 +64,8 @@ else if (_showPf2e)
                                             @onchange="e => _pf2e = _pf2e with { PerceptionRank = int.Parse(e.Value!.ToString()!) }">
                                         @foreach (var (val, label) in Pf2eRanks)
                                         {
-                                            <option value="@val">@label</option>
+                                            <option value="@val" disabled="@(Character.Level < Pf2eLookups.MinLevelForRank(val))"
+                                                        title="@(Character.Level < Pf2eLookups.MinLevelForRank(val) ? $"Недоступно раньше {Pf2eLookups.MinLevelForRank(val)} уровня" : null)">@label</option>
                                         }
                                     </select>
                                 }
@@ -97,7 +98,8 @@ else if (_showPf2e)
                                                         @onchange="e => UpdateArmorProficiencyRank(catKey, int.Parse(e.Value!.ToString()!))">
                                                     @foreach (var (val, label) in Pf2eRanks)
                                                     {
-                                                        <option value="@val">@label</option>
+                                                        <option value="@val" disabled="@(Character.Level < Pf2eLookups.MinLevelForRank(val))"
+                                                        title="@(Character.Level < Pf2eLookups.MinLevelForRank(val) ? $"Недоступно раньше {Pf2eLookups.MinLevelForRank(val)} уровня" : null)">@label</option>
                                                     }
                                                 </select>
                                             </div>
@@ -113,7 +115,8 @@ else if (_showPf2e)
                                             @onchange="e => _pf2e = _pf2e with { ClassDcRank = int.Parse(e.Value!.ToString()!) }">
                                         @foreach (var (val, label) in Pf2eRanks)
                                         {
-                                            <option value="@val">@label</option>
+                                            <option value="@val" disabled="@(Character.Level < Pf2eLookups.MinLevelForRank(val))"
+                                                        title="@(Character.Level < Pf2eLookups.MinLevelForRank(val) ? $"Недоступно раньше {Pf2eLookups.MinLevelForRank(val)} уровня" : null)">@label</option>
                                         }
                                     </select>
                                 }
@@ -182,7 +185,8 @@ else if (_showPf2e)
                                             @onchange="e => _pf2e = _pf2e with { SpellcastingRank = int.Parse(e.Value!.ToString()!) }">
                                         @foreach (var (val, label) in Pf2eRanks)
                                         {
-                                            <option value="@val">@label</option>
+                                            <option value="@val" disabled="@(Character.Level < Pf2eLookups.MinLevelForRank(val))"
+                                                        title="@(Character.Level < Pf2eLookups.MinLevelForRank(val) ? $"Недоступно раньше {Pf2eLookups.MinLevelForRank(val)} уровня" : null)">@label</option>
                                         }
                                     </select>
                                 }
@@ -358,7 +362,8 @@ else if (_showPf2e)
                                                         @onchange="e => UpdateAttack(idx, atk with { Rank = int.Parse(e.Value!.ToString()!) })">
                                                     @foreach (var (val, label) in Pf2eRanks)
                                                     {
-                                                        <option value="@val">@label</option>
+                                                        <option value="@val" disabled="@(Character.Level < Pf2eLookups.MinLevelForRank(val))"
+                                                        title="@(Character.Level < Pf2eLookups.MinLevelForRank(val) ? $"Недоступно раньше {Pf2eLookups.MinLevelForRank(val)} уровня" : null)">@label</option>
                                                     }
                                                 </select>
                                                 <select class="form-select form-select-sm" value="@atk.AbilityKey"

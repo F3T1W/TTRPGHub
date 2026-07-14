@@ -7,20 +7,25 @@ namespace TTRPGHub.Features.Characters.Commands.CreateCharacterFromRules;
 //   Character-сущность хранит один ProficiencyBonus (D&D5e-модель), поэтому AC/спасброски считаются
 //   в предположении "тренированное владение" (уровень + 2), без выбора экспертизы на будущих уровнях.
 // - Не моделирует доспехи/щиты — AC = 10 + мод. Ловкости + (уровень + 2), как для персонажа без брони.
-// - Буст характеристик: только явные пары предка/класса (boost_codes/key_ability_codes) — свободный
-//   выбор ("ANY" у человека/полуорка, второй ключевой атрибут у Бойца/Следопыта) не применяется
-//   автоматически, игрок сам поднимает нужную характеристику в анкете до отправки формы.
+// - Буст характеристик: явные пары предка/класса (boost_codes/key_ability_codes) применяются всегда;
+//   свободный выбор ("ANY" у человека/полуорка, второй ключевой атрибут у Бойца/Следопыта) применяется,
+//   только если игрок выбрал его в мастере создания (freeBoostAbilityCodes/keyAbilityCode) — иначе
+//   пропускается, как раньше, и доводится вручную на листе после создания.
 internal static class Pf2eCharacterAutomationCalculator
 {
     public sealed record Pf2eAutomation(int MaxHitPoints, int ArmorClass, int Speed, string? Notes);
 
     public static CharacterAutomationCalculator.AbilityScores ApplyBoosts(
-        CharacterAutomationCalculator.AbilityScores baseScores, string ancestryStatsJson, string classStatsJson)
+        CharacterAutomationCalculator.AbilityScores baseScores, string ancestryStatsJson, string classStatsJson,
+        IReadOnlyList<string>? freeBoostAbilityCodes = null, string? keyAbilityCode = null)
     {
         var scores = baseScores;
+        var freeBoostQueue = new Queue<string>(freeBoostAbilityCodes ?? []);
 
         foreach (var code in ReadCodes(ancestryStatsJson, "boost_codes"))
-            scores = ApplyBoost(scores, code);
+            scores = code == "ANY" && freeBoostQueue.Count > 0
+                ? ApplyBoost(scores, freeBoostQueue.Dequeue())
+                : ApplyBoost(scores, code);
 
         var flawCode = ReadFlawCode(ancestryStatsJson);
         if (flawCode is not null)
@@ -29,6 +34,8 @@ internal static class Pf2eCharacterAutomationCalculator
         var keyAbilityCodes = ReadCodes(classStatsJson, "key_ability_codes");
         if (keyAbilityCodes.Count == 1)
             scores = ApplyBoost(scores, keyAbilityCodes[0]);
+        else if (keyAbilityCodes.Count > 1 && keyAbilityCode is not null && keyAbilityCodes.Contains(keyAbilityCode))
+            scores = ApplyBoost(scores, keyAbilityCode);
 
         return scores.Clamp();
     }

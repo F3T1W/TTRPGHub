@@ -34,9 +34,9 @@
                 @if (_systemSlug == "pf2e")
                 {
                     <div class="form-text">
-                        Автоматика PF2e упрощена: HP и КЗ считаются приближённо (тренированное владение без брони),
-                        свободный выбор буста характеристик (у Человека/Полуорка, второй ключевой атрибут Бойца/Следопыта)
-                        не применяется автоматически — доведи вручную после создания.
+                        Автоматика PF2e упрощена: HP и КЗ считаются приближённо (тренированное владение без брони).
+                        Свободный буст характеристик и выбор ключевой характеристики класса — ниже, если у выбранной
+                        расы/класса они есть. Ранги владений (навыки/спасброски/perception) доводятся вручную на листе.
                     </div>
                 }
             </div>
@@ -55,7 +55,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-6">
                         <label class="form-label">Раса</label>
-                        <select class="form-select" @bind="_raceSlug">
+                        <select class="form-select" value="@_raceSlug" @onchange="OnRaceChangedAsync">
                             <option value="">— выбери расу —</option>
                             @foreach (var r in _races)
                             {
@@ -65,7 +65,7 @@
                     </div>
                     <div class="col-6">
                         <label class="form-label">Класс</label>
-                        <select class="form-select" @bind="_classSlug">
+                        <select class="form-select" value="@_classSlug" @onchange="OnClassChangedAsync">
                             <option value="">— выбери класс —</option>
                             @foreach (var c in _classes)
                             {
@@ -81,7 +81,7 @@
                 </div>
 
                 <label class="form-label">Базовые характеристики (до расовых бонусов)</label>
-                <div class="row g-2 mb-4">
+                <div class="row g-2 mb-3">
                     @foreach (var (label, getter, setter) in AbilityFields)
                     {
                         <div class="col-4 col-md-2">
@@ -91,6 +91,43 @@
                         </div>
                     }
                 </div>
+
+                @if (_freeBoostSlots > 0)
+                {
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">
+                            Свободный буст характеристики (@_freeBoostSlots шт., +2 к выбранной)
+                        </label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @for (var i = 0; i < _freeBoostChoices.Length; i++)
+                            {
+                                var idx = i;
+                                <select class="form-select form-select-sm" style="width:auto;"
+                                        value="@_freeBoostChoices[idx]"
+                                        @onchange="e => _freeBoostChoices[idx] = e.Value?.ToString() ?? _freeBoostChoices[idx]">
+                                    @foreach (var (abilityCode, label) in AbilityCodeLabels)
+                                    {
+                                        <option value="@abilityCode">@label</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (_keyAbilityOptions.Count > 1)
+                {
+                    <div class="mb-4">
+                        <label class="form-label small text-muted mb-1">Ключевая характеристика класса</label>
+                        <select class="form-select form-select-sm" style="width:auto;" @bind="_keyAbilityChoice">
+                            @foreach (var abilityCode in _keyAbilityOptions)
+                            {
+                                var label = AbilityCodeLabels.FirstOrDefault(a => a.Code == abilityCode).Label ?? abilityCode;
+                                <option value="@abilityCode">@label</option>
+                            }
+                        </select>
+                    </div>
+                }
 
                 <div class="d-flex gap-2">
                     <button class="btn btn-ta-primary flex-grow-1" @onclick="SubmitAsync"

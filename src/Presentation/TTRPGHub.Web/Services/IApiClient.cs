@@ -20,7 +20,8 @@ public sealed record CreateCharacterRequest(string Name, string Race, string Cla
 
 public sealed record CreateCharacterFromRulesRequest(
     string Name, string SystemSlug, string RaceSlug, string ClassSlug, int Level,
-    int Strength, int Dexterity, int Constitution, int Intelligence, int Wisdom, int Charisma);
+    int Strength, int Dexterity, int Constitution, int Intelligence, int Wisdom, int Charisma,
+    List<string>? FreeBoostAbilityCodes = null, string? KeyAbilityCode = null);
 
 public sealed record LevelUpRequest(int NewLevel);
 public sealed record LevelUpResponse(Guid CharacterId, int Level, int MaxHitPoints, int CurrentHitPoints, string? WhatsNew);

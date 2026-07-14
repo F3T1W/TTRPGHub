@@ -34,7 +34,8 @@ internal sealed class CreateCharacterFromRulesCommandHandler(
             command.Intelligence, command.Wisdom, command.Charisma).Clamp();
 
         var (finalScores, maxHp, armorClass, speed, savingThrows, notes, hitDice, equipment) = command.SystemSlug == "pf2e"
-            ? CalculatePf2e(baseScores, race.StatsJson, characterClass.StatsJson, command.Level)
+            ? CalculatePf2e(baseScores, race.StatsJson, characterClass.StatsJson, command.Level,
+                command.FreeBoostAbilityCodes, command.KeyAbilityCode)
             : CalculateDnd5e(baseScores, race.StatsJson, characterClass.StatsJson, command.Level);
 
         var characterResult = Character.Create(currentUser.Id, command.Name, race.Title, characterClass.Title, command.Level);
@@ -103,9 +104,11 @@ internal sealed class CreateCharacterFromRulesCommandHandler(
 
     private static (CharacterAutomationCalculator.AbilityScores Scores, int MaxHp, int ArmorClass, int Speed,
         List<string> SavingThrows, string? Notes, string HitDice, string? Equipment) CalculatePf2e(
-        CharacterAutomationCalculator.AbilityScores baseScores, string ancestryStatsJson, string classStatsJson, int level)
+        CharacterAutomationCalculator.AbilityScores baseScores, string ancestryStatsJson, string classStatsJson, int level,
+        IReadOnlyList<string>? freeBoostAbilityCodes, string? keyAbilityCode)
     {
-        var finalScores = Pf2eCharacterAutomationCalculator.ApplyBoosts(baseScores, ancestryStatsJson, classStatsJson);
+        var finalScores = Pf2eCharacterAutomationCalculator.ApplyBoosts(
+            baseScores, ancestryStatsJson, classStatsJson, freeBoostAbilityCodes, keyAbilityCode);
         var conModifier = Modifier(finalScores.Con);
         var dexModifier = Modifier(finalScores.Dex);
 
