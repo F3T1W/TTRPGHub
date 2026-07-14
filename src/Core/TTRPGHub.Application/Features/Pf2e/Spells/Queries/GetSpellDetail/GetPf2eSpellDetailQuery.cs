@@ -19,4 +19,7 @@ public sealed record Pf2eSpellDetailDto(
     string Duration,
     string Description,
     string? Heightened,
-    string Source);
+    string Source,
+    string? DamageJson,
+    string? HeighteningJson,
+    string? DefenseJson);

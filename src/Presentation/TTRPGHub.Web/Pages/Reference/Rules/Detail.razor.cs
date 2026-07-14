@@ -6,27 +6,41 @@ using TTRPGHub.Services;
 
 namespace TTRPGHub.Pages.Reference.Rules;
 
-public partial class Detail
+public partial class Detail : IDisposable
 {
     [Parameter] public string SystemSlug { get; set; } = "";
     [Parameter] public string Category { get; set; } = "";
     [Parameter] public string Slug { get; set; } = "";
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
+    [Inject] private ContentLanguageService Lang { get; set; } = default!;
 
     private static readonly MarkdownPipeline MarkdownPipeline =
         new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
 
     private RuleEntryDetailDto? _entry;
+    private string _displayTitle = "";
+    private string? _displaySummary;
+    private MarkupString? _contentHtml;
     private readonly List<(string Label, string Value)> _statFields = [];
     private readonly List<(string Label, MarkupString Html)> _blockFields = [];
-    private MarkupString? _contentHtml;
     private bool _loading = true;
     private bool _deleting;
     private string? _error;
     private string? _deleteError;
 
     protected override async Task OnParametersSetAsync()
+    {
+        await Lang.InitializeAsync();
+        Lang.OnChanged -= OnLanguageChanged;
+        Lang.OnChanged += OnLanguageChanged;
+        await LoadAsync();
+    }
+
+    private async void OnLanguageChanged() => await InvokeAsync(LoadAsync);
+
+    private async Task LoadAsync()
     {
         _loading = true;
         _error = null;
@@ -37,9 +51,8 @@ public partial class Detail
         try
         {
             _entry = await Api.GetRuleEntryDetailAsync(SystemSlug, Category, Slug);
+            await ApplyLocalizationAsync();
             ParseStats(_entry.StatsJson);
-            if (!string.IsNullOrWhiteSpace(_entry.ContentMarkdown))
-                _contentHtml = ToHtml(_entry.ContentMarkdown);
         }
         catch
         {
@@ -49,6 +62,29 @@ public partial class Detail
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task ApplyLocalizationAsync()
+    {
+        if (_entry is null)
+            return;
+
+        var cat = Category.ToLowerInvariant();
+        _displayTitle = SystemSlug == "pf2e"
+            ? await Locale.NameAsync(cat, Slug, _entry.Title)
+            : _entry.Title;
+
+        _displaySummary = SystemSlug == "pf2e" && !string.IsNullOrWhiteSpace(_entry.Summary)
+            ? await Locale.SummaryAsync(cat, Slug, _entry.Summary)
+            : _entry.Summary;
+
+        if (!string.IsNullOrWhiteSpace(_entry.ContentMarkdown))
+        {
+            var markdown = SystemSlug == "pf2e"
+                ? await Locale.DescriptionAsync(cat, Slug, _entry.ContentMarkdown)
+                : _entry.ContentMarkdown;
+            _contentHtml = ToHtml(markdown);
         }
     }
 
@@ -86,8 +122,6 @@ public partial class Detail
                 var text = prop.Value.GetString();
                 if (string.IsNullOrWhiteSpace(text)) continue;
 
-                // Многострочные значения (таблицы прогрессии, длинные описания) рендерим как markdown-блок,
-                // короткие однострочные — как обычную пару "метка: значение"
                 if (text.Contains('\n') || text.Contains('|') || text.Length > 200)
                     _blockFields.Add((PrettyLabel(prop.Name), ToHtml(text)));
                 else
@@ -127,4 +161,6 @@ public partial class Detail
         "rule" => "Правила",
         _ => category
     };
+
+    public void Dispose() => Lang.OnChanged -= OnLanguageChanged;
 }

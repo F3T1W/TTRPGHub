@@ -95,49 +95,47 @@ public sealed class Pf2eRulesSeeder(
                 "Изобретатель, создающий на лету алхимические предметы — бомбы, эликсиры и мутагены — из пропитанных магией реагентов.",
                 "Пропитанные реагенты (создаваемые ежедневно алхимические предметы), исследование алхимика (бомбы/мутагены/эликсиры/поле хирурга), быстрая алхимия."),
 
-            // Ниже — классы, добавленные без RU-источника (по прямому запросу пользователя:
-            // "если чего-то нет на русском, добавляй на английском, переводами займусь позже").
-            // Текст написан своими словами (не дословная цитата книги правил), как и остальные
-            // записи в этом массиве — только факты (ключевая характеристика, HP, суть механики).
-            ("investigator", "Investigator", "Intelligence", ["INT"], 8,
-                "A methodical detective who studies a situation before acting, using Devise a Stratagem to line up a precise attack based on careful observation.",
-                "Devise a Stratagem (bonus to a planned attack after analyzing the situation), methodology (forensic medicine/empiricism/etc. shapes investigative style), keen recollection."),
-            ("magus", "Magus", "Intelligence", ["INT"], 8,
-                "A spellcaster-warrior who fuses weapon strikes and arcane spells into a single devastating action via Spellstrike.",
-                "Spellstrike (channel a spell through a weapon strike), arcane cantrips, spell combat, hybrid study specialization."),
-            ("oracle", "Oracle", "Charisma", ["CHA"], 8,
-                "A spontaneous divine spellcaster bound to a mystery granting unique revelations, balanced by a curse that worsens over time.",
-                "Mystery (defines bonus spells and revelations), oracular curse (escalating drawback with growing benefits), spontaneous divine spellcasting."),
-            ("swashbuckler", "Swashbuckler", "Dexterity", ["DEX"], 8,
-                "A flashy duelist who builds Panache through daring deeds and spends it to fuel finishing blows.",
-                "Panache (resource gained from stylish combat actions), finisher techniques, swashbuckler style (defines how Panache is earned)."),
-            ("thaumaturge", "Thaumaturge", "Charisma", ["CHA"], 8,
-                "An occult investigator who channels a bonded implement to exploit the weaknesses of monsters and spirits.",
-                "Esoteric lore (broad knowledge check for supernatural threats), implements (tome/lantern/mirror/etc. each grant unique exploits), first implement bond."),
-            ("witch", "Witch", "Intelligence", ["INT"], 6,
-                "A spellcaster granted arcane secrets by a mysterious patron, embodied in a familiar that carries the patron's will.",
-                "Patron theme (defines granted hex spells and lessons), familiar (required, carries patron abilities), prepared spellcasting."),
-            ("gunslinger", "Gunslinger", "Dexterity", ["DEX"], 10,
-                "A firearms and crossbow specialist who relies on a signature way of fighting (a way of the gun) to land precise, powerful shots.",
-                "Way of the gun (defines fighting style and reload bonus), singular expertise (deadly aim with one chosen weapon), reloading actions."),
-            ("inventor", "Inventor", "Intelligence", ["INT"], 8,
-                "A tinkerer who builds a signature innovation — an armor, weapon, or construct companion — and improvises breakthroughs mid-combat.",
-                "Innovation (the constructed device that defines the class), overdrive (risk a malfunction for a burst of power), unstable actions."),
-            ("summoner", "Summoner", "Charisma", ["CHA"], 10,
-                "Bonded permanently to an eidolon — a semi-independent creature that fights alongside (and shares actions with) the summoner.",
-                "Eidolon (linked creature sharing the summoner's turn), shared HP pool with the eidolon, tandem spellcasting."),
-            ("psychic", "Psychic", "Intelligence, Wisdom, or Charisma", ["INT", "WIS", "CHA"], 8,
-                "A spontaneous occult spellcaster whose mind can overflow into an Unleash Psyche state, boosting cantrips at the cost of exposing the psyche to attack.",
-                "Unleash Psyche (empowered cantrip once per turn while active, but weakens mental defenses), subconscious mind (defines bonus spells), amped cantrips."),
-            ("kineticist", "Kineticist", "Constitution", ["CON"], 8,
-                "Channels raw elemental power (air/earth/fire/water/wood/metal) directly through the body instead of casting traditional spells.",
-                "Elemental gates (chosen elements determine available impulses), impulses (at-will elemental abilities, no spell slots), kinetic aura."),
-            ("guardian", "Guardian", "Strength", ["STR"], 10,
-                "A frontline protector who plants a defensive stance and punishes enemies who ignore the ally standing behind them.",
-                "Guardian's stance (defensive posture with reactive punishment), block, taunt-style aggro mechanics protecting allies."),
-            ("exemplar", "Exemplar", "Strength or Dexterity", ["STR", "DEX"], 10,
-                "A mortal touched by divine spark, channeling legendary feats of heroism through personal relics called ikons.",
-                "Ikons (personal legendary items that grow in power), transcendence (surge of divine might), spark (fuels ikon abilities)."),
+            // Классы без отдельного RU-источника в pf2e_ru_translation на момент добавления —
+            // текст написан своими словами (не дословная цитата книги правил).
+            ("investigator", "Следователь", "Интеллект", ["INT"], 8,
+                "Методичный детектив, который изучает ситуацию прежде чем действовать: «Разработать стратегему» даёт бонус к точной атаке после тщательного наблюдения.",
+                "Разработать стратегему (бонус к запланированной атаке после анализа ситуации), методология (судебная медицина/эмпиризм и т.п. задаёт стиль расследования), острое воспоминание."),
+            ("magus", "Магус", "Интеллект", ["INT"], 8,
+                "Заклинатель-воин, сливающий удары оружием и арканные заклинания в одно разрушительное действие — «Удар заклинанием».",
+                "Удар заклинанием (направить заклинание через удар оружием), арканные заговоры, боевое колдовство, специализация гибридного изучения."),
+            ("oracle", "Оракул", "Харизма", ["CHA"], 8,
+                "Спонтанный божественный заклинатель, связанный с тайной, дающей уникальные откровения, — в обмен на проклятие, усиливающееся со временем.",
+                "Тайна (определяет бонусные заклинания и откровения), оракулярное проклятие (нарастающий недостаток с растущими преимуществами), спонтанное божественное колдовство."),
+            ("swashbuckler", "Сорвиголова", "Ловкость", ["DEX"], 8,
+                "Эффектный дуэлянт, накапливающий Панаш за смелые поступки и тратящий его на завершающие удары.",
+                "Панаш (ресурс за стильные боевые действия), завершающие приёмы, стиль сорвиголовы (определяет, как зарабатывается Панаш)."),
+            ("thaumaturge", "Тауматург", "Харизма", ["CHA"], 8,
+                "Оккультный исследователь, направляющий силу связанного артефакта, чтобы эксплуатировать слабости монстров и духов.",
+                "Эзотерические знания (широкая проверка против сверхъестественных угроз), артефакты (том/фонарь/зеркало и т.п., каждый даёт уникальные приёмы), первая связь с артефактом."),
+            ("witch", "Ведьма", "Интеллект", ["INT"], 6,
+                "Заклинатель, получающий арканные тайны от таинственного покровителя; воля покровителя воплощается в фамильяре.",
+                "Тема покровителя (определяет заклинания проклятий и уроки), фамильяр (обязателен, несёт способности покровителя), подготовленное колдовство."),
+            ("gunslinger", "Стрелок", "Ловкость", ["DEX"], 10,
+                "Специалист по огнестрельному и арбалетному оружию, полагающийся на избранный «путь оружия» для точных и мощных выстрелов.",
+                "Путь оружия (стиль боя и бонус к перезарядке), единственное мастерство (смертоносная меткость с одним избранным оружием), действия перезарядки."),
+            ("inventor", "Изобретатель", "Интеллект", ["INT"], 8,
+                "Мастер на все руки, создающий фирменное изобретение — доспех, оружие или конструкт-компаньона — и импровизирующий прорывы прямо в бою.",
+                "Изобретение (устройство, определяющее класс), форсаж (риск поломки ради всплеска силы), нестабильные действия."),
+            ("summoner", "Призыватель", "Харизма", ["CHA"], 10,
+                "Навсегда связан с эйдолоном — полуавтономным существом, сражающимся рядом (и делящим ход) с призывателем.",
+                "Эйдолон (связанное существо на ходу призывателя), общий пул ОЗ с эйдолоном, тандемное колдовство."),
+            ("psychic", "Психик", "Интеллект, Мудрость или Харизма", ["INT", "WIS", "CHA"], 8,
+                "Спонтанный оккультный заклинатель, чей разум может переполняться в состояние «Высвободить психику», усиливая заговоры ценой уязвимости.",
+                "Высвободить психику (усиленный заговор раз в ход, но ослабляет ментальную защиту), подсознание (определяет бонусные заклинания), усиленные заговоры."),
+            ("kineticist", "Кинетик", "Телосложение", ["CON"], 8,
+                "Направляет сырую стихийную силу (воздух/земля/огонь/вода/дерево/металл) через тело вместо традиционных заклинаний.",
+                "Стихийные врата (выбранные стихии определяют импульсы), импульсы (стихийные способности без слотов), кинетическая аура."),
+            ("guardian", "Страж", "Сила", ["STR"], 10,
+                "Защитник передовой линии, принимающий оборонительную стойку и карающий врагов, игнорирующих союзника за его спиной.",
+                "Стойка стража (оборонительная поза с реактивным наказанием), блок, механики провокации/удержания агро для защиты союзников."),
+            ("exemplar", "Экземпляр", "Сила или Ловкость", ["STR", "DEX"], 10,
+                "Смертный, коснувшийся божественной искры, направляющий легендарные подвиги через личные реликвии — иконы.",
+                "Иконы (личные легендарные предметы, растущие в силе), трансцендентность (всплеск божественной мощи), искра (питает способности икон)."),
         ];
 
         return data.Select(c => RuleEntry.Create(
@@ -151,15 +149,9 @@ public sealed class Pf2eRulesSeeder(
                 hp_per_level = c.hpPerLevel,
                 class_features = c.features
             }),
-            tags: UntranslatedClassSlugs.Contains(c.slug) ? ["класс", "PF2e", "untranslated"] : ["класс", "PF2e"],
+            tags: ["класс", "PF2e"],
             isHomebrew: false, source: "PF2e SRD"));
     }
-
-    // Классы, добавленные без RU-перевода (см. комментарий в BuildClasses) — помечены тегом
-    // "untranslated", чтобы будущий перевод мог найти их без ручного перебора.
-    private static readonly HashSet<string> UntranslatedClassSlugs =
-        ["investigator", "magus", "oracle", "swashbuckler", "thaumaturge", "witch",
-         "gunslinger", "inventor", "summoner", "psychic", "kineticist", "guardian", "exemplar"];
 
     private static IEnumerable<RuleEntry> BuildAncestries(GameSystemId systemId)
     {
@@ -193,29 +185,26 @@ public sealed class Pf2eRulesSeeder(
             ("hobgoblin", "Хобгоблин", 8, "Среднее", 25, "Телосложение, Интеллект", ["CON", "INT"], "Харизма", "CHA",
                 "Дисциплинированный и организованный народ, ценящий порядок и мастерство ремесла выше всего — включая военное дело."),
 
-            // Ниже — предки, добавленные без RU-перевода (см. комментарий в BuildClasses про
-            // "англ. пока нет RU-источника"). Size/speed указаны на английском ("Small"/"Medium")
-            // — маппинг size→числовой код в конце файла учитывает оба варианта написания.
-            ("catfolk", "Catfolk", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Wisdom", "WIS",
-                "A curious, agile people with feline features and a taste for adventure — quick reflexes and an even quicker wit."),
-            ("kobold", "Kobold", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Constitution", "CON",
-                "Small dragon-kin with a talent for traps and tunnels, blessed with darkvision and a fierce sense of clan loyalty."),
-            ("lizardfolk", "Lizardfolk", 8, "Medium", 25, "Strength, Wisdom", ["STR", "WIS"], "Intelligence", "INT",
-                "A reptilian people at home in swamp and jungle alike, strong swimmers who value pragmatism and the natural order."),
-            ("ratfolk", "Ratfolk", 6, "Small", 25, "Dexterity, Intelligence", ["DEX", "INT"], "Strength", "STR",
-                "A resourceful, communal people with keen senses and a knack for tinkering, thriving wherever they settle."),
-            ("leshy", "Leshy", 8, "Small", 25, "Constitution, Wisdom", ["CON", "WIS"], "Charisma", "CHA",
-                "A plant creature grown from a magic seed, needing regular watering to stay healthy — tied closely to the natural world that made it."),
-            ("fetchling", "Fetchling", 8, "Medium", 25, "Dexterity, Intelligence", ["DEX", "INT"], "Charisma", "CHA",
-                "Humanoids touched by the Shadow Plane, comfortable in darkness and possessing low-light vision inherited from their ancestry."),
-            ("automaton", "Automaton", 8, "Medium", 25, "Any two (free)", ["ANY", "ANY"], "Нет", null,
-                "A living construct animated by a soul bound into a mechanical body, immune to many conditions that trouble living creatures."),
-            ("kitsune", "Kitsune", 6, "Small", 25, "Dexterity, Charisma", ["DEX", "CHA"], "Constitution", "CON",
-                "A shapechanging people descended from fox spirits, able to take a human-like form while retaining fox-like features and instincts."),
-            ("grippli", "Grippli", 6, "Small", 25, "Dexterity, Wisdom", ["DEX", "WIS"], "Strength", "STR",
-                "A frog-like people at home in swamps and jungle canopies, natural climbers and jumpers with a talent for camouflage."),
-            ("azarketi", "Azarketi", 8, "Medium", 25, "Constitution, Wisdom", ["CON", "WIS"], "Intelligence", "INT",
-                "An amphibious coastal people equally at home on land or underwater, with a swim speed and a deep connection to the sea."),
+            ("catfolk", "Котолюд", 6, "Маленькое", 25, "Ловкость, Харизма", ["DEX", "CHA"], "Мудрость", "WIS",
+                "Любопытный и ловкий народ с кошачьими чертами и вкусом к приключениям — быстрые рефлексы и ещё более быстрый ум."),
+            ("kobold", "Кобольд", 6, "Маленькое", 25, "Ловкость, Харизма", ["DEX", "CHA"], "Телосложение", "CON",
+                "Маленькие драконорождённые с талантом к ловушкам и туннелям, тёмным зрением и сильным чувством клановой верности."),
+            ("lizardfolk", "Ящеролюд", 8, "Среднее", 25, "Сила, Мудрость", ["STR", "WIS"], "Интеллект", "INT",
+                "Рептилоидный народ, чувствующий себя как дома в болотах и джунглях: сильные пловцы, ценящие прагматизм и естественный порядок."),
+            ("ratfolk", "Крысолюд", 6, "Маленькое", 25, "Ловкость, Интеллект", ["DEX", "INT"], "Сила", "STR",
+                "Находчивый общинный народ с острыми чувствами и склонностью к мастерству — процветает, где бы ни осел."),
+            ("leshy", "Леший", 8, "Маленькое", 25, "Телосложение, Мудрость", ["CON", "WIS"], "Харизма", "CHA",
+                "Растительное существо, выращенное из магического семени; нуждается в регулярном поливе — тесно связано с миром природы, что его создал."),
+            ("fetchling", "Фетчлинг", 8, "Среднее", 25, "Ловкость, Интеллект", ["DEX", "INT"], "Харизма", "CHA",
+                "Гуманоиды, коснувшиеся Теневого плана: комфортно в темноте, с наследственным сумеречным зрением."),
+            ("automaton", "Автоматон", 8, "Среднее", 25, "Любые два (на выбор)", ["ANY", "ANY"], "Нет", null,
+                "Живой конструкт — душа, связанная с механическим телом; иммунен ко многим состояниям, мучающим живых существ."),
+            ("kitsune", "Кицунэ", 6, "Маленькое", 25, "Ловкость, Харизма", ["DEX", "CHA"], "Телосложение", "CON",
+                "Меняющий облик народ, происходящий от лисичьих духов: может принять человекоподобную форму, сохраняя лисьи черты и инстинкты."),
+            ("grippli", "Гриппли", 6, "Маленькое", 25, "Ловкость, Мудрость", ["DEX", "WIS"], "Сила", "STR",
+                "Лягушеподобный народ болот и крон джунглей: прирождённые лазальщики и прыгуны с талантом к маскировке."),
+            ("azarketi", "Азаркети", 8, "Среднее", 25, "Телосложение, Мудрость", ["CON", "WIS"], "Интеллект", "INT",
+                "Амфибийный прибрежный народ, одинаково дома на суше и под водой: скорость плавания и глубокая связь с морем."),
         ];
 
         return data.Select(a => RuleEntry.Create(
@@ -233,12 +222,7 @@ public sealed class Pf2eRulesSeeder(
                 flaw_code = a.flawCode,
                 traits = new[] { a.slug, "humanoid" },
             }),
-            tags: UntranslatedAncestrySlugs.Contains(a.slug) ? ["раса", "PF2e", "untranslated"] : ["раса", "PF2e"],
+            tags: ["раса", "PF2e"],
             isHomebrew: false, source: "PF2e SRD"));
     }
-
-    // Предки, добавленные без RU-перевода (см. UntranslatedClassSlugs выше — тот же принцип).
-    private static readonly HashSet<string> UntranslatedAncestrySlugs =
-        ["catfolk", "kobold", "lizardfolk", "ratfolk", "leshy", "fetchling",
-         "automaton", "kitsune", "grippli", "azarketi"];
 }

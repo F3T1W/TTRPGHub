@@ -351,6 +351,12 @@ public interface IApiClient
     [Get("/api/v1/trackers/{id}")]
     Task<TrackerDetailDto> GetTrackerDetailAsync(Guid id, CancellationToken ct = default);
 
+    [Post("/api/v1/trackers/{id}/sync-from-table")]
+    Task<TrackerDetailDto> SyncTrackerFromTableAsync(Guid id, [Body] SyncFromTableRequest request, CancellationToken ct = default);
+
+    [Patch("/api/v1/trackers/{id}/link-session")]
+    Task<TrackerDetailDto> LinkTrackerSessionAsync(Guid id, [Body] LinkSessionRequest request, CancellationToken ct = default);
+
     [Post("/api/v1/trackers")]
     Task<CreateTrackerResponse> CreateTrackerAsync([Body] CreateTrackerRequest request, CancellationToken ct = default);
 
@@ -960,6 +966,8 @@ public sealed record CreateTrackerResponse(Guid TrackerId);
 public sealed record TrackerEntryInput(string Name, int Initiative, int MaxHp, int CurrentHp,
     int ArmorClass, bool IsPlayerCharacter, string? Notes);
 public sealed record UpdateEntryRequest(int CurrentHp, EntryStatus Status, string? Notes);
+public sealed record SyncFromTableRequest(Guid SessionId);
+public sealed record LinkSessionRequest(Guid? SessionId);
 
 public sealed record TrackerSummaryDto(
     Guid Id, Guid CampaignId, string Name, int Round, bool IsActive,
@@ -968,12 +976,16 @@ public sealed record TrackerSummaryDto(
 public sealed record TrackerDetailDto(
     Guid Id, Guid CampaignId, Guid OwnerId,
     string Name, int Round, int ActiveEntryIndex, bool IsActive,
+    Guid? LinkedSessionId,
     List<TrackerEntryDto> Entries,
     bool IsOwner, DateTime UpdatedAt);
 
+public sealed record TrackerConditionSnapshot(string Slug, string Name, int? Value);
+
 public sealed record TrackerEntryDto(
     Guid Id, string Name, int Initiative, int MaxHp, int CurrentHp,
-    int ArmorClass, EntryStatus Status, bool IsPlayerCharacter, string? Notes, int SortOrder);
+    int ArmorClass, EntryStatus Status, bool IsPlayerCharacter, string? Notes, int SortOrder,
+    Guid? LinkedTokenId, List<TrackerConditionSnapshot> Conditions);
 
 // ── D&D 5e DTOs ───────────────────────────────────────────────────────────────
 
@@ -1019,7 +1031,8 @@ public sealed record Pf2eSpellSummaryDto(
 public sealed record Pf2eSpellDetailDto(
     Guid Id, string Slug, string Name, int Level, string Traditions, string Traits,
     string Cast, string? Range, string? Area, string? Targets, string Duration,
-    string Description, string? Heightened, string Source);
+    string Description, string? Heightened, string Source,
+    string? DamageJson, string? HeighteningJson, string? DefenseJson);
 
 public sealed record Pf2eSpellPagedResult(
     List<Pf2eSpellSummaryDto> Items, int Total, int Page, int PageSize, int TotalPages);

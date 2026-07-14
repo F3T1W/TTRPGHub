@@ -20,6 +20,8 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
+        services.AddScoped<Features.Initiative.Shared.InitiativeTrackerSync>();
+
         return services;
     }
 }

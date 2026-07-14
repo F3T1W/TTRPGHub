@@ -109,6 +109,62 @@ GLOSSARY_RU: dict[str, str] = {
     "3 actions": "3 действия",
     "reaction": "реакция",
     "free-action": "свободное действие",
+    # Признаки оружия (часто встречаются за столом и в справочнике)
+    "agile": "быстрое",
+    "backstabber": "удар в спину",
+    "backswing": "обратный замах",
+    "brace": "упор",
+    "capacity": "ёмкость",
+    "climbing": "лазание",
+    "concealable": "скрываемое",
+    "concussive": "сотрясающее",
+    "critical fusion": "критическое слияние",
+    "deadly": "смертельное",
+    "disarm": "разоружение",
+    "fatal": "фатальное",
+    "finesse": "точное",
+    "forceful": "мощное",
+    "free-hand": "свободная рука",
+    "grapple": "захват",
+    "hampering": "помеха",
+    "jousting": "турнирное",
+    "kickback": "отдача",
+    "modular": "модульное",
+    "monk": "монашеское",
+    "mounted": "верховое",
+    "nonlethal": "нелетальное",
+    "parry": "парирование",
+    "propulsive": "тяговое",
+    "ranged trip": "дистанционная подножка",
+    "razing": "разрушительное",
+    "reach": "длинное",
+    "repeating": "повторяющееся",
+    "shove": "толчок",
+    "sweep": "размах",
+    "thrown": "метательное",
+    "trip": "подножка",
+    "twin": "парное",
+    "two-hand": "двуручное",
+    "versatile": "универсальное",
+    "volley": "залповое",
+    # Типы существ / частые трейты
+    "aberration": "аберрация",
+    "animal": "животное",
+    "beast": "зверь",
+    "construct": "конструкт",
+    "dragon": "дракон",
+    "elemental": "элементаль",
+    "fey": "фея",
+    "fiend": "бестия",
+    "fungus": "гриб",
+    "humanoid": "гуманоид",
+    "monitor": "наблюдатель",
+    "ooze": "слизь",
+    "plant": "растение",
+    "undead": "нежить",
+    "amphibious": "амфибия",
+    "aquatic": "водное",
+    "magical": "магическое",
 }
 
 # Часто встречающиеся за столом заклинания/монстры (имя; описания — EN fallback).
@@ -181,13 +237,33 @@ def build_monsters() -> dict[str, dict[str, str]]:
     return out
 
 
+def merge_manual_entries(existing: dict[str, dict[str, str]], manual: dict[str, str]) -> dict[str, dict[str, str]]:
+    merged = dict(existing)
+    for slug, name_ru in manual.items():
+        merged[slug] = {**merged.get(slug, {}), "name": name_ru}
+    return merged
+
+
 def main() -> None:
     write_json(OUT / "glossary.ru.json", GLOSSARY_RU)
     write_json(OUT / "conditions.ru.json", build_conditions())
-    write_json(OUT / "spells.ru.json", build_spells())
-    write_json(OUT / "monsters.ru.json", build_monsters())
-    write_json(OUT / "entries.ru.json", {})
+
+    spells_path = OUT / "spells.ru.json"
+    monsters_path = OUT / "monsters.ru.json"
+    spells_existing: dict[str, dict[str, str]] = {}
+    monsters_existing: dict[str, dict[str, str]] = {}
+    if spells_path.exists():
+        spells_existing = json.loads(spells_path.read_text(encoding="utf-8"))
+    if monsters_path.exists():
+        monsters_existing = json.loads(monsters_path.read_text(encoding="utf-8"))
+
+    write_json(spells_path, merge_manual_entries(spells_existing, SPELLS_RU) if spells_existing else build_spells())
+    write_json(monsters_path, merge_manual_entries(monsters_existing, MONSTERS_RU) if monsters_existing else build_monsters())
+
     print(f"Wrote locale files to {OUT}")
+    print("Массовые spells/monsters: scripts/scrape-pf2e-ru-translation.py")
+    print("Feats/equipment/actions: scripts/scrape-pf2e-ru-entries.py")
+    print("Пробелы без community-перевода: scripts/fill-pf2e-locale-gaps.py")
 
 
 if __name__ == "__main__":

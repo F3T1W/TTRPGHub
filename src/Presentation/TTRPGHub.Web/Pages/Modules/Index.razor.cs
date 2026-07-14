@@ -10,6 +10,7 @@ public partial class Index
 {
     [Inject] private IApiClient Api { get; set; } = default!;
     [Inject] private IJSRuntime Js { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
 
     private List<MacroDto> _myMacros = [];
     private List<GameSystemDto> _mySystems = [];
@@ -23,6 +24,7 @@ public partial class Index
     private string? _exportError;
 
     private bool _importing;
+    private bool _importingStarter;
     private string? _importError;
     private ImportModuleResponse? _importResult;
 
@@ -96,6 +98,26 @@ public partial class Index
         finally
         {
             _importing = false;
+        }
+    }
+
+    private async Task ImportStarterAsync()
+    {
+        _importingStarter = true;
+        _importError = null;
+        _importResult = null;
+        try
+        {
+            _importResult = await Pf2eStarterMacros.ImportAsync(Http, Api);
+            _myMacros = await Api.GetMyMacrosAsync();
+        }
+        catch
+        {
+            _importError = "Не удалось загрузить встроенные пресеты PF2e.";
+        }
+        finally
+        {
+            _importingStarter = false;
         }
     }
 }

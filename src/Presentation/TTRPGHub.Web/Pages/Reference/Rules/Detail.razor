@@ -1,6 +1,6 @@
 @page "/reference/{SystemSlug}/rules/{Category}/{Slug}"
 @attribute [Authorize]
-<PageTitle>@(_entry?.Title ?? "Справочник") — Таверна Аферистов</PageTitle>
+<PageTitle>@(_displayTitle ?? _entry?.Title ?? "Справочник") — Таверна Аферистов</PageTitle>
 
 <div class="container py-4" style="max-width:860px;">
     @if (_loading)
@@ -18,14 +18,18 @@
             <ol class="breadcrumb small">
                 <li class="breadcrumb-item"><a href="/reference" class="text-decoration-none" style="color:var(--ta-accent-light);">Справочник</a></li>
                 <li class="breadcrumb-item"><a href="/reference/@SystemSlug/rules/@Category" class="text-decoration-none" style="color:var(--ta-accent-light);">@CategoryLabel(Category)</a></li>
-                <li class="breadcrumb-item active text-muted">@_entry.Title</li>
+                <li class="breadcrumb-item active text-muted">@_displayTitle</li>
             </ol>
         </nav>
 
         <div class="ta-card p-4">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
-                <h2 class="mb-0" style="font-family:'Cinzel',serif;">@_entry.Title</h2>
+                <h2 class="mb-0" style="font-family:'Cinzel',serif;">@_displayTitle</h2>
                 <div class="d-flex align-items-center gap-2">
+                    @if (SystemSlug == "pf2e")
+                    {
+                        <ContentLanguageToggle />
+                    }
                     @if (_entry.IsHomebrew)
                     {
                         <span class="badge bg-warning text-dark">Homebrew</span>
@@ -50,9 +54,9 @@
                 <div class="text-danger small mb-2">@_deleteError</div>
             }
 
-            @if (!string.IsNullOrEmpty(_entry.Summary))
+            @if (!string.IsNullOrEmpty(_displaySummary))
             {
-                <p class="text-muted mb-3">@_entry.Summary</p>
+                <p class="text-muted mb-3">@_displaySummary</p>
             }
 
             @if (_entry.Tags.Length > 0)

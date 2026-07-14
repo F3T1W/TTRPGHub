@@ -140,11 +140,15 @@ public static class Pf2eLookups
     // "запись атаки": ранг владения + характеристика для to-hit, кость и бонус урона. Этого
     // достаточно для автоматизации броска атаки/урона за столом (H.7), не блокируясь на полном
     // моделировании оружейной системы PF2e.
-    public sealed record Pf2eAttack(string Name, int Rank, string AbilityKey, string DamageDice, int DamageBonus, string? DamageType);
+    public sealed record Pf2eAttack(
+        string Name, int Rank, string AbilityKey, string DamageDice, int DamageBonus, string? DamageType,
+        int? RangeFeet = null, int? ReachFeet = null);
 
-    // Атака монстра (Pf2eMonster.AttacksJson, см. I.2) — в отличие от Pf2eAttack персонажа,
+    // Атака монстра (Pf2eMonster.AttacksJson, см. I.2) — в отличие от Pf2eAttack персонажей,
     // бонус атаки здесь уже готовое число из статблока, не считается из ранга+уровня+характеристики.
-    public sealed record Pf2eMonsterAttack(string Name, int Bonus, string DamageDice, int DamageBonus, string? DamageType);
+    public sealed record Pf2eMonsterAttack(
+        string Name, int Bonus, string DamageDice, int DamageBonus, string? DamageType,
+        int? RangeFeet = null, int? ReachFeet = null);
 
     public static List<Pf2eMonsterAttack> ParseMonsterAttacks(string? json)
     {
@@ -219,6 +223,58 @@ public static class Pf2eLookups
         // "0 feet"/мелейные заклинания — трактуем как дальность ближнего боя (радиус клетки),
         // иначе любая цель на соседней клетке ложно считалась бы "вне дальности".
         return feet == 0 ? 5 : feet;
+    }
+
+    // Q.3 — дальность/reach оружейной атаки: ranged/thrown → RangeFeet, melee → ReachFeet (reach trait = 10,
+    // иначе 5 по умолчанию). Для предупреждения на столе (тот же паттерн, что N.5 для заклинаний).
+    public static int AttackMaxRangeFeet(int? rangeFeet, int? reachFeet)
+    {
+        if (rangeFeet is > 0) return rangeFeet.Value;
+        if (reachFeet is > 0) return reachFeet.Value;
+        return 5;
+    }
+
+    public static (int? RangeFeet, int? ReachFeet) ParseWeaponRangeFromTraits(
+        IReadOnlyList<string> traits, int? equipmentRange = null)
+    {
+        int? rangeFeet = equipmentRange is > 0 ? equipmentRange : null;
+        int? reachFeet = null;
+        foreach (var trait in traits)
+        {
+            if (trait == "reach")
+                reachFeet = 10;
+            if (trait.StartsWith("thrown-", StringComparison.Ordinal) &&
+                int.TryParse(trait["thrown-".Length..], out var thrown))
+                rangeFeet = thrown;
+        }
+
+        return (rangeFeet, reachFeet);
+    }
+
+    public static (int? RangeFeet, int? ReachFeet) ParseWeaponRangeFromStatsJson(string? statsJson)
+    {
+        if (string.IsNullOrWhiteSpace(statsJson)) return (null, null);
+        try
+        {
+            using var doc = JsonDocument.Parse(statsJson);
+            var root = doc.RootElement;
+            var traits = ParseEquipmentTraits(root);
+            int? equipmentRange = null;
+            if (root.TryGetProperty("extra", out var extra) &&
+                extra.TryGetProperty("range", out var range) &&
+                range.ValueKind == JsonValueKind.Number)
+                equipmentRange = range.GetInt32();
+            return ParseWeaponRangeFromTraits(traits, equipmentRange);
+        }
+        catch { return (null, null); }
+    }
+
+    public static (int? RangeFeet, int? ReachFeet) ParseWeaponRangeFromTraitsString(string? traits, int? equipmentRange = null)
+    {
+        if (string.IsNullOrWhiteSpace(traits)) return ParseWeaponRangeFromTraits([], equipmentRange);
+        var list = traits.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => t.ToLowerInvariant()).ToList();
+        return ParseWeaponRangeFromTraits(list, equipmentRange);
     }
 
     // N.7 — аура монстра: радиус в футах + эффект-состояние, автоматически применяемый ко всем

@@ -182,7 +182,9 @@ def main() -> None:
     known_monster_slugs = {m["slug"].lower() for m in json.loads((DATA / "pf2e-monsters.json").read_text(encoding="utf-8"))}
 
     spells, spell_files, spell_failed = collect(source, "spells", parse_spell, "Заклинания")
-    creatures, creature_files, creature_failed = collect(source, "creatures/bestiary", parse_creature, "Существа")
+    creatures_bestiary, _, _ = collect(source, "creatures/bestiary", parse_creature, "Существа (bestiary)")
+    creatures_npc, _, _ = collect(source, "creatures/npc", parse_creature, "Существа (npc)")
+    creatures = {**creatures_npc, **creatures_bestiary}
 
     spells_matched = merge_with_existing_slugs(spells, known_spell_slugs)
     creatures_matched = merge_with_existing_slugs(creatures, known_monster_slugs)

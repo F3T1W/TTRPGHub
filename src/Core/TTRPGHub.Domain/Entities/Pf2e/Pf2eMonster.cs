@@ -112,4 +112,17 @@ public sealed class Pf2eMonster : Entity<Pf2eMonsterId>
             ModifiersJson   = modifiersJson,
         };
     }
+
+    public void SetCombatAutomation(
+        string? immunitiesJson, string? aurasJson, string? modifiersJson,
+        string? resistancesJson = null, string? weaknessesJson = null)
+    {
+        ImmunitiesJson = immunitiesJson;
+        AurasJson = aurasJson;
+        ModifiersJson = modifiersJson;
+        if (resistancesJson is not null) ResistancesJson = resistancesJson;
+        if (weaknessesJson is not null) WeaknessesJson = weaknessesJson;
+    }
+
+    public void SetAttacksJson(string? attacksJson) => AttacksJson = attacksJson;
 }

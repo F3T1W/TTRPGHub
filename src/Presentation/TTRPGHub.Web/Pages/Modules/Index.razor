@@ -76,6 +76,18 @@
         </button>
     </div>
 
+    <div class="ta-card p-4 mb-4">
+        <h6 class="mb-3" style="color:var(--ta-gold)">Встроенные пресеты</h6>
+        <p class="small text-muted mb-3">
+            Пять готовых макросов для PF2e: инициатива, урон/лечение по цели, Frightened.
+            Импортируются в личную библиотеку — можно редактировать формулы под кампанию.
+        </p>
+        <button class="btn btn-outline-secondary" @onclick="ImportStarterAsync" disabled="@_importingStarter">
+            @if (_importingStarter) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            <i class="bi bi-box-arrow-in-down me-1"></i>Загрузить пресеты PF2e
+        </button>
+    </div>
+
     <div class="ta-card p-4">
         <h6 class="mb-3" style="color:var(--ta-gold)">Импортировать модуль</h6>
         <p class="small text-muted">

@@ -581,32 +581,59 @@
                                                             .Select(kv => $"{kv.Key}-й {kv.Value.Max - kv.Value.Used}/{kv.Value.Max}"))
                                                     </div>
                                                 }
-                                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                                <div class="d-flex flex-column gap-1 mb-2">
                                                     @foreach (var spell in _selectedCharacterStats.KnownSpells.Where(s => s.Prepared))
                                                     {
                                                         var spellBonus = SelectedSpellAttackBonus(t.Id);
+                                                        var castLevel = GetSpellCastLevel(spell);
                                                         var noSlots = spell.IsFocus
                                                             ? _selectedCharacterStats.FocusPoints.Used >= _selectedCharacterStats.FocusPoints.Max
-                                                            : spell.Level > 0 && _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level) is { } slot && slot.Used >= slot.Max;
-                                                        var slotNote = spell.IsFocus ? " (списывает Focus Point)" : spell.Level > 0 ? " (списывает слот)" : " (заговор, без слота)";
-                                                        <button @onclick="() => RollPf2eSpellAttackAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Атака заклинанием{slotNote}")">
-                                                            @spell.Name @FormatBonus(spellBonus)
-                                                        </button>
-                                                        <button @onclick="() => AnnouncePf2eSpellDcAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Объявить DC в чат{slotNote}")">
-                                                            DC
-                                                        </button>
-                                                        @if (TargetToken is not null)
-                                                        {
-                                                            <button @onclick='() => RollTargetSaveAsync(spell, "fortitude")' disabled="@_rolling" title="Спасбросок цели: Стойкость">Спб. Стойк.</button>
-                                                            <button @onclick='() => RollTargetSaveAsync(spell, "reflex")' disabled="@_rolling" title="Спасбросок цели: Реакция">Спб. Реакц.</button>
-                                                            <button @onclick='() => RollTargetSaveAsync(spell, "will")' disabled="@_rolling" title="Спасбросок цели: Воля">Спб. Воля</button>
-                                                        }
+                                                            : spell.Level > 0 && _selectedCharacterStats.SpellSlots.GetValueOrDefault(castLevel) is { } slot && slot.Used >= slot.Max;
+                                                        var slotNote = spell.IsFocus ? " (списывает Focus Point)" : spell.Level > 0 ? $" (списывает слот {castLevel}-го)" : " (заговор, без слота)";
+                                                        var resolvedDamage = GetResolvedSpellDamage(spell);
+                                                        <div class="d-flex flex-wrap align-items-center gap-1">
+                                                            @if (SpellShowsCastLevel(spell))
+                                                            {
+                                                                <select class="form-select form-select-sm" style="width:auto;min-width:4.5rem"
+                                                                        value="@castLevel"
+                                                                        @onchange='e => SetSpellCastLevel(spell.Name, int.TryParse(e.Value?.ToString(), out var l) ? l : castLevel)'>
+                                                                    @foreach (var level in GetAvailableCastLevels(spell))
+                                                                    {
+                                                                        <option value="@level">@level-й</option>
+                                                                    }
+                                                                </select>
+                                                            }
+                                                            <button @onclick="() => RollPf2eSpellAttackAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Атака заклинанием{slotNote}")">
+                                                                @spell.Name @FormatBonus(spellBonus)
+                                                            </button>
+                                                            <button @onclick="() => AnnouncePf2eSpellDcAsync(spell)" disabled="@(_rolling || noSlots)" title="@(noSlots ? "Нет свободных слотов/Focus Points" : $"Объявить DC в чат{slotNote}")">
+                                                                DC
+                                                            </button>
+                                                            @if (TargetToken is not null)
+                                                            {
+                                                                <button @onclick='() => RollTargetSaveAsync(spell, "fortitude")' disabled="@_rolling" title="Спасбросок цели: Стойкость">Спб. Стойк.</button>
+                                                                <button @onclick='() => RollTargetSaveAsync(spell, "reflex")' disabled="@_rolling" title="Спасбросок цели: Реакция">Спб. Реакц.</button>
+                                                                <button @onclick='() => RollTargetSaveAsync(spell, "will")' disabled="@_rolling" title="Спасбросок цели: Воля">Спб. Воля</button>
+                                                            }
+                                                            @if (resolvedDamage.Any(d => d.IsDamage))
+                                                            {
+                                                                <button @onclick="() => RollPf2eSpellDamageAsync(spell, healing: false)" disabled="@_rolling" title="Бросок урона по структурированной формуле">
+                                                                    @spell.Name урон
+                                                                </button>
+                                                            }
+                                                            @if (resolvedDamage.Any(d => d.IsHealing))
+                                                            {
+                                                                <button @onclick="() => RollPf2eSpellDamageAsync(spell, healing: true)" disabled="@_rolling" title="Бросок лечения по структурированной формуле">
+                                                                    @spell.Name лечение
+                                                                </button>
+                                                            }
+                                                        </div>
                                                     }
                                                 </div>
-                                                @if (_rangeWarning is not null)
-                                                {
-                                                    <div class="small mb-2" style="color:var(--ta-gold);">⚠ @_rangeWarning</div>
-                                                }
+                                            }
+                                            @if (_rangeWarning is not null)
+                                            {
+                                                <div class="small mb-2" style="color:var(--ta-gold);">⚠ @_rangeWarning</div>
                                             }
                                         }
                                         @if (t.CombatantType == "Pf2eMonster" && _state.IsOrganizer)
@@ -1002,6 +1029,7 @@
                             <a href="/guides/foundry-macros" target="_blank" class="ms-1 text-decoration-none" title="Как адаптировать макросы из Foundry" style="color:var(--ta-accent-light)">
                                 <i class="bi bi-question-circle"></i>
                             </a>
+                            <a href="/modules" class="ms-2 small text-decoration-none" style="color:var(--ta-accent-light)">Модули</a>
                         </h6>
                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showMacroLibrary = !_showMacroLibrary">
                             <i class="bi @(_showMacroLibrary ? "bi-chevron-up" : "bi-chevron-down")"></i>
@@ -1033,6 +1061,15 @@
                             }
                         }
                     </div>
+
+                    @if (_macroNotice is not null)
+                    {
+                        <div class="small mt-2 p-2 rounded d-flex justify-content-between align-items-start gap-2"
+                             style="background:var(--ta-surface);border:1px solid var(--ta-accent);color:var(--ta-accent-light);">
+                            <span>@_macroNotice</span>
+                            <button type="button" class="btn-close btn-close-white btn-sm flex-shrink-0" @onclick="() => _macroNotice = null"></button>
+                        </div>
+                    }
 
                     @if (_showMacroLibrary)
                     {
@@ -1093,6 +1130,10 @@
                             <div class="d-flex gap-2 mt-2 align-items-center flex-wrap">
                                 <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEditMacro(null)">
                                     <i class="bi bi-plus-lg me-1"></i>Новый макрос
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="ImportStarterMacrosAsync" disabled="@_importingStarterMacros">
+                                    @if (_importingStarterMacros) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                    <i class="bi bi-box-arrow-in-down me-1"></i>Пресеты PF2e
                                 </button>
                                 <label class="btn btn-sm btn-outline-secondary mb-0" title="Импортировать JSON-экспорт макроса(ов) из Foundry VTT">
                                     <i class="bi bi-upload me-1"></i>Импорт из Foundry
@@ -1236,6 +1277,12 @@
                                         else if (t.Conditions.Any(c => c.Slug == "unconscious"))
                                         {
                                             <i class="bi bi-moon-stars text-muted" title="Unconscious"></i>
+                                        }
+                                        @foreach (var c in t.Conditions.Where(c => c.Slug is not ("dying" or "unconscious")))
+                                        {
+                                            <span class="badge ta-condition-badge" title="@c.Name">
+                                                @(_conditionTitles.GetValueOrDefault(c.Slug, c.Name))@(c.Value is > 0 ? $" {c.Value}" : "")
+                                            </span>
                                         }
                                     </span>
                                     <span class="fw-semibold">@t.Initiative</span>

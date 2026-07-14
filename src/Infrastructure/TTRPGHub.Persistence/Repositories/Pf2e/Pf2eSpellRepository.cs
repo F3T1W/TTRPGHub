@@ -37,6 +37,9 @@ internal sealed class Pf2eSpellRepository(AppDbContext db) : IPf2eSpellRepositor
     public Task<bool> AnyAsync(CancellationToken ct = default) =>
         db.Pf2eSpells.AnyAsync(ct);
 
+    public async Task<IReadOnlyList<Pf2eSpell>> GetAllForAutomationSyncAsync(CancellationToken ct = default) =>
+        await db.Pf2eSpells.ToListAsync(ct);
+
     public async Task AddRangeAsync(IEnumerable<Pf2eSpell> spells, CancellationToken ct = default) =>
         await db.Pf2eSpells.AddRangeAsync(spells, ct);
 }

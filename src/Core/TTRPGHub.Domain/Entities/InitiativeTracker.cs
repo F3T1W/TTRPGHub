@@ -13,6 +13,7 @@ public sealed class InitiativeTracker : Entity<InitiativeTrackerId>
     public int Round { get; private set; } = 1;
     public int ActiveEntryIndex { get; private set; }
     public bool IsActive { get; private set; }
+    public Guid? LinkedSessionId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
@@ -91,5 +92,46 @@ public sealed class InitiativeTracker : Entity<InitiativeTrackerId>
     {
         Name      = name;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void LinkSession(Guid? sessionId)
+    {
+        LinkedSessionId = sessionId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SyncFromToken(
+        Guid tokenId, string label, int? initiative, int? currentHp, int? maxHp, int? armorClass,
+        string? conditionsJson, bool isPlayerCharacter)
+    {
+        var entry = _entries.FirstOrDefault(e => e.LinkedTokenId == tokenId)
+                    ?? _entries.FirstOrDefault(e =>
+                        string.Equals(e.Name, label, StringComparison.OrdinalIgnoreCase));
+
+        if (entry is null)
+        {
+            entry = new InitiativeEntry
+            {
+                Name = label,
+                LinkedTokenId = tokenId,
+                IsPlayerCharacter = isPlayerCharacter,
+            };
+            _entries.Add(entry);
+        }
+
+        entry.LinkedTokenId = tokenId;
+        if (initiative is not null) entry.Initiative = initiative.Value;
+        if (currentHp is not null) entry.CurrentHp = currentHp.Value;
+        if (maxHp is not null && maxHp.Value > 0) entry.MaxHp = maxHp.Value;
+        if (armorClass is not null) entry.ArmorClass = armorClass.Value;
+        entry.ConditionsJson = conditionsJson;
+        entry.Status = InitiativeEntry.DeriveStatus(entry.CurrentHp, conditionsJson);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ReorderEntries()
+    {
+        var sorted = _entries.OrderByDescending(e => e.Initiative).ToList();
+        for (var i = 0; i < sorted.Count; i++) sorted[i].SortOrder = i;
     }
 }

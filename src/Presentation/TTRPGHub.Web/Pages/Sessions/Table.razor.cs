@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -20,6 +21,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     [Inject] private IConfiguration Config { get; set; } = default!;
     [Inject] private Pf2eLocaleService Locale { get; set; } = default!;
     [Inject] private ContentLanguageService Lang { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
 
     private TableStateDto? _state;
     private readonly List<TableMessageDto> _messages = [];
@@ -65,6 +67,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private string? _macroError;
     private bool _macroRunning;
     private string? _macroImportError;
+    private string? _macroNotice;
+    private bool _importingStarterMacros;
 
     private List<SessionCharacterDto> _sessionCharacters = [];
     private bool _showAddCombatant;
@@ -1108,6 +1112,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
                 ? null
                 : Pf2eLookups.Pf2eStatsModel.FromJson(character.Pf2eStatsJson);
             await LoadCombatModifierDataAsync();
+            _attackRangeFeetCache.Clear();
+            await PrefetchPreparedSpellDetailsAsync();
             StateHasChanged();
         }
         catch { _selectedCharacterStats = null; }
@@ -1402,6 +1408,9 @@ public partial class Table : ComponentBase, IAsyncDisposable
     // совпадению имени в каталоге, как и подтягивание Slug у фитов в Pf2eStatsSheet.
     private string? _rangeWarning;
     private readonly Dictionary<string, int?> _spellRangeFeetCache = [];
+    private readonly Dictionary<string, Pf2eSpellDetailDto?> _spellDetailCache = [];
+    private readonly Dictionary<string, int> _spellCastLevelByName = [];
+    private readonly Dictionary<string, int> _spellLastCastLevelByName = [];
 
     private async Task<int?> GetSpellRangeFeetAsync(string spellName)
     {
@@ -1420,21 +1429,65 @@ public partial class Table : ComponentBase, IAsyncDisposable
         return feet;
     }
 
-    private async Task CheckSpellRangeAsync(string spellName)
+    private void CheckTargetDistanceWarning(string actionLabel, int maxRangeFeet)
     {
         _rangeWarning = null;
         if (SelectedToken is not { } attacker || TargetToken is not { } target) return;
-
-        var rangeFeet = await GetSpellRangeFeetAsync(spellName);
-        if (rangeFeet is null) return;
 
         var distance = Pf2eLookups.TokenDistanceFeet(
             attacker.X, attacker.Y, attacker.Width, attacker.Height,
             target.X, target.Y, target.Width, target.Height);
 
-        if (distance > rangeFeet)
-            _rangeWarning = $"Цель вне дальности: {distance:0} фт при дальности {rangeFeet} фт («{spellName}»).";
+        if (distance > maxRangeFeet)
+            _rangeWarning = $"Цель вне дальности: {distance:0} фт при дальности {maxRangeFeet} фт («{actionLabel}»).";
     }
+
+    private async Task CheckSpellRangeAsync(string spellName)
+    {
+        var rangeFeet = await GetSpellRangeFeetAsync(spellName);
+        if (rangeFeet is null) return;
+        CheckTargetDistanceWarning(spellName, rangeFeet.Value);
+    }
+
+    private readonly Dictionary<string, int> _attackRangeFeetCache = [];
+
+    private async Task<int> GetCharacterAttackMaxRangeFeetAsync(Pf2eLookups.Pf2eAttack attack)
+    {
+        if (attack.RangeFeet is > 0 || attack.ReachFeet is > 0)
+            return Pf2eLookups.AttackMaxRangeFeet(attack.RangeFeet, attack.ReachFeet);
+
+        if (_attackRangeFeetCache.TryGetValue(attack.Name, out var cached))
+            return cached;
+
+        var maxRange = 5;
+        var inv = _selectedCharacterStats?.Inventory.FirstOrDefault(i =>
+            string.Equals(i.Name, attack.Name, StringComparison.OrdinalIgnoreCase));
+        if (inv?.Slug is not null)
+        {
+            try
+            {
+                var entry = await Api.GetRuleEntryDetailAsync("pf2e", "equipment", inv.Slug);
+                var (rangeFeet, reachFeet) = Pf2eLookups.ParseWeaponRangeFromStatsJson(entry.StatsJson);
+                maxRange = Pf2eLookups.AttackMaxRangeFeet(rangeFeet, reachFeet);
+            }
+            catch { /* default melee 5 ft */ }
+        }
+
+        _attackRangeFeetCache[attack.Name] = maxRange;
+        return maxRange;
+    }
+
+    private async Task CheckCharacterAttackRangeAsync(Pf2eLookups.Pf2eAttack attack)
+    {
+        var maxRange = await GetCharacterAttackMaxRangeFeetAsync(attack);
+        CheckTargetDistanceWarning(attack.Name, maxRange);
+    }
+
+    private static int GetMonsterAttackMaxRangeFeet(Pf2eLookups.Pf2eMonsterAttack attack) =>
+        Pf2eLookups.AttackMaxRangeFeet(attack.RangeFeet, attack.ReachFeet);
+
+    private void CheckMonsterAttackRange(Pf2eLookups.Pf2eMonsterAttack attack) =>
+        CheckTargetDistanceWarning(attack.Name, GetMonsterAttackMaxRangeFeet(attack));
 
     private async Task LoadCombatModifierDataAsync()
     {
@@ -1650,6 +1703,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
     {
         if (SelectedToken is not { } token) return;
 
+        await CheckCharacterAttackRangeAsync(attack);
         var bonus = CharacterAttackBonus(attack, token.Id, agile);
         var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
         var mapNote = _state?.CombatActive == true && CurrentStrikeIndex(token.Id) > 0
@@ -1704,6 +1758,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         await CheckSpellRangeAsync(spell.Name);
         if (!await TryConsumeSpellSlotAsync(token, spell)) return;
 
+        RememberSpellCast(spell);
         var bonus = SelectedSpellAttackBonus(token.Id);
         var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
         var mapNote = _state?.CombatActive == true && CurrentStrikeIndex(token.Id) > 0
@@ -1727,6 +1782,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         await CheckSpellRangeAsync(spell.Name);
         if (!await TryConsumeSpellSlotAsync(token, spell)) return;
 
+        RememberSpellCast(spell);
         try { await Api.SendTableChatAsync(Id, new SendChatRequest($"{spell.Name} — DC {SelectedSpellDc}")); }
         catch { _rollError = "Не удалось отправить сообщение."; }
     }
@@ -1761,16 +1817,17 @@ public partial class Table : ComponentBase, IAsyncDisposable
             return true;
         }
 
-        var slot = _selectedCharacterStats.SpellSlots.GetValueOrDefault(spell.Level, new Pf2eLookups.Pf2eSpellSlotLevel(0, 0));
+        var castLevel = GetSpellCastLevel(spell);
+        var slot = _selectedCharacterStats.SpellSlots.GetValueOrDefault(castLevel, new Pf2eLookups.Pf2eSpellSlotLevel(0, 0));
         if (slot.Used >= slot.Max)
         {
-            _rollError = $"Нет свободных слотов {spell.Level}-го уровня.";
+            _rollError = $"Нет свободных слотов {castLevel}-го уровня.";
             return false;
         }
 
         var slots = new Dictionary<int, Pf2eLookups.Pf2eSpellSlotLevel>(_selectedCharacterStats.SpellSlots)
         {
-            [spell.Level] = slot with { Used = slot.Used + 1 }
+            [castLevel] = slot with { Used = slot.Used + 1 }
         };
         _selectedCharacterStats = _selectedCharacterStats with { SpellSlots = slots };
         StateHasChanged();
@@ -1835,12 +1892,125 @@ public partial class Table : ComponentBase, IAsyncDisposable
         finally { _rolling = false; }
     }
 
+    private async Task PrefetchPreparedSpellDetailsAsync()
+    {
+        if (_selectedCharacterStats is null) return;
+        foreach (var spell in _selectedCharacterStats.KnownSpells.Where(s => s.Prepared))
+            await GetSpellDetailAsync(spell.Name);
+    }
+
+    private async Task<Pf2eSpellDetailDto?> GetSpellDetailAsync(string spellName)
+    {
+        if (_spellDetailCache.TryGetValue(spellName, out var cached)) return cached;
+
+        Pf2eSpellDetailDto? detail = null;
+        try
+        {
+            var page = await Api.GetPf2eSpellsAsync(search: spellName, pageSize: 5);
+            var match = page.Items.FirstOrDefault(i => string.Equals(i.Name, spellName, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+                detail = await Api.GetPf2eSpellAsync(match.Id);
+        }
+        catch { /* без автоматизации на этот каст */ }
+
+        _spellDetailCache[spellName] = detail;
+        if (detail is not null && !_spellCastLevelByName.ContainsKey(spellName))
+            _spellCastLevelByName[spellName] = Math.Max(detail.Level, 1);
+
+        return detail;
+    }
+
+    private int GetSpellCastLevel(Pf2eLookups.Pf2eKnownSpell spell)
+    {
+        if (_spellCastLevelByName.TryGetValue(spell.Name, out var level) && level >= spell.Level)
+            return level;
+        return Math.Max(spell.Level, 0);
+    }
+
+    private void SetSpellCastLevel(string spellName, int level) =>
+        _spellCastLevelByName[spellName] = level;
+
+    private void RememberSpellCast(Pf2eLookups.Pf2eKnownSpell spell) =>
+        _spellLastCastLevelByName[spell.Name] = GetSpellCastLevel(spell);
+
+    private int GetEffectiveCastLevel(Pf2eLookups.Pf2eKnownSpell spell) =>
+        _spellLastCastLevelByName.GetValueOrDefault(spell.Name, GetSpellCastLevel(spell));
+
+    private IReadOnlyList<int> GetAvailableCastLevels(Pf2eLookups.Pf2eKnownSpell spell)
+    {
+        if (_selectedCharacterStats is null || spell.Level <= 0 || spell.IsFocus)
+            return [];
+
+        return _selectedCharacterStats.SpellSlots
+            .Where(kv => kv.Key >= spell.Level && kv.Value.Max - kv.Value.Used > 0)
+            .Select(kv => kv.Key)
+            .OrderBy(l => l)
+            .ToList();
+    }
+
+    private bool SpellShowsCastLevel(Pf2eLookups.Pf2eKnownSpell spell) =>
+        spell.Level > 0 && !spell.IsFocus && GetAvailableCastLevels(spell).Count > 1;
+
+    private bool SpellHasAutomation(Pf2eLookups.Pf2eKnownSpell spell) =>
+        _spellDetailCache.TryGetValue(spell.Name, out var detail) &&
+        !string.IsNullOrWhiteSpace(detail?.DamageJson);
+
+    private IReadOnlyList<Pf2eSpellAutomation.ResolvedDamage> GetResolvedSpellDamage(Pf2eLookups.Pf2eKnownSpell spell)
+    {
+        if (!_spellDetailCache.TryGetValue(spell.Name, out var detail) || detail is null)
+            return [];
+
+        var damage = Pf2eSpellAutomation.ParseDamage(detail.DamageJson);
+        if (damage is null) return [];
+
+        var heightening = Pf2eSpellAutomation.ParseHeightening(detail.HeighteningJson);
+        var castLevel = GetEffectiveCastLevel(spell);
+        var baseLevel = detail.Level;
+        return Pf2eSpellAutomation.ResolveDamage(
+            damage, heightening, baseLevel, castLevel, SelectedSpellAbilityMod);
+    }
+
+    private async Task RollPf2eSpellDamageAsync(Pf2eLookups.Pf2eKnownSpell spell, bool healing)
+    {
+        var detail = await GetSpellDetailAsync(spell.Name);
+        if (detail is null)
+        {
+            _rollError = "Не удалось загрузить данные заклинания.";
+            return;
+        }
+
+        var resolved = GetResolvedSpellDamage(spell)
+            .Where(d => healing ? d.IsHealing : d.IsDamage)
+            .ToList();
+        if (resolved.Count == 0)
+        {
+            _rollError = healing ? "У заклинания нет структурированного лечения." : "У заклинания нет структурированного урона.";
+            return;
+        }
+
+        var castLevel = GetEffectiveCastLevel(spell);
+        var heightenNote = castLevel > detail.Level ? $" (каст {castLevel}-го)" : "";
+        _rolling = true;
+        try
+        {
+            foreach (var entry in resolved)
+            {
+                var label = healing ? "лечение" : $"урон{(entry.DamageType is not null ? $" ({entry.DamageType})" : "")}";
+                await Api.RollTableDiceAsync(Id, new RollDiceRequest(
+                    entry.Expression, null, $"{spell.Name} ({label}){heightenNote}"));
+            }
+        }
+        catch { _rollError = "Не удалось выполнить бросок."; }
+        finally { _rolling = false; }
+    }
+
     // Бонус атаки монстра уже готовое число из статблока (см. Pf2eMonster.AttacksJson) — в
     // отличие от RollPf2eAttackAsync для персонажей, тут не считаем ранг+уровень+характеристику.
     private async Task RollMonsterAttackAsync(Pf2eLookups.Pf2eMonsterAttack attack)
     {
         if (SelectedToken is not { } token) return;
 
+        CheckMonsterAttackRange(attack);
         var bonus = MonsterAttackBonus(attack, token.Id);
         var expression = bonus >= 0 ? $"1d20+{bonus}" : $"1d20{bonus}";
         var mapNote = _state?.CombatActive == true && CurrentStrikeIndex(token.Id) > 0
@@ -3025,7 +3195,9 @@ public partial class Table : ComponentBase, IAsyncDisposable
             else
             {
                 _dotNetRef ??= DotNetObjectReference.Create(this);
-                await Js.InvokeVoidAsync("macroSandbox.run", macro.Command, _dotNetRef);
+                var result = await Js.InvokeAsync<MacroSandboxResult>("macroSandbox.run", macro.Command, _dotNetRef);
+                if (!result.Ok)
+                    _rollError = result.Error ?? $"Ошибка выполнения макроса «{macro.Name}».";
             }
         }
         catch { _rollError = $"Ошибка выполнения макроса «{macro.Name}»."; }
@@ -3052,7 +3224,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
             case "roll":
             {
                 var message = await Api.RollTableDiceAsync(Id, new RollDiceRequest(Str(0)!, Int(1), Str(2)));
-                return JsonSerializer.Serialize(new { content = message.Content });
+                return JsonSerializer.Serialize(new { content = message.Content, total = ParseRollTotal(message.Content) });
             }
             case "chat":
                 await Api.SendTableChatAsync(Id, new SendChatRequest(Str(0) ?? ""));
@@ -3085,13 +3257,72 @@ public partial class Table : ComponentBase, IAsyncDisposable
                 }
                 return null;
             }
+            case "removeCondition":
+            {
+                if (!Guid.TryParse(Str(0), out var tokenId) || Str(1) is not { } slug) return null;
+                await Api.RemoveTokenConditionAsync(Id, tokenId, slug);
+                var idx = _tokens.FindIndex(t => t.Id == tokenId);
+                if (idx >= 0)
+                {
+                    var conditions = _tokens[idx].Conditions.Where(c => c.Slug != slug).ToList();
+                    _tokens[idx] = _tokens[idx] with { Conditions = conditions };
+                    StateHasChanged();
+                }
+                return null;
+            }
+            case "applyHealing":
+            {
+                if (!Guid.TryParse(Str(0), out var tokenId)) return null;
+                var token = _tokens.FirstOrDefault(t => t.Id == tokenId);
+                if (token is not null && Int(1) is { } amount && amount > 0)
+                    await AdjustHpAsync(token, amount);
+                return null;
+            }
             case "notify":
-                _rollError = Str(0);
+                _macroNotice = Str(0);
                 StateHasChanged();
                 return null;
             default:
                 return null;
         }
+    }
+
+    private async Task ImportStarterMacrosAsync()
+    {
+        if (_importingStarterMacros) return;
+        _importingStarterMacros = true;
+        _macroImportError = null;
+        StateHasChanged();
+        try
+        {
+            await Pf2eStarterMacros.ImportAsync(Http, Api);
+            _macros = await Api.GetMyMacrosAsync();
+            _macroNotice = "Импортированы стартовые макросы PF2e (5 шт.). Назначь их на хотбар или отредактируй формулы.";
+        }
+        catch { _macroImportError = "Не удалось загрузить стартовые макросы."; }
+        finally
+        {
+            _importingStarterMacros = false;
+            StateHasChanged();
+        }
+    }
+
+    private static int? ParseRollTotal(string content)
+    {
+        var idx = content.LastIndexOf(": ", StringComparison.Ordinal);
+        if (idx < 0) return null;
+        var rest = content.AsSpan(idx + 2);
+        var paren = rest.IndexOf(" (", StringComparison.Ordinal);
+        if (paren < 0) return null;
+        return int.TryParse(rest[..paren], out var total) ? total : null;
+    }
+
+    private sealed class MacroSandboxResult
+    {
+        [JsonPropertyName("ok")]
+        public bool Ok { get; set; }
+        [JsonPropertyName("error")]
+        public string? Error { get; set; }
     }
 
     public async ValueTask DisposeAsync()

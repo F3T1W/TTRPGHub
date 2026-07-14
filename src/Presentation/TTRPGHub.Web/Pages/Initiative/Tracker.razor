@@ -50,6 +50,31 @@
             }
         </div>
 
+        @if (_state.IsOwner)
+        {
+            <div class="ta-card p-3 mb-4">
+                <h6 class="text-white mb-2"><i class="bi bi-link-45deg me-1"></i>Синхронизация с картой</h6>
+                <p class="small text-muted mb-2">
+                    Привяжите трекер к сессии стола — HP и состояния токенов будут обновляться автоматически.
+                </p>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <input class="form-control form-control-sm" style="max-width:320px;"
+                           placeholder="ID сессии стола (UUID)" @bind="_linkSessionInput" />
+                    <button class="btn btn-outline-light btn-sm" @onclick="LinkSessionAsync">Привязать</button>
+                    <button class="btn btn-ta-primary btn-sm" @onclick="SyncFromTableAsync" disabled="@_syncing">
+                        @if (_syncing) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        Синхронизировать сейчас
+                    </button>
+                </div>
+                @if (_state.LinkedSessionId is not null)
+                {
+                    <div class="small text-success mt-2">
+                        Привязано к сессии <code>@_state.LinkedSessionId</code>
+                    </div>
+                }
+            </div>
+        }
+
         @if (!_state.IsActive && _state.IsOwner)
         {
             <div class="ta-card p-4 mb-4">
@@ -123,11 +148,22 @@
                                 </div>
                                 <span class="badge bg-secondary">Инит. @entry.Initiative</span>
                             </div>
-                            <div class="d-flex gap-3 text-muted small mb-2">
+                            <div class="d-flex gap-3 text-muted small mb-2 flex-wrap">
                                 <span>КД: @entry.ArmorClass</span>
                                 <span class="@HpColor(entry)">HP: @entry.CurrentHp / @entry.MaxHp</span>
                                 <span class="badge @StatusBadge(entry.Status)">@StatusLabel(entry.Status)</span>
                             </div>
+                            @if (entry.Conditions.Count > 0)
+                            {
+                                <div class="d-flex gap-1 flex-wrap mb-2">
+                                    @foreach (var c in entry.Conditions)
+                                    {
+                                        <span class="badge small" style="background:var(--ta-surface);border:1px solid var(--ta-border);color:var(--ta-accent-light);">
+                                            @ConditionLabel(c)
+                                        </span>
+                                    }
+                                </div>
+                            }
                             @if (_state.IsOwner && _state.IsActive)
                             {
                                 <div class="d-flex gap-2 align-items-center mt-2">

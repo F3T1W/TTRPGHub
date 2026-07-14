@@ -15,6 +15,11 @@ internal sealed class InitiativeTrackerRepository(AppDbContext db) : IInitiative
             .OrderByDescending(t => t.UpdatedAt)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<InitiativeTracker>> GetByLinkedSessionAsync(Guid sessionId, CancellationToken ct = default) =>
+        await db.InitiativeTrackers
+            .Where(t => t.LinkedSessionId == sessionId)
+            .ToListAsync(ct);
+
     public async Task AddAsync(InitiativeTracker tracker, CancellationToken ct = default) =>
         await db.InitiativeTrackers.AddAsync(tracker, ct);
 

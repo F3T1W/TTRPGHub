@@ -16,13 +16,7 @@ internal sealed class GetTrackerDetailQueryHandler(
         var tracker = await repository.GetByIdAsync(new InitiativeTrackerId(query.TrackerId), ct);
         if (tracker is null) return Error.NotFound(nameof(InitiativeTracker));
 
-        return Result<TrackerDetailDto>.Success(new TrackerDetailDto(
-            tracker.Id.Value, tracker.CampaignId.Value, tracker.OwnerId.Value,
-            tracker.Name, tracker.Round, tracker.ActiveEntryIndex, tracker.IsActive,
-            tracker.Entries.Select(e => new TrackerEntryDto(
-                e.Id, e.Name, e.Initiative, e.MaxHp, e.CurrentHp,
-                e.ArmorClass, e.Status, e.IsPlayerCharacter, e.Notes, e.SortOrder)).ToList(),
-            tracker.OwnerId == currentUser.Id,
-            tracker.UpdatedAt));
+        return Result<TrackerDetailDto>.Success(
+            TrackerMapper.ToDto(tracker, tracker.OwnerId == currentUser.Id));
     }
 }

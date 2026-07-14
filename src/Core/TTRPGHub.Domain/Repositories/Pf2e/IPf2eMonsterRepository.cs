@@ -11,4 +11,5 @@ public interface IPf2eMonsterRepository
     Task<Pf2eMonster?> GetByIdAsync(Pf2eMonsterId id, CancellationToken ct = default);
     Task<bool> AnyAsync(CancellationToken ct = default);
     Task AddRangeAsync(IEnumerable<Pf2eMonster> monsters, CancellationToken ct = default);
+    Task<IReadOnlyList<Pf2eMonster>> GetAllForAutomationSyncAsync(CancellationToken ct = default);
 }

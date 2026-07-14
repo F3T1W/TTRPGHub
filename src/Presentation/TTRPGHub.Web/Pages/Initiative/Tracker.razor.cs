@@ -19,6 +19,8 @@ public partial class Tracker : IAsyncDisposable
     private bool _saving;
     private string _connectionStatus = "disconnected";
     private string? _error;
+    private string _linkSessionInput = "";
+    private bool _syncing;
 
     protected override async Task OnInitializedAsync()
     {
@@ -29,6 +31,7 @@ public partial class Tracker : IAsyncDisposable
         if (_state is not null)
         {
             InitEditEntries();
+            _linkSessionInput = _state.LinkedSessionId?.ToString() ?? "";
             await ConnectHub();
         }
     }
@@ -63,6 +66,7 @@ public partial class Tracker : IAsyncDisposable
         _hub.On<TrackerDetailDto>("TrackerUpdated", dto =>
         {
             _state = dto;
+            _linkSessionInput = dto.LinkedSessionId?.ToString() ?? "";
             InvokeAsync(StateHasChanged);
         });
 
@@ -112,6 +116,40 @@ public partial class Tracker : IAsyncDisposable
         try { await Api.PreviousTurnAsync(Id); }
         catch (Exception ex) { _error = ex.Message; }
     }
+
+    private async Task LinkSessionAsync()
+    {
+        if (_state is null) return;
+        _error = null;
+        Guid? sessionId = Guid.TryParse(_linkSessionInput, out var parsed) ? parsed : null;
+        try
+        {
+            _state = await Api.LinkTrackerSessionAsync(Id, new LinkSessionRequest(sessionId));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task SyncFromTableAsync()
+    {
+        if (_state is null) return;
+        if (!Guid.TryParse(_linkSessionInput, out var sessionId))
+        {
+            _error = "Укажите корректный ID сессии стола.";
+            return;
+        }
+
+        _syncing = true;
+        _error = null;
+        try
+        {
+            _state = await Api.SyncTrackerFromTableAsync(Id, new SyncFromTableRequest(sessionId));
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _syncing = false; }
+    }
+
+    private static string ConditionLabel(TrackerConditionSnapshot c) =>
+        c.Value is null or 0 ? c.Name : $"{c.Name} {c.Value}";
 
     private async Task UpdateEntryHp(TrackerEntryDto entry, int hp)
     {

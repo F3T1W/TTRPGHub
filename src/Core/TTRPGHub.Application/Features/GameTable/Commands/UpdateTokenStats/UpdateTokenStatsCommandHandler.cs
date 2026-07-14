@@ -3,6 +3,7 @@ using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
 using TTRPGHub.Features.GameTable.Shared;
+using TTRPGHub.Features.Initiative.Shared;
 using TTRPGHub.Repositories;
 
 namespace TTRPGHub.Features.GameTable.Commands.UpdateTokenStats;
@@ -13,7 +14,8 @@ internal sealed class UpdateTokenStatsCommandHandler(
     ICharacterRepository characterRepository,
     IUnitOfWork unitOfWork,
     ITableNotifier notifier,
-    ICurrentUser currentUser
+    ICurrentUser currentUser,
+    InitiativeTrackerSync trackerSync
 ) : IRequestHandler<UpdateTokenStatsCommand, Result>
 {
     public async Task<Result> Handle(UpdateTokenStatsCommand command, CancellationToken ct)
@@ -95,6 +97,7 @@ internal sealed class UpdateTokenStatsCommandHandler(
 
         var dto = TableTokenMapper.ToDto(token, canMove: true);
         await notifier.NotifyTokenUpdatedAsync(command.SessionId, dto, ct);
+        await trackerSync.PushTokenAsync(token, ct);
 
         return Result.Success();
     }

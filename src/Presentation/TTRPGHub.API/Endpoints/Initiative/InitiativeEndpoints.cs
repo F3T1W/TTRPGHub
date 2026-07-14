@@ -8,6 +8,8 @@ using TTRPGHub.Features.Initiative.Commands.PreviousTurn;
 using TTRPGHub.Features.Initiative.Commands.SetEntries;
 using TTRPGHub.Features.Initiative.Commands.StartTracker;
 using TTRPGHub.Features.Initiative.Commands.UpdateEntry;
+using TTRPGHub.Features.Initiative.Commands.LinkTrackerSession;
+using TTRPGHub.Features.Initiative.Commands.SyncTrackerFromTable;
 using TTRPGHub.Features.Initiative.Queries.GetTrackerDetail;
 using TTRPGHub.Features.Initiative.Queries.GetTrackersByCampaign;
 
@@ -71,6 +73,18 @@ public static class InitiativeEndpoints
             return result.IsSuccess ? Results.NoContent() : result.ToResponse();
         });
 
+        group.MapPost("/{id:guid}/sync-from-table", async (Guid id, SyncFromTableRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new SyncTrackerFromTableCommand(id, req.SessionId), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
+
+        group.MapPatch("/{id:guid}/link-session", async (Guid id, LinkSessionRequest req, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new LinkTrackerSessionCommand(id, req.SessionId), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : result.ToResponse();
+        });
+
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new DeleteTrackerCommand(id), ct);
@@ -83,3 +97,5 @@ public record CreateTrackerRequest(Guid CampaignId, string Name);
 public record EntryInputDto(string Name, int Initiative, int MaxHp, int CurrentHp,
     int ArmorClass, bool IsPlayerCharacter, string? Notes);
 public record UpdateEntryDto(int CurrentHp, EntryStatus Status, string? Notes);
+public record SyncFromTableRequest(Guid SessionId);
+public record LinkSessionRequest(Guid? SessionId);

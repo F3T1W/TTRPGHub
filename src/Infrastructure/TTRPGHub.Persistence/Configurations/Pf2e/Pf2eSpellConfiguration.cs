@@ -28,6 +28,9 @@ internal sealed class Pf2eSpellConfiguration : IEntityTypeConfiguration<Pf2eSpel
         builder.Property(s => s.Duration).HasColumnName("duration");
         builder.Property(s => s.Description).HasColumnName("description");
         builder.Property(s => s.Heightened).HasColumnName("heightened");
+        builder.Property(s => s.DamageJson).HasColumnName("damage_json");
+        builder.Property(s => s.HeighteningJson).HasColumnName("heightening_json");
+        builder.Property(s => s.DefenseJson).HasColumnName("defense_json");
         builder.Property(s => s.Source).HasColumnName("source");
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_pf2e_spells_slug");

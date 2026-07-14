@@ -1250,6 +1250,10 @@ namespace TTRPGHub.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<Guid?>("LinkedSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("linked_session_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1846,6 +1850,14 @@ namespace TTRPGHub.Migrations
                         .HasColumnType("text")
                         .HasColumnName("cast");
 
+                    b.Property<string>("DamageJson")
+                        .HasColumnType("text")
+                        .HasColumnName("damage_json");
+
+                    b.Property<string>("DefenseJson")
+                        .HasColumnType("text")
+                        .HasColumnName("defense_json");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1859,6 +1871,10 @@ namespace TTRPGHub.Migrations
                     b.Property<string>("Heightened")
                         .HasColumnType("text")
                         .HasColumnName("heightened");
+
+                    b.Property<string>("HeighteningJson")
+                        .HasColumnType("text")
+                        .HasColumnName("heightening_json");
 
                     b.Property<int>("Level")
                         .HasColumnType("integer")
@@ -3012,6 +3028,10 @@ namespace TTRPGHub.Migrations
                                 .HasColumnType("integer")
                                 .HasColumnName("armor_class");
 
+                            b1.Property<string>("ConditionsJson")
+                                .HasColumnType("jsonb")
+                                .HasColumnName("conditions_json");
+
                             b1.Property<int>("CurrentHp")
                                 .HasColumnType("integer")
                                 .HasColumnName("current_hp");
@@ -3023,6 +3043,10 @@ namespace TTRPGHub.Migrations
                             b1.Property<bool>("IsPlayerCharacter")
                                 .HasColumnType("boolean")
                                 .HasColumnName("is_player_character");
+
+                            b1.Property<Guid?>("LinkedTokenId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("linked_token_id");
 
                             b1.Property<int>("MaxHp")
                                 .HasColumnType("integer")

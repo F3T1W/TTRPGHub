@@ -245,9 +245,23 @@ public static class FoundryActorImporter
             abilityKey = targetBonus - baseBonus == (dex - 10) / 2 && dex != str ? "dex" : "str";
         }
 
+        var traits = system.TryGetProperty("traits", out var traitsEl) && traitsEl.TryGetProperty("value", out var traitsVal)
+            ? traitsVal.EnumerateArray().Select(t => t.GetString()?.ToLowerInvariant() ?? "").Where(t => t.Length > 0).ToList()
+            : [];
+        int? equipmentRange = null;
+        if (system.TryGetProperty("range", out var rangeEl))
+        {
+            if (rangeEl.ValueKind == JsonValueKind.Number)
+                equipmentRange = rangeEl.GetInt32();
+            else if (rangeEl.TryGetProperty("increment", out var inc) && inc.TryGetInt32(out var incVal))
+                equipmentRange = incVal;
+        }
+
+        var (rangeFeet, reachFeet) = Pf2eLookups.ParseWeaponRangeFromTraits(traits, equipmentRange);
+
         stats.Attacks.Add(new Pf2eLookups.Pf2eAttack(
             weaponName, weaponRank, abilityKey,
-            $"{diceCount}{die}", damageBonus, damageType));
+            $"{diceCount}{die}", damageBonus, damageType, rangeFeet, reachFeet));
     }
 
     private static void ParseArmor(JsonElement item, Pf2eLookups.Pf2eStatsModel stats)

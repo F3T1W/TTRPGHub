@@ -38,7 +38,9 @@ window.macroSandbox = (() => {
                 getTargetToken: () => callParent('getTargetToken', []),
                 getTokens: () => callParent('getTokens', []),
                 applyDamage: (tokenId, amount, damageType) => callParent('applyDamage', [tokenId, amount, damageType ?? null]),
+                applyHealing: (tokenId, amount) => callParent('applyHealing', [tokenId, amount]),
                 applyCondition: (tokenId, slug, value) => callParent('applyCondition', [tokenId, slug, value ?? null]),
+                removeCondition: (tokenId, slug) => callParent('removeCondition', [tokenId, slug]),
                 notify: (text) => callParent('notify', [text]),
             };
 

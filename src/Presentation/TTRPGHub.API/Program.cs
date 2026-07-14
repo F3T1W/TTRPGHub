@@ -90,6 +90,8 @@ try
         await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
         await scope.ServiceProvider.GetRequiredService<Open5eImporter>().ImportIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<Pf2eImporter>().ImportIfEmptyAsync();
+        await scope.ServiceProvider.GetRequiredService<Pf2eImporter>().SyncSpellAutomationAsync();
+        await scope.ServiceProvider.GetRequiredService<Pf2eImporter>().SyncMonsterAutomationAsync();
         await scope.ServiceProvider.GetRequiredService<LegacyRuleMigrator>().MigrateIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<Open5eRulesImporter>().ImportIfEmptyAsync();
         await scope.ServiceProvider.GetRequiredService<Pf2eRulesSeeder>().SeedIfEmptyAsync();

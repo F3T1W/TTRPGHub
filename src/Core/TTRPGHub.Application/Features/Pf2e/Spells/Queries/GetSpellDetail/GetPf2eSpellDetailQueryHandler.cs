@@ -17,6 +17,7 @@ internal sealed class GetPf2eSpellDetailQueryHandler(IPf2eSpellRepository reposi
         return new Pf2eSpellDetailDto(
             spell.Id.Value, spell.Slug, spell.Name, spell.Level, spell.Traditions,
             spell.Traits, spell.Cast, spell.Range, spell.Area, spell.Targets,
-            spell.Duration, spell.Description, spell.Heightened, spell.Source);
+            spell.Duration, spell.Description, spell.Heightened, spell.Source,
+            spell.DamageJson, spell.HeighteningJson, spell.DefenseJson);
     }
 }

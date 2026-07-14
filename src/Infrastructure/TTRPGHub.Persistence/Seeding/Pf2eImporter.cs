@@ -54,7 +54,8 @@ public sealed class Pf2eImporter(
     private sealed record SeedSpell(
         string Slug, string Name, int Level, string Traditions, string Traits, string Cast,
         string? Range, string? Area, string? Targets, string Duration, string Description,
-        string? Heightened, string Source);
+        string? Heightened, string Source,
+        JsonElement? DamageJson = null, JsonElement? HeighteningJson = null, JsonElement? DefenseJson = null);
 
     private static IEnumerable<Pf2eSpell> BuildSpells()
     {
@@ -62,8 +63,44 @@ public sealed class Pf2eImporter(
         return seeds.Select(s => Pf2eSpell.Create(
             s.Slug, s.Name, s.Level, s.Traditions, s.Traits, s.Cast,
             s.Range, s.Area, s.Targets, s.Duration, s.Description, s.Heightened,
-            $"{s.Source} (Foundry pf2e system data, ORC)"));
+            $"{s.Source} (Foundry pf2e system data, ORC)",
+            JsonElementToString(s.DamageJson),
+            JsonElementToString(s.HeighteningJson),
+            JsonElementToString(s.DefenseJson)));
     }
+
+    public async Task SyncSpellAutomationAsync(CancellationToken ct = default)
+    {
+        var seeds = LoadEmbeddedJson<SeedSpell>("pf2e-spells.json")
+            .Where(s => s.DamageJson is not null || s.HeighteningJson is not null || s.DefenseJson is not null)
+            .ToDictionary(s => s.Slug, StringComparer.OrdinalIgnoreCase);
+        if (seeds.Count == 0) return;
+
+        var spells = await spellRepo.GetAllForAutomationSyncAsync(ct);
+        var updated = 0;
+        foreach (var spell in spells)
+        {
+            if (!seeds.TryGetValue(spell.Slug, out var seed)) continue;
+            var damage = JsonElementToString(seed.DamageJson);
+            var heightening = JsonElementToString(seed.HeighteningJson);
+            var defense = JsonElementToString(seed.DefenseJson);
+            if (spell.DamageJson == damage && spell.HeighteningJson == heightening && spell.DefenseJson == defense)
+                continue;
+            spell.SetAutomation(damage, heightening, defense);
+            updated++;
+        }
+
+        if (updated > 0)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            logger.LogInformation("Обновлена spell automation для {Count} заклинаний", updated);
+        }
+    }
+
+    private static string? JsonElementToString(JsonElement? element) =>
+        element is { ValueKind: not JsonValueKind.Null and not JsonValueKind.Undefined }
+            ? element.Value.GetRawText()
+            : null;
 
     private static List<T> LoadEmbeddedJson<T>(string fileName)
     {
@@ -86,8 +123,8 @@ public sealed class Pf2eImporter(
         int Str, int Dex, int Con, int Int, int Wis, int Cha,
         int Ac, int Fort, int Reflex, int Will, int Hp,
         string Speed, string? Abilities, string? AttacksJson,
-        string? ResistancesJson, string? WeaknessesJson, string Source, string License,
-        string? ImmunitiesJson = null, string? AurasJson = null);
+        JsonElement? ResistancesJson, JsonElement? WeaknessesJson, string Source, string License,
+        JsonElement? ImmunitiesJson = null, JsonElement? AurasJson = null, JsonElement? ModifiersJson = null);
 
     private static IEnumerable<Pf2eMonster> BuildMonsters()
     {
@@ -100,8 +137,48 @@ public sealed class Pf2eImporter(
             m.Speed, attacks: null, m.Abilities,
             source: $"{m.Source} (Foundry pf2e system data, {m.License})",
             attacksJson: m.AttacksJson,
-            resistancesJson: m.ResistancesJson, weaknessesJson: m.WeaknessesJson,
-            immunitiesJson: m.ImmunitiesJson, aurasJson: m.AurasJson));
+            resistancesJson: JsonElementToString(m.ResistancesJson),
+            weaknessesJson: JsonElementToString(m.WeaknessesJson),
+            immunitiesJson: JsonElementToString(m.ImmunitiesJson),
+            aurasJson: JsonElementToString(m.AurasJson),
+            modifiersJson: JsonElementToString(m.ModifiersJson)));
+    }
+
+    public async Task SyncMonsterAutomationAsync(CancellationToken ct = default)
+    {
+        var seeds = LoadEmbeddedJson<SeedMonster>("pf2e-monsters.json");
+        var bySlug = seeds.ToDictionary(s => s.Slug, StringComparer.OrdinalIgnoreCase);
+        if (bySlug.Count == 0) return;
+
+        var monsters = await monsterRepo.GetAllForAutomationSyncAsync(ct);
+        var updated = 0;
+        foreach (var monster in monsters)
+        {
+            if (!bySlug.TryGetValue(monster.Slug, out var seed)) continue;
+
+            var immunities = JsonElementToString(seed.ImmunitiesJson);
+            var auras = JsonElementToString(seed.AurasJson);
+            var modifiers = JsonElementToString(seed.ModifiersJson);
+            var resistances = JsonElementToString(seed.ResistancesJson);
+            var weaknesses = JsonElementToString(seed.WeaknessesJson);
+            var attacks = seed.AttacksJson;
+
+            if (monster.ImmunitiesJson == immunities && monster.AurasJson == auras &&
+                monster.ModifiersJson == modifiers && monster.ResistancesJson == resistances &&
+                monster.WeaknessesJson == weaknesses && monster.AttacksJson == attacks)
+                continue;
+
+            monster.SetCombatAutomation(immunities, auras, modifiers, resistances, weaknesses);
+            if (attacks is not null)
+                monster.SetAttacksJson(attacks);
+            updated++;
+        }
+
+        if (updated > 0)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+            logger.LogInformation("Обновлена monster automation для {Count} монстров", updated);
+        }
     }
 
     // N.1 — в отличие от монстров/заклинаний (английский ORC-дамп + RU-оверлей поверх),

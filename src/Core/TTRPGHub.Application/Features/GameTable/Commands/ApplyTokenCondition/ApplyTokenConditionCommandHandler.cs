@@ -5,6 +5,7 @@ using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
 using TTRPGHub.Entities.Pf2e;
 using TTRPGHub.Features.GameTable.Shared;
+using TTRPGHub.Features.Initiative.Shared;
 using TTRPGHub.Repositories;
 using TTRPGHub.Repositories.Pf2e;
 
@@ -16,7 +17,8 @@ internal sealed class ApplyTokenConditionCommandHandler(
     IPf2eMonsterRepository monsterRepository,
     IUnitOfWork unitOfWork,
     ITableNotifier notifier,
-    ICurrentUser currentUser
+    ICurrentUser currentUser,
+    InitiativeTrackerSync trackerSync
 ) : IRequestHandler<ApplyTokenConditionCommand, Result>
 {
     public async Task<Result> Handle(ApplyTokenConditionCommand command, CancellationToken ct)
@@ -52,6 +54,7 @@ internal sealed class ApplyTokenConditionCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
 
         await notifier.NotifyTokenUpdatedAsync(command.SessionId, TableTokenMapper.ToDto(token, canMove: true), ct);
+        await trackerSync.PushTokenAsync(token, ct);
 
         return Result.Success();
     }

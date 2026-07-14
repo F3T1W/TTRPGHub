@@ -11,4 +11,5 @@ public interface IPf2eSpellRepository
     Task<Pf2eSpell?> GetByIdAsync(Pf2eSpellId id, CancellationToken ct = default);
     Task<bool> AnyAsync(CancellationToken ct = default);
     Task AddRangeAsync(IEnumerable<Pf2eSpell> spells, CancellationToken ct = default);
+    Task<IReadOnlyList<Pf2eSpell>> GetAllForAutomationSyncAsync(CancellationToken ct = default);
 }

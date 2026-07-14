@@ -64,7 +64,7 @@
                 <tbody>
                     <tr>
                         <td><code>await game.roll(expr)</code></td>
-                        <td>Бросок кубов по выражению (напр. <code>"2d6+3"</code>), возвращает результат броска.</td>
+                        <td>Бросок кубов по выражению (напр. <code>"2d6+3"</code>). Возвращает <code>{ content, total }</code> — текст в чат и числовой итог.</td>
                     </tr>
                     <tr>
                         <td><code>await game.chat(text)</code></td>
@@ -87,12 +87,20 @@
                         <td>Наносит урон токену (с учётом стамины/сопротивлений, как обычный урон на столе).</td>
                     </tr>
                     <tr>
+                        <td><code>await game.applyHealing(tokenId, amount)</code></td>
+                        <td>Восстанавливает HP токену (без учёта сопротивлений — лечение).</td>
+                    </tr>
+                    <tr>
                         <td><code>await game.applyCondition(tokenId, condition)</code></td>
                         <td>Накладывает состояние (условие) на токен.</td>
                     </tr>
                     <tr>
+                        <td><code>await game.removeCondition(tokenId, slug)</code></td>
+                        <td>Снимает состояние с токена по slug (например <code>frightened</code>).</td>
+                    </tr>
+                    <tr>
                         <td><code>await game.notify(text)</code></td>
-                        <td>Показывает уведомление ГМ/игроку локально (не в общий чат).</td>
+                        <td>Локальное уведомление на столе (не в общий чат, не ошибка броска).</td>
                     </tr>
                 </tbody>
             </table>

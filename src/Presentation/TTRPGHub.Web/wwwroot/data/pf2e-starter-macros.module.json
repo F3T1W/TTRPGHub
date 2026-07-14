@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "name": "PF2e — стартовые макросы",
+  "description": "Базовые макросы для стола: броски, урон, лечение и состояния. Импортируй и подстрой формулы под свою кампанию.",
+  "author": "Таверна Аферистов",
+  "version": "1.0.0",
+  "macros": [
+    {
+      "name": "Инициатива",
+      "imageUrl": null,
+      "type": "Chat",
+      "command": "/r 1d20"
+    },
+    {
+      "name": "Урон по цели (2d6+3)",
+      "imageUrl": null,
+      "type": "Script",
+      "command": "const target = await game.getTargetToken();\nif (!target) { await game.notify('Выбери цель (кнопка «Цель» на жетоне).'); return; }\nconst result = await game.roll('2d6+3');\nawait game.chat(result.content);\nif (result.total) await game.applyDamage(target.id, result.total);"
+    },
+    {
+      "name": "Лечение (2d8+5)",
+      "imageUrl": null,
+      "type": "Script",
+      "command": "const token = await game.getSelectedToken() ?? await game.getTargetToken();\nif (!token) { await game.notify('Выбери жетон.'); return; }\nconst result = await game.roll('2d8+5');\nawait game.chat(result.content);\nif (result.total) await game.applyHealing(token.id, result.total);"
+    },
+    {
+      "name": "Frightened 1 на цель",
+      "imageUrl": null,
+      "type": "Script",
+      "command": "const target = await game.getTargetToken();\nif (!target) { await game.notify('Выбери цель.'); return; }\nawait game.applyCondition(target.id, 'frightened', 1);\nawait game.chat(`На «${target.label}» наложено Frightened 1.`);"
+    },
+    {
+      "name": "Снять Frightened",
+      "imageUrl": null,
+      "type": "Script",
+      "command": "const token = await game.getSelectedToken();\nif (!token) { await game.notify('Выбери жетон.'); return; }\nawait game.removeCondition(token.id, 'frightened');\nawait game.chat(`С «${token.label}» снято Frightened.`);"
+    }
+  ],
+  "ruleSystem": null
+}

@@ -37,6 +37,9 @@ internal sealed class Pf2eMonsterRepository(AppDbContext db) : IPf2eMonsterRepos
     public Task<bool> AnyAsync(CancellationToken ct = default) =>
         db.Pf2eMonsters.AnyAsync(ct);
 
+    public async Task<IReadOnlyList<Pf2eMonster>> GetAllForAutomationSyncAsync(CancellationToken ct = default) =>
+        await db.Pf2eMonsters.ToListAsync(ct);
+
     public async Task AddRangeAsync(IEnumerable<Pf2eMonster> monsters, CancellationToken ct = default) =>
         await db.Pf2eMonsters.AddRangeAsync(monsters, ct);
 }

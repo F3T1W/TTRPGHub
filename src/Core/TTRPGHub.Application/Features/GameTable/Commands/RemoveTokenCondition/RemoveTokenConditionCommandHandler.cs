@@ -3,6 +3,7 @@ using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
 using TTRPGHub.Features.GameTable.Shared;
+using TTRPGHub.Features.Initiative.Shared;
 using TTRPGHub.Repositories;
 
 namespace TTRPGHub.Features.GameTable.Commands.RemoveTokenCondition;
@@ -12,7 +13,8 @@ internal sealed class RemoveTokenConditionCommandHandler(
     ITableTokenRepository tokenRepository,
     IUnitOfWork unitOfWork,
     ITableNotifier notifier,
-    ICurrentUser currentUser
+    ICurrentUser currentUser,
+    InitiativeTrackerSync trackerSync
 ) : IRequestHandler<RemoveTokenConditionCommand, Result>
 {
     public async Task<Result> Handle(RemoveTokenConditionCommand command, CancellationToken ct)
@@ -34,6 +36,7 @@ internal sealed class RemoveTokenConditionCommandHandler(
         await unitOfWork.SaveChangesAsync(ct);
 
         await notifier.NotifyTokenUpdatedAsync(command.SessionId, TableTokenMapper.ToDto(token, canMove: true), ct);
+        await trackerSync.PushTokenAsync(token, ct);
 
         return Result.Success();
     }

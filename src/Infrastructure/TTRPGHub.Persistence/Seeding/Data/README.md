@@ -16,13 +16,14 @@
 
 ## Файлы
 
-- `pf2e-spells.json` — 1144 заклинания (`packs/pf2e/spells`)
+- `pf2e-spells.json` — 1144 заклинания (`packs/pf2e/spells`); поля `damageJson` /
+  `heighteningJson` / `defenseJson` добавляются скриптом `scripts/build-pf2e-spell-automation.py`
 - `pf2e-feats.json` — 6044 фита всех категорий: ancestry/class/classfeature/skill/general/bonus
   (`packs/pf2e/feats`)
 - `pf2e-equipment.json` — 5672 предмета снаряжения (оружие, доспехи, щиты, расходники,
   боеприпасы, ценности, контейнеры, наборы) (`packs/pf2e/equipment`)
 - `pf2e-monsters.json` — 2308 монстров (npc-акторы) из всех 62 бестиарных паков (основные
-  бестиарии, приключения, PFS-сезоны). `license` в каждой записи — `ORC` или `OGL` (обе —
-  официальные открытые лицензии Paizo; ORC — для ремастера с 2023, OGL — для более старого
-  контента до ремастера). Включает `resistancesJson`/`weaknessesJson` (711/840 монстров) —
-  используются в трекере боя (J.2) для расчёта эффективного урона.
+  бестиарии, приключения, PFS-сезоны). `license` в каждой записи — `ORC` или `OGL`.
+  Включает `attacksJson`, `resistancesJson`/`weaknessesJson`, а также `immunitiesJson` /
+  `aurasJson` / `modifiersJson` — последние три заполняются скриптом
+  `scripts/build-pf2e-monster-automation.py` из Foundry `system.attributes` и rule elements.

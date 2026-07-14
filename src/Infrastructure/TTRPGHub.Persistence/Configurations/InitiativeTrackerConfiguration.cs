@@ -27,6 +27,7 @@ internal sealed class InitiativeTrackerConfiguration : IEntityTypeConfiguration<
         builder.Property(t => t.Round).HasColumnName("round");
         builder.Property(t => t.ActiveEntryIndex).HasColumnName("active_entry_index");
         builder.Property(t => t.IsActive).HasColumnName("is_active");
+        builder.Property(t => t.LinkedSessionId).HasColumnName("linked_session_id");
         builder.Property(t => t.CreatedAt).HasColumnName("created_at");
         builder.Property(t => t.UpdatedAt).HasColumnName("updated_at");
 
@@ -43,6 +44,8 @@ internal sealed class InitiativeTrackerConfiguration : IEntityTypeConfiguration<
             e.Property(x => x.IsPlayerCharacter).HasColumnName("is_player_character");
             e.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(500);
             e.Property(x => x.SortOrder).HasColumnName("sort_order");
+            e.Property(x => x.LinkedTokenId).HasColumnName("linked_token_id");
+            e.Property(x => x.ConditionsJson).HasColumnName("conditions_json").HasColumnType("jsonb");
             e.WithOwner().HasForeignKey("tracker_id");
             e.HasKey("Id");
         });
