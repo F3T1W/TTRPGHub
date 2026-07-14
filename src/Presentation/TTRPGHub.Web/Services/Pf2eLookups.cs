@@ -285,10 +285,21 @@ public static class Pf2eLookups
         return ParseWeaponRangeFromTraits(list, equipmentRange);
     }
 
-    // N.7 — аура монстра: радиус в футах + эффект-состояние, автоматически применяемый ко всем
-    // токенам в радиусе (не только текст в Abilities). EffectSlug — тот же слаг состояния, что
-    // и у ApplyTokenCondition (N.4/L.2), Value — опциональная величина (frightened 1 и т.п.).
-    public sealed record Pf2eAura(int RadiusFeet, string EffectSlug, string EffectName, int? Value);
+    // N.7 — аура монстра: радиус в футах + эффект-состояние. EffectSlug — тот же слаг состояния,
+    // что и у ApplyTokenCondition (N.4/L.2), Value — опциональная величина (frightened 1 и т.п.).
+    // R.1 — ауры со спасброском (Frightful Presence и аналоги): SaveDc не null означает, что
+    // EffectSlug/Value накладываются только при ПРОВАЛЕ спасброска SaveType (fortitude/reflex/
+    // will), а не автоматически всем в радиусе — раньше такие ауры (примерно половина всех аур
+    // в данных) ошибочно извлекались как безусловные, см. Q.2 и правку в
+    // build-pf2e-monster-automation.py. CriticalFailure* — отдельный, обычно более тяжёлый эффект
+    // при критическом провале (типичная формулировка PF2e "Frightened 1 (Frightened 2 on a
+    // critical failure)"); null, если критический провал даёт тот же эффект или не описан отдельно.
+    // SaveDc == null — старое поведение без изменений: EffectSlug/Value накладывается всем в
+    // радиусе без броска (безусловная аура).
+    public sealed record Pf2eAura(
+        int RadiusFeet, string EffectSlug, string EffectName, int? Value,
+        string? SaveType = null, int? SaveDc = null,
+        string? CriticalFailureSlug = null, string? CriticalFailureName = null, int? CriticalFailureValue = null);
 
     public static List<Pf2eAura> ParseAuras(string? json)
     {

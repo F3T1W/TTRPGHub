@@ -254,6 +254,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         _tokens.Clear();
         _tokens.AddRange(_state.Tokens);
         _auraAppliedSlugsByToken.Clear();
+        _auraSaveOutcomes.Clear();
         _gridCellSizePx = _state.GridCellSizePx;
         _fogEnabled = _state.FogEnabled;
         _visionRadiusFeet = _state.VisionRadiusFeet;
@@ -401,6 +402,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
         {
             _tokens.RemoveAll(t => t.Id == tokenId);
             _auraAppliedSlugsByToken.Remove(tokenId);
+            foreach (var key in _auraSaveOutcomes.Keys.Where(k => k.Source == tokenId || k.Target == tokenId).ToList())
+                _auraSaveOutcomes.Remove(key);
             await RecomputeAuraEffectsAsync();
             await RecomputeHazardDetectionAsync();
             await InvokeAsync(StateHasChanged);
@@ -1195,6 +1198,13 @@ public partial class Table : ComponentBase, IAsyncDisposable
     private readonly Dictionary<Guid, List<Pf2eLookups.Pf2eAura>> _monsterAuraCache = [];
     private readonly Dictionary<Guid, HashSet<string>> _auraAppliedSlugsByToken = [];
 
+    // R.1 — ауры со спасброском (Frightful Presence и аналоги, см. Pf2eAura.SaveDc): результат
+    // броска кешируется по паре (источник, цель) на всё время, пока цель остаётся в радиусе —
+    // без повторных бросков на каждый пересчёт. Запись удаляется, когда цель выходит из радиуса,
+    // так что новый подход снова даёт шанс на спасбросок (как повторная попытка в PF2e). Значение
+    // null = бросок пройден (эффекта нет), не null = состояние, наложенное при провале.
+    private readonly Dictionary<(Guid Source, Guid Target), (string Slug, string Name, int? Value)?> _auraSaveOutcomes = [];
+
     private async Task EnsureMonsterAurasCachedAsync(Guid monsterId)
     {
         if (_monsterAuraCache.ContainsKey(monsterId)) return;
@@ -1217,6 +1227,7 @@ public partial class Table : ComponentBase, IAsyncDisposable
         // targetId -> slug -> (name, value): состояния, которые ДОЛЖНЫ действовать сейчас
         // по текущим позициям токенов (пересчитывается с нуля на каждый вызов, не инкрементально).
         var desired = new Dictionary<Guid, Dictionary<string, (string Name, int? Value)>>();
+        var currentSavePairs = new HashSet<(Guid Source, Guid Target)>();
         foreach (var source in sources)
         {
             var auras = _monsterAuraCache.GetValueOrDefault(source.CombatantId!.Value, []);
@@ -1228,15 +1239,37 @@ public partial class Table : ComponentBase, IAsyncDisposable
                 var distance = Pf2eLookups.TokenDistanceFeet(
                     source.X, source.Y, source.Width, source.Height,
                     target.X, target.Y, target.Width, target.Height);
+                if (distance > auras.Max(a => a.RadiusFeet)) continue;
 
-                foreach (var aura in auras.Where(a => distance <= a.RadiusFeet))
+                foreach (var aura in auras.Where(a => distance <= a.RadiusFeet && a.SaveDc is null))
                 {
                     if (!desired.TryGetValue(target.Id, out var slugs))
                         desired[target.Id] = slugs = [];
                     slugs[aura.EffectSlug] = (aura.EffectName, aura.Value);
                 }
+
+                foreach (var aura in auras.Where(a => distance <= a.RadiusFeet && a.SaveDc is not null))
+                {
+                    var key = (source.Id, target.Id);
+                    currentSavePairs.Add(key);
+                    if (!_auraSaveOutcomes.TryGetValue(key, out var outcome))
+                    {
+                        outcome = await ResolveAuraSaveAsync(source, target, aura);
+                        _auraSaveOutcomes[key] = outcome;
+                    }
+
+                    if (outcome is { } effect)
+                    {
+                        if (!desired.TryGetValue(target.Id, out var slugs))
+                            desired[target.Id] = slugs = [];
+                        slugs[effect.Slug] = (effect.Name, effect.Value);
+                    }
+                }
             }
         }
+
+        foreach (var key in _auraSaveOutcomes.Keys.Where(k => !currentSavePairs.Contains(k)).ToList())
+            _auraSaveOutcomes.Remove(key);
 
         foreach (var target in _tokens)
         {
@@ -1252,6 +1285,53 @@ public partial class Table : ComponentBase, IAsyncDisposable
             if (current.Count > 0) _auraAppliedSlugsByToken[target.Id] = [.. current.Keys];
             else _auraAppliedSlugsByToken.Remove(target.Id);
         }
+    }
+
+    // R.1 — бросок спасброска против ауры при первом входе цели в радиус (см. _auraSaveOutcomes).
+    // Как и авто-детекция хазарда (RecomputeHazardDetectionAsync): флэт 1d20 без модификатора цели —
+    // модификатор произвольного чужого токена (не только выбранного/своего) недоступен без загрузки
+    // полного PF2e-листа каждого токена на каждый пересчёт, тот же осознанный компромисс.
+    private async Task<(string Slug, string Name, int? Value)?> ResolveAuraSaveAsync(
+        TableTokenDto source, TableTokenDto target, Pf2eLookups.Pf2eAura aura)
+    {
+        var roll = Random.Shared.Next(1, 21);
+        var dc = aura.SaveDc!.Value;
+        var degree = roll >= dc + 10 ? 2 : roll >= dc ? 1 : roll <= dc - 10 ? -2 : -1;
+        if (roll == 20) degree = Math.Min(2, degree + 1);
+        if (roll == 1) degree = Math.Max(-2, degree - 1);
+
+        var saveLabel = aura.SaveType switch
+        {
+            "fortitude" => "Стойкость", "reflex" => "Реакция", "will" => "Воля", _ => aura.SaveType
+        };
+
+        (string Slug, string Name, int? Value)? result = null;
+        string outcomeLabel;
+        if (degree <= -2)
+        {
+            result = aura.CriticalFailureSlug is not null
+                ? (aura.CriticalFailureSlug, aura.CriticalFailureName ?? aura.CriticalFailureSlug, aura.CriticalFailureValue)
+                : (aura.EffectSlug, aura.EffectName, aura.Value);
+            outcomeLabel = "критический провал";
+        }
+        else if (degree == -1)
+        {
+            result = (aura.EffectSlug, aura.EffectName, aura.Value);
+            outcomeLabel = "провал";
+        }
+        else
+        {
+            outcomeLabel = degree == 2 ? "критический успех" : "успех";
+        }
+
+        try
+        {
+            await Api.RollTableDiceAsync(Id, new RollDiceRequest("1d20", null,
+                $"{target.Label}: {saveLabel} vs аура «{source.Label}» (DC {dc}) — {outcomeLabel}"));
+        }
+        catch { /* ignore */ }
+
+        return result;
     }
 
     // I.6.1-доп./N.1-доп. — авто-детекция хазарда: раньше ГМ вручную решал, когда токен "замечает"

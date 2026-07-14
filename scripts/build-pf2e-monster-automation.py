@@ -104,6 +104,9 @@ def strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", " ", text or "")
 
 
+CHECK_RE = re.compile(r"@Check\[(fortitude|reflex|will)\|dc:(\d+)\]", re.I)
+
+
 def extract_auras(npc: dict, condition_names: dict[str, str]) -> list[dict] | None:
     cond_slugs = set(condition_names)
     cond_uuid_re = re.compile(r"conditions-srd\.Item\.([A-Za-z -]+)", re.I)
@@ -131,6 +134,53 @@ def extract_auras(npc: dict, condition_names: dict[str, str]) -> list[dict] | No
 
         desc = item.get("system", {}).get("description", {}).get("value") or ""
         plain = strip_html(desc)
+
+        # R.1 — ауры со спасброском (Frightful Presence и аналоги): описание содержит инлайн-ссылку
+        # Foundry вида @Check[will|dc:25] и текст вида "...Frightened 1 (Frightened 2 on a critical
+        # failure)". Раньше это ошибочно матчилось как безусловная аура (просто по наличию слова
+        # "Frightened N" где-то в тексте) — на самом деле состояние накладывается только при провале
+        # спасброска, не автоматически. Проверяем @Check ПЕРВЫМ; если он есть — берём состояния+числа
+        # по порядку появления в тексте: первое найденное — эффект обычного провала, второе (если
+        # есть) — эффект критического провала (стандартная формулировка "X (Y on a critical failure)").
+        check_match = CHECK_RE.search(desc)
+        if check_match:
+            save_type = check_match.group(1).lower()
+            save_dc = int(check_match.group(2))
+
+            valued_matches = [
+                (m.group(1).lower(), int(m.group(2)))
+                for m in valued_re.finditer(plain)
+                if m.group(1).lower() in cond_slugs
+            ]
+            failure = valued_matches[0] if len(valued_matches) > 0 else None
+            crit_failure = valued_matches[1] if len(valued_matches) > 1 else None
+            if failure is None:
+                continue  # нет распознаваемого состояния при провале — не гадаем, пропускаем
+
+            key = (radius_feet, "save", save_type, save_dc, failure)
+            if key in seen:
+                continue
+            seen.add(key)
+            auras.append(
+                {
+                    "radiusFeet": radius_feet,
+                    "saveType": save_type,
+                    "saveDc": save_dc,
+                    "effectSlug": failure[0],
+                    "effectName": condition_names.get(failure[0], failure[0].replace("-", " ").title()),
+                    "value": failure[1],
+                    "criticalFailureSlug": crit_failure[0] if crit_failure else None,
+                    "criticalFailureName": (
+                        condition_names.get(crit_failure[0], crit_failure[0].replace("-", " ").title())
+                        if crit_failure else None
+                    ),
+                    "criticalFailureValue": crit_failure[1] if crit_failure else None,
+                }
+            )
+            continue
+
+        # Безусловная аура (без спасброска) — состояние накладывается автоматически всем в радиусе,
+        # как и раньше (см. Q.2).
         candidates: list[tuple[str, int | None]] = []
 
         for match in cond_uuid_re.finditer(desc):
@@ -147,7 +197,7 @@ def extract_auras(npc: dict, condition_names: dict[str, str]) -> list[dict] | No
             continue
 
         slug, value = candidates[0]
-        key = (radius_feet, slug, value)
+        key = (radius_feet, "auto", slug, value)
         if key in seen:
             continue
         seen.add(key)
