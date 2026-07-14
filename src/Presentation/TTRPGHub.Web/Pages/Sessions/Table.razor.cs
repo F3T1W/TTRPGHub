@@ -2159,12 +2159,57 @@ public partial class Table : ComponentBase, IAsyncDisposable
 
     private async Task RemoveConditionAsync(TableTokenDto token, string slug)
     {
+        var hadDying = slug == "dying" && token.Conditions.Any(c => c.Slug == "dying");
+
         var idx = _tokens.FindIndex(t => t.Id == token.Id);
         if (idx >= 0)
             _tokens[idx] = _tokens[idx] with { Conditions = _tokens[idx].Conditions.Where(c => c.Slug != slug).ToList() };
         StateHasChanged();
 
         try { await Api.RemoveTokenConditionAsync(Id, token.Id, slug); }
+        catch { /* ignore */ }
+
+        // R.1 — Wounded: "любой раз, когда персонаж теряет Dying, он получает Wounded 1, или
+        // увеличивает уже имеющийся Wounded на 1" (PF2e Core Rulebook) — снятие Dying вручную
+        // (успешный recovery check при HP всё ещё 0, GM просто убрал состояние) тоже считается.
+        if (hadDying && idx >= 0)
+            await ApplyOrIncrementWoundedAsync(_tokens[idx]);
+    }
+
+    // R.1 — тот же эффект "потери Dying", что и ручное снятие в RemoveConditionAsync, но по
+    // правилу "если HP поднялся до 1+, Dying/Unconscious снимаются автоматически" (PF2e Core
+    // Rulebook) — лечение выше 0 не должно оставлять токен формально "умирающим".
+    private async Task TryClearDyingOnHealAsync(TableTokenDto token)
+    {
+        if (!token.Conditions.Any(c => c.Slug == "dying")) return;
+
+        // RemoveConditionAsync сам применит Wounded (см. hadDying там) — не дублируем здесь.
+        var hadUnconscious = token.Conditions.Any(c => c.Slug == "unconscious");
+        await RemoveConditionAsync(token, "dying");
+        if (hadUnconscious)
+        {
+            var idx = _tokens.FindIndex(t => t.Id == token.Id);
+            if (idx >= 0) await RemoveConditionAsync(_tokens[idx], "unconscious");
+        }
+    }
+
+    private async Task ApplyOrIncrementWoundedAsync(TableTokenDto token)
+    {
+        var existing = token.Conditions.FirstOrDefault(c => c.Slug == "wounded");
+        var newValue = (existing?.Value ?? 0) + 1;
+
+        try
+        {
+            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("wounded", "Wounded", newValue));
+            var idx = _tokens.FindIndex(t => t.Id == token.Id);
+            if (idx >= 0)
+            {
+                var conditions = _tokens[idx].Conditions.Where(c => c.Slug != "wounded").ToList();
+                conditions.Add(new TokenConditionDto(Guid.NewGuid(), "wounded", "Wounded", newValue));
+                _tokens[idx] = _tokens[idx] with { Conditions = conditions };
+                StateHasChanged();
+            }
+        }
         catch { /* ignore */ }
     }
 
@@ -2187,6 +2232,8 @@ public partial class Table : ComponentBase, IAsyncDisposable
             await Api.UpdateTableTokenStatsAsync(Id, token.Id, new UpdateTokenStatsRequest(newHp, null, null, null));
             if (newHp == 0 && idx >= 0)
                 await TryApplyDyingAsync(_tokens[idx]);
+            else if (newHp > 0 && idx >= 0)
+                await TryClearDyingOnHealAsync(_tokens[idx]);
         }
         catch { /* ignore */ }
     }
@@ -2238,26 +2285,30 @@ public partial class Table : ComponentBase, IAsyncDisposable
             await AdjustHpAsync(token, -amount);
     }
 
-    // L.1 — при 0 HP в активном бою автоматически наложить Dying 1 (если ещё нет). По правилу
-    // PF2e падение до 0 HP накладывает Dying И Unconscious одновременно ("you fall unconscious
-    // and start dying") — раньше накладывался только Dying. Взаимодействие с Wounded (dying
-    // растёт быстрее при повторных провалах, если уже был Wounded) осознанно не смоделировано —
-    // это отдельная, более тонкая механика, не входит в "починить очевидный пробел".
+    // L.1 — при 0 HP в активном бою автоматически наложить Dying (если ещё нет). По правилу PF2e
+    // падение до 0 HP накладывает Dying И Unconscious одновременно ("you fall unconscious and
+    // start dying") — раньше накладывался только Dying. R.1 — Wounded домоделирован полностью:
+    // стартовое значение Dying = 1 + текущий Wounded ("If you gain the dying condition while
+    // wounded, increase your dying condition value by your wounded value") — если персонаж уже
+    // был Wounded (терял Dying раньше в этом же бою), новый провал валит его в Dying быстрее.
     private async Task TryApplyDyingAsync(TableTokenDto token)
     {
         if (_state?.CombatActive != true || token.CurrentHp is not 0) return;
         if (token.Conditions.Any(c => c.Slug == "dying")) return;
 
+        var woundedValue = token.Conditions.FirstOrDefault(c => c.Slug == "wounded")?.Value ?? 0;
+        var startingDying = 1 + woundedValue;
+
         try
         {
-            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("dying", "Dying", 1));
+            await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("dying", "Dying", startingDying));
             await Api.ApplyTokenConditionAsync(Id, token.Id, new ApplyConditionRequest("unconscious", "Unconscious", null));
             var idx = _tokens.FindIndex(t => t.Id == token.Id);
             if (idx >= 0)
             {
                 var conditions = _tokens[idx].Conditions
                     .Where(c => c.Slug is not ("dying" or "unconscious")).ToList();
-                conditions.Add(new TokenConditionDto(Guid.NewGuid(), "dying", "Dying", 1));
+                conditions.Add(new TokenConditionDto(Guid.NewGuid(), "dying", "Dying", startingDying));
                 conditions.Add(new TokenConditionDto(Guid.NewGuid(), "unconscious", "Unconscious", null));
                 _tokens[idx] = _tokens[idx] with { Conditions = conditions };
                 StateHasChanged();
