@@ -2,6 +2,7 @@ using System.Text.Json;
 using TTRPGHub.Common;
 using TTRPGHub.Common.Interfaces;
 using TTRPGHub.Entities;
+using TTRPGHub.Features.GameTable.Shared;
 using TTRPGHub.Features.Initiative.Queries.GetTrackerDetail;
 using TTRPGHub.Repositories;
 
@@ -14,7 +15,8 @@ internal sealed class InitiativeTrackerSync(
     ITableTokenRepository tokenRepository,
     IGameSessionRepository sessionRepository,
     IUnitOfWork unitOfWork,
-    ITrackerNotifier notifier)
+    ITrackerNotifier notifier,
+    ITableNotifier tableNotifier)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -41,6 +43,35 @@ internal sealed class InitiativeTrackerSync(
 
         foreach (var tracker in trackers)
             await notifier.NotifyTrackerUpdatedAsync(tracker.Id.Value, TrackerMapper.ToDto(tracker), ct);
+    }
+
+    // R.1 — обратный синк: правка HP/статуса записи трекера (см. UpdateEntryCommandHandler)
+    // отражается на привязанном токене на карте, если он есть. Не трогает произвольные условия
+    // токена — только HP и слаг "dead" (Unconscious на столе и так авто-выводится из HP<=0,
+    // см. H.5, дублировать его сюда незачем; Dead — единственный статус, который GM выставляет
+    // вручную и который нет смысла выводить из HP автоматически). Не вызывает PushTokenAsync
+    // в ответ — тот всё равно пересчитает те же данные из токена идемпотентно, а не зациклится,
+    // но и добавлять лишний круглый рейс без необходимости незачем.
+    public async Task PushEntryToTokenAsync(InitiativeEntry entry, CancellationToken ct)
+    {
+        if (entry.LinkedTokenId is not { } tokenId) return;
+
+        var token = await tokenRepository.GetByIdAsync(tokenId, ct);
+        if (token is null) return;
+
+        token.UpdateHp(entry.CurrentHp);
+
+        const string deadSlug = "dead";
+        var hasDeadCondition = token.Conditions.Any(c => c.Slug == deadSlug);
+        if (entry.Status == EntryStatus.Dead && !hasDeadCondition)
+            token.ApplyCondition(deadSlug, "Мёртв", null);
+        else if (entry.Status != EntryStatus.Dead && hasDeadCondition)
+            token.RemoveCondition(deadSlug);
+
+        tokenRepository.Update(token);
+        await unitOfWork.SaveChangesAsync(ct);
+        await tableNotifier.NotifyTokenUpdatedAsync(
+            token.SessionId.Value, TableTokenMapper.ToDto(token, canMove: true), ct);
     }
 
     public async Task<Result<TrackerDetailDto>> SyncFromSessionAsync(
