@@ -23,5 +23,6 @@
     <Project Path="tests/TTRPGHub.Application.Tests/TTRPGHub.Application.Tests.csproj" />
     <Project Path="tests/TTRPGHub.Domain.Tests/TTRPGHub.Domain.Tests.csproj" />
     <Project Path="tests/TTRPGHub.Infrastructure.Tests/TTRPGHub.Infrastructure.Tests.csproj" />
+    <Project Path="tests/TTRPGHub.Web.Tests/TTRPGHub.Web.Tests.csproj" />
   </Folder>
 </Solution>
