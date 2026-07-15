@@ -38,6 +38,12 @@
                     {
                         <span class="badge bg-secondary">@_entry.Source</span>
                     }
+                    @if (SystemSlug == "dnd5e")
+                    {
+                        <span class="badge bg-warning text-dark" title="Черновой машинный перевод — текст может звучать коряво или содержать неточности">
+                            <i class="bi bi-robot me-1"></i>MT-черновик
+                        </span>
+                    }
                     @if (_entry.CanEdit)
                     {
                         <a href="/reference/@SystemSlug/rules/@Category/@Slug/edit" class="btn btn-outline-secondary btn-sm">
