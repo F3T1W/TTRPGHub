@@ -184,9 +184,10 @@ public static partial class Pf2eSpellAutomation
             .Select(kv => $"{kv.Value}d{kv.Key}")
             .ToList();
 
-        if (flat > 0)
-            parts.Add($"+{flat}");
-        else if (flat < 0)
+        // No leading "+" here: string.Join("+", parts) below already inserts the separator between
+        // parts, so prefixing this one too used to double up into e.g. "1d8++4" whenever dice were
+        // also present.
+        if (flat != 0)
             parts.Add(flat.ToString());
 
         return parts.Count > 0 ? string.Join("+", parts).Replace("+-", "-") : "0";

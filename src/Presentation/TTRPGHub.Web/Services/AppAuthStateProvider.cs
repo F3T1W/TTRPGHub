@@ -49,7 +49,9 @@ public sealed class AppAuthStateProvider(TokenStorage tokens) : AuthenticationSt
 
     private static IEnumerable<Claim> ParseClaims(string jwt)
     {
-        var payload = jwt.Split('.')[1];
+        // JWT payloads are base64url (RFC 7515), not standard base64: '-'/'_' replace '+'/'/' and
+        // padding is omitted. Convert.FromBase64String needs both restored before it can decode.
+        var payload = jwt.Split('.')[1].Replace('-', '+').Replace('_', '/');
         var padded  = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
         var json    = Encoding.UTF8.GetString(Convert.FromBase64String(padded));
         var dict    = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json) ?? [];
