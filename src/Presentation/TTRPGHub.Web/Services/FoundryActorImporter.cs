@@ -192,7 +192,8 @@ public static class FoundryActorImporter
         if (land > 0) return land;
         land = GetNestedInt(attributes, "speed", "value");
         if (land > 0) return land;
-        if (attributes.TryGetProperty("speed", out var speedEl) && speedEl.ValueKind == JsonValueKind.Number)
+        if (attributes.ValueKind == JsonValueKind.Object
+            && attributes.TryGetProperty("speed", out var speedEl) && speedEl.ValueKind == JsonValueKind.Number)
             return speedEl.GetInt32();
         return 25;
     }
